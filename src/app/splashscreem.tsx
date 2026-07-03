@@ -13,6 +13,7 @@ import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
 import TopMintGlow from "@/components/gradientheader";
 import { Colors } from "@/theme/root";
+import useAppFonts from "@/theme/useAppFonts";
 
 const { width: SW } = Dimensions.get("window");
 
@@ -47,6 +48,10 @@ export default function OnboardingScreen() {
     }, 2500);
     return () => clearInterval(interval);
   }, []);
+
+    const [fontsLoaded] = useAppFonts();
+
+    if (!fontsLoaded) return null;
 
   return (
     <View style={styles.root}>
@@ -131,7 +136,7 @@ const styles = StyleSheet.create({
   },
   bottomHalf: {
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 28,
+    paddingHorizontal: 15,
     paddingTop: 20,
     paddingBottom: 36,
   },
@@ -145,16 +150,18 @@ const styles = StyleSheet.create({
   dot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#E6E6E6" },
   dotActive: { backgroundColor: "#000000", width: 7, height: 7 },
   headline: {
-    fontSize: 24,
-    fontWeight: "800",
+    fontSize: 22,
+    // fontWeight: "800",
     color: "#1a1a1a",
+    fontFamily: "SF_Pro_Semibold",
     textAlign: "center",
     marginBottom: 12,
     letterSpacing: -0.3,
   },
   description: {
-    fontSize: 14,
+    fontSize: 12.3,
     color: "#6B7280",
+    fontFamily: "SF_Pro_Medium",
     textAlign: "center",
     lineHeight: 21,
     marginBottom: 28,
@@ -177,7 +184,8 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     fontSize: 17,
-    fontWeight: "700",
+    // fontWeight: "900",
+    fontFamily: "SF_Pro_Bold",
     color: Colors.buttonText,
     letterSpacing: 0.3,
   },

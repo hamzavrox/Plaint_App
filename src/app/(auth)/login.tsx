@@ -93,7 +93,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: "600",
+    // fontWeight: "600",
+    fontFamily: "SF_Pro_Medium",
     textAlign: "center",
     color: "#111",
     marginBottom: 16,
