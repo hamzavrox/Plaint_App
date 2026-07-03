@@ -10,7 +10,8 @@ export const Colors = {
   inputBorderFocused: '#1D1D1D',
   inputBorderDefault: '#E6E6E6',
   inputBackground: '#F7F7F7',
-  buttonText: '#0B0B0B',
+  bgButtonColor : '#00DFAB',
+  buttonText: '#1D1D1D',
   link: '#1A1A1A',
 };
 

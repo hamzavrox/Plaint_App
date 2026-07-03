@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Image, Keyboard, Pressable, StyleSheet, Text, TouchableWithoutFeedback, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import TopMintGlow from "@/components/gradientheader";
+import { Color } from "expo-router";
+import { Colors } from "@/theme/root";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -97,7 +99,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   loginBtn: {
-    backgroundColor: "#00DFAB",
+    backgroundColor: Colors.bgButtonColor,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: "center",
@@ -106,12 +108,12 @@ const styles = StyleSheet.create({
   loginBtnText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#1D1D1D",
+    color: Colors.buttonText,
   },
   forgotText: {
     textAlign: "center",
     fontSize: 14,
-    color: "#1D1D1D",
+    color: Colors.buttonText,
     fontWeight: "500",
   },
 });
