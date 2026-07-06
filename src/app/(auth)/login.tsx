@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import TopMintGlow from "@/components/gradientheader";
 import { Color } from "expo-router";
 import { Colors } from "@/theme/root";
+import { router } from "expo-router";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -50,7 +51,9 @@ export default function Login() {
          
          </View>
 
-        <Pressable style={styles.loginBtn}>
+        <Pressable style={styles.loginBtn} onPress={()=>{
+          router.replace('/Tasks')
+        }}>
           <Text style={styles.loginBtnText}>Log In</Text>
         </Pressable>
 
@@ -81,7 +84,7 @@ const styles = StyleSheet.create({
   // },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 15,
     justifyContent: "center",
     gap: 16,
   },
@@ -94,7 +97,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     // fontWeight: "600",
-    fontFamily: "SF_Pro_Medium",
+    fontFamily: "SF_Pro_Regular",
     textAlign: "center",
     color: "#111",
     marginBottom: 16,
@@ -108,13 +111,15 @@ const styles = StyleSheet.create({
   },
   loginBtnText: {
     fontSize: 16,
-    fontWeight: "600",
+    // fontWeight: "600",
+    fontFamily: "SF_Pro_Semibold",
     color: Colors.buttonText,
   },
   forgotText: {
     textAlign: "center",
     fontSize: 14,
     color: Colors.buttonText,
-    fontWeight: "500",
+    fontFamily: "SF_Pro_Semibold",
+    // fontWeight500",
   },
 });

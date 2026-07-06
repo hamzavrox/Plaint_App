@@ -93,6 +93,7 @@ const styles = StyleSheet.create({
   label: {
     position: "absolute",
     left: 12,
+    fontFamily: "SF_Pro_Regular",
     backgroundColor: "#fff",
     paddingHorizontal: 4,
     color: "#E6E6E6",
@@ -100,6 +101,7 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 15,
     color: "#1D1D1D",
+    fontFamily: "SF_Pro_Regular",
     padding: 0,
     margin: 0,
     height: 20,
