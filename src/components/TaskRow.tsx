@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   },
   accent: { width: 3, alignSelf: "stretch", borderRadius:5, backgroundColor: "#EF4444" },
   checkCircle: {
-    width: 22, height: 22, borderRadius: 4,
+    width: 20, height: 20, borderRadius: 4,
     backgroundColor: "#00DEAB", alignItems: "center", justifyContent: "center",
   },
   checkbox: {
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: "#D1D5DB", backgroundColor: "#fff",
   },
   titleCell: { flexDirection: "row", alignItems: "center", paddingRight: 8 },
-  titleText: { fontSize: 13, color: "#374151", flexShrink: 1 },
+  titleText: { fontSize: 12, color: "#1D1D1D", flexShrink: 1 ,fontFamily: "SF_Pro_Medium"},
   strikethrough: { textDecorationLine: "line-through", color: "#9CA3AF" },
   extraBadge: {
     flexDirection: "row", alignItems: "center",
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   },
   initialsAssigned: { backgroundColor: "#3B82F6" },
   initialsText: { fontSize: 10, fontWeight: "700", color: "#fff" },
-  cellText: { fontSize: 12, color: "#374151", flexShrink: 1 },
+  cellText: { fontSize: 12, color: "#1D1D1D", flexShrink: 1 , fontFamily: "SF_Pro_Medium"},
   dateCell: { flexDirection: "row", alignItems: "center", paddingRight: 8 },
   statusCell: {
     flexDirection: "row",

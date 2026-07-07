@@ -1,7 +1,7 @@
 import React from "react";
-import { View, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, Fontisto } from "@expo/vector-icons";
 
 const TABS: { name: string; icon: React.ComponentProps<typeof Ionicons>["name"] }[] = [
   { name: "Tasks",     icon: "checkbox-outline"      },
@@ -14,8 +14,15 @@ const TABS: { name: string; icon: React.ComponentProps<typeof Ionicons>["name"] 
 ];
 
 export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+  const activeRouteName = state.routes[state.index].name;
+
   return (
     <View style={styles.container}>
+      {/* {activeRouteName === "Tasks" && (
+        <TouchableOpacity style={styles.fab} activeOpacity={0.85}>
+          <Fontisto name="plus-a" size={20} color="#000" />
+        </TouchableOpacity>
+      )} */}
       <View style={styles.bar}>
         {TABS.map((tab, i) => {
           const focused = state.index === i;
@@ -48,6 +55,18 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
   },
+  fab: {
+    position: "absolute",
+    right: 0,
+    top: -64,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#00DEAB",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
   bar: {
     flexDirection: "row",
     backgroundColor: "#000",
@@ -60,7 +79,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 6 },
-    // elevation: 12,
   },
   tabItem: {
     flex: 1,

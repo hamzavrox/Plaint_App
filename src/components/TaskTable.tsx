@@ -33,14 +33,14 @@ export default function TaskTable({ sectionTitle, tasks }: Props) {
         >
           <Ionicons
             name={collapsed ? "chevron-up" : "chevron-down-sharp"}
-            size={20}
-            color="#9CA3AF"
+            size={18}
+            color="#E6E6E6"
           />
         </TouchableOpacity>
       </View>
 
       {!collapsed && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ overflow: "visible" }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ overflow: "hidden" }}>
           <View>
             <View style={styles.tableHeader}>
               <View style={{ width: COL_WIDTHS.spacer }} />
@@ -75,10 +75,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  sectionTitle: { fontSize: 20, fontWeight: "800", color: "#1F2937" },
+  sectionTitle: { fontSize: 18, fontFamily: "SF_Pro_Medium", color: "#1F2937" },
   chevronBox: {
-    width: 30, height: 30, borderRadius: 8,
-    borderWidth: 1.5, borderColor: "#E5E7EB",
+    width: 25, height: 25, borderRadius: 8,
+    borderWidth: 1.5, borderColor: "#E6E6E6",
     alignItems: "center", justifyContent: "center",
   },
   tableHeader: {
@@ -90,5 +90,5 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     alignItems: "center",
   },
-  colHead: { fontSize: 12, fontWeight: "700", color: "#374151", paddingRight: 8 },
+  colHead: { fontSize: 12, fontFamily: "SF_Pro_Medium", color: "#1D1D1D", paddingRight: 8 },
 });

@@ -4,9 +4,12 @@ import FilterIcon from "@/assets/icons/filtericon";
 import SevendayIcon from "@/assets/icons/sevenday";
 import StatCard from "@/components/StatCard";
 import TaskTable from "@/components/TaskTable";
+import FilterModal from "@/components/FilterModal";
+import CreateTaskModal from "@/components/CreateTaskModal";
 import { Fontisto, Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -63,8 +66,11 @@ const STATS = [
 export default function TasksScreen() {
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
+  const [filterVisible, setFilterVisible] = useState(false);
+  const [createVisible, setCreateVisible] = useState(false);
 
   return (
+    <View style={styles.root}>
     <SafeAreaView style={styles.safe}>
       {/* Header */}
       <View style={styles.headerContainer}>
@@ -100,11 +106,22 @@ export default function TasksScreen() {
             onChangeText={setSearch}
           />
         </View>
-        <TouchableOpacity style={styles.filterBtn}>
+        {/* <TouchableOpacity style={styles.filterBtn} onPress={() => setFilterVisible(true)}>
           <Text style={styles.filterIcon}>
             <FilterIcon/>
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
+        <Pressable
+  onPress={() => setFilterVisible(true)}
+  style={({ pressed }) => [
+    styles.filterBtn,
+    pressed && styles.filterBtnPressed,
+  ]}
+>
+  <FilterIcon  />
+</Pressable>
+
+        <FilterModal visible={filterVisible} onClose={() => setFilterVisible(false)} />
       </View>
 
       {/* Stat Cards */}
@@ -127,6 +144,7 @@ export default function TasksScreen() {
       </ScrollView>
 
       {/* Task Table — conditional on active stat card */}
+      {/* <View style={{ flex: 1, overflow: "hidden" , width: "95%"}}> */}
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -137,22 +155,26 @@ export default function TasksScreen() {
           tasks={TASKS_MAP[activeTab] ?? TASKS}
         />
       </ScrollView>
-
-      {/* FAB */}
-      <TouchableOpacity style={styles.fab} activeOpacity={0.85}>
-        <Text style={styles.fabIcon}>
-          <Fontisto name="plus-a" size={24} color="black" />
-        </Text>
-      </TouchableOpacity>
+      {/* </View> */}
 
       {/* Bottom Tab Bar */}
       {/* <BottomTabBar active="tasks" /> */}
     </SafeAreaView>
+
+      {/* FAB */}
+      <TouchableOpacity style={styles.fab} activeOpacity={0.85} onPress={() => setCreateVisible(true)}>
+        <Fontisto name="plus-a" size={24} color="black" />
+      </TouchableOpacity>
+
+      <CreateTaskModal visible={createVisible} onClose={() => setCreateVisible(false)} />
+
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#fff" },
+  root: { flex: 1, backgroundColor: "#fff" , position: "relative"},
+  safe: { flex: 1 },
   headerContainer: {
   borderBottomWidth: 1,
   borderBottomColor: "#E6E6E6",
@@ -221,6 +243,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#E6E6E6",
   },
+  filterBtnPressed: {
+    backgroundColor: "#0DDFAB",
+  },
   filterIcon: { fontSize: 18, color: "#6B7280" },
   statsScroll: { maxHeight: 80 },
   statsContent: { paddingHorizontal: 20, paddingBottom: 6 , gap: 12},
@@ -228,7 +253,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 120 },
   fab: {
     position: "absolute",
-    bottom: 30,
+    bottom: 100,
     right: 24,
     width: 56,
     height: 56,

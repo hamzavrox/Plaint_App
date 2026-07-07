@@ -1,0 +1,250 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+
+type Props = {
+  startDate: Date | null;
+  endDate: Date | null;
+  onSelectStart: (d: Date) => void;
+  onSelectEnd: (d: Date) => void;
+  onDone?: () => void;
+};
+
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
+function getFirstDayMon(year: number, month: number) {
+  return (new Date(year, month, 1).getDay() + 6) % 7;
+}
+function isSameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+function isBetween(date: Date, start: Date, end: Date) {
+  return date > start && date < end;
+}
+
+export default function CalendarPicker({ startDate, endDate, onSelectStart, onSelectEnd, onDone }: Props) {
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [picking, setPicking] = useState<"start" | "end">("start");
+
+  const daysInMonth   = getDaysInMonth(viewYear, viewMonth);
+  const firstDay      = getFirstDayMon(viewYear, viewMonth);
+  const prevMonthDays = getDaysInMonth(viewYear, viewMonth === 0 ? 11 : viewMonth - 1);
+  const trailingDays  = 42 - (firstDay + daysInMonth);
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const handleDayPress = (day: number) => {
+    const selected = new Date(viewYear, viewMonth, day);
+    if (picking === "start") {
+      onSelectStart(selected);
+      setPicking("end");
+    } else {
+      if (startDate && selected < startDate) {
+        onSelectStart(selected);
+        setPicking("end");
+      } else {
+        onSelectEnd(selected);
+        setPicking("start");
+      }
+    }
+  };
+
+  type Cell = { day: number; type: "prev" | "curr" | "next" };
+  const cells: Cell[] = [
+    ...Array.from({ length: firstDay },      (_, i) => ({ day: prevMonthDays - firstDay + i + 1, type: "prev" as const })),
+    ...Array.from({ length: daysInMonth },   (_, i) => ({ day: i + 1,                            type: "curr" as const })),
+    ...Array.from({ length: trailingDays },  (_, i) => ({ day: i + 1,                            type: "next" as const })),
+  ];
+
+  return (
+    <View style={styles.container}>
+      {/* Nav row */}
+      <View style={styles.navRow}>
+        <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
+          <Ionicons name="chevron-back" size={18} color="#1D1D1D" />
+        </TouchableOpacity>
+
+        <View style={styles.navCenter}>
+          <View style={styles.navLabelBtn}>
+            <Text style={styles.monthLabel}>{MONTHS[viewMonth].slice(0, 3)}</Text>
+            <View style={styles.triangle} />
+          </View>
+          <View style={styles.navLabelBtn}>
+            <Text style={styles.monthLabel}>{viewYear}</Text>
+            <View style={styles.triangle} />
+          </View>
+        </View>
+
+        <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
+          <Ionicons name="chevron-forward" size={18} color="#1D1D1D" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Day headers */}
+      <View style={styles.weekRow}>
+        {DAYS.map(d => <Text key={d} style={styles.dayHeader}>{d}</Text>)}
+      </View>
+
+      {/* Grid */}
+      <View style={styles.grid}>
+        {cells.map((cell, i) => {
+          const isCurr    = cell.type === "curr";
+          const date      = isCurr ? new Date(viewYear, viewMonth, cell.day) : null;
+          const isToday   = date ? isSameDay(date, today) : false;
+          const isStart   = date && startDate ? isSameDay(date, startDate) : false;
+          const isEnd     = date && endDate   ? isSameDay(date, endDate)   : false;
+          const inRange   = date && startDate && endDate ? isBetween(date, startDate, endDate) : false;
+          const isSelected = isStart || isEnd;
+
+          return (
+            <View key={i} style={styles.cellWrap}>
+              <TouchableOpacity
+                style={[styles.cell, inRange && styles.cellInRange, isSelected && styles.cellSelected]}
+                onPress={() => isCurr && handleDayPress(cell.day)}
+                activeOpacity={isCurr ? 0.7 : 1}
+              >
+                <Text style={[
+                  styles.dayText,
+                  !isCurr    && styles.dayTextGrey,
+                  isToday    && !isSelected && styles.dayTextToday,
+                  isSelected && styles.dayTextSelected,
+                  inRange    && styles.dayTextInRange,
+                ]}>
+                  {cell.day}
+                </Text>
+                {isToday && !isSelected && <View style={styles.todayUnderline} />}
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Apply button */}
+      {onDone && (
+        <TouchableOpacity style={styles.doneBtn} onPress={onDone}>
+          <Text style={styles.doneBtnText}>Apply</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    borderRadius: 5,
+    paddingVertical: 12,
+    paddingHorizontal: 5,
+    marginTop: 8,
+    backgroundColor: "#F4F4F4",
+  },
+  navRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  navBtn: {
+    width: 34, height: 34, borderRadius: 10,
+    borderWidth: 1, borderColor: "#E6E6E6",
+    backgroundColor: "#fff",
+    alignItems: "center", justifyContent: "center",
+  },
+  navCenter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  navLabelBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  monthLabel: {
+    fontSize: 15,
+    fontFamily: "SF_Pro_Semibold",
+    color: "#1D1D1D",
+  },
+  triangle: {
+    width: 0, height: 0,
+    borderLeftWidth: 4, borderRightWidth: 4, borderTopWidth: 5,
+    borderLeftColor: "transparent", borderRightColor: "transparent",
+    borderTopColor: "#00DEAB",
+    marginTop: 2,
+  },
+  weekRow: {
+    flexDirection: "row",
+    marginBottom: 4,
+    paddingHorizontal: 2,
+  },
+  dayHeader: {
+    width: `${100 / 7}%`,
+    textAlign: "center",
+    fontSize: 12,
+    color: "#9CA3AF",
+    fontFamily: "SF_Pro_Medium",
+    paddingVertical: 4,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 2,
+  },
+  cellWrap: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    padding: 2,
+  },
+  cell: {
+    flex: 1, borderRadius: 8,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOpacity: 0.05, shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  cellInRange: {
+    backgroundColor: "#E0FFF8",
+  },
+  cellSelected: {
+    backgroundColor: "#00DEAB",
+  },
+  dayText: {
+    fontSize: 13,
+    color: "#1D1D1D",
+    fontFamily: "SF_Pro_Medium",
+  },
+  dayTextGrey:     { color: "#C0C0C0" },
+  dayTextToday:    { color: "#00DEAB", fontFamily: "SF_Pro_Semibold" },
+  dayTextSelected: { color: "#fff",    fontFamily: "SF_Pro_Semibold" },
+  dayTextInRange:  { color: "#00DEAB" },
+  todayUnderline: {
+    position: "absolute", bottom: 3,
+    width: 16, height: 2, borderRadius: 1,
+    backgroundColor: "#00DEAB",
+  },
+  doneBtn: {
+    marginTop: 10, marginHorizontal: 4,
+    backgroundColor: "#1D1D1D",
+    borderRadius: 10, paddingVertical: 10,
+    alignItems: "center",
+  },
+  doneBtnText: {
+    color: "#fff", fontSize: 14,
+    fontFamily: "SF_Pro_Semibold",
+  },
+});

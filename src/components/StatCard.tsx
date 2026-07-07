@@ -1,6 +1,8 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+
+const CARD_WIDTH = (Dimensions.get("window").width - 40 - 12 * 2) / 2.2;
 
 type Props = {
   label: string;
@@ -20,7 +22,7 @@ export default function StatCard({
   const renderIcon = () => {
     if (!iconName) return null;
     if (typeof iconName === "string") {
-      return <Ionicons name={iconName as React.ComponentProps<typeof Ionicons>["name"]} size={24} color="#00DEAB" />;
+      return <Ionicons name={iconName as React.ComponentProps<typeof Ionicons>["name"]} size={18} color="#00DEAB" />;
     }
     return iconName as React.ReactNode;
   };
@@ -52,8 +54,9 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    width: 162,
-    height: 67,
+    // width: CARD_WIDTH,
+    minWidth: 140,
+    height: 60,
 
     backgroundColor: "#fff",
 
@@ -71,9 +74,9 @@ const styles = StyleSheet.create({
   },
 
   iconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 8,
 
     backgroundColor: "#E6FFFF",
     
@@ -82,7 +85,7 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    marginLeft: 12,
+    marginLeft: 8,
     flex: 1,
   },
 
@@ -94,7 +97,7 @@ const styles = StyleSheet.create({
   },
 
   count: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: "SF_Pro_Medium",
     // fontWeight: "700",
     color: "#1E1E1E",
