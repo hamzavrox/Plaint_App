@@ -1,5 +1,6 @@
 import React from "react";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { useEffect, useState } from "react";
+import { View, TouchableOpacity, StyleSheet , Keyboard, } from "react-native";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
 
@@ -14,8 +15,37 @@ const TABS: { name: string; icon: React.ComponentProps<typeof Ionicons>["name"] 
 ];
 
 export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
-  const activeRouteName = state.routes[state.index].name;
+  // const activeRouteName = state.routes[state.index].name;
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  useEffect(() => {
 
+  const showKeyboard = Keyboard.addListener(
+    "keyboardDidShow",
+    () => {
+      setKeyboardVisible(true);
+    }
+  );
+
+  const hideKeyboard = Keyboard.addListener(
+    "keyboardDidHide",
+    () => {
+      setKeyboardVisible(false);
+    }
+  );
+
+
+  return () => {
+    showKeyboard.remove();
+    hideKeyboard.remove();
+  };
+
+}, []);
+
+if (keyboardVisible) {
+  return (
+    <View style={{ height: 0 }} />
+  );
+}
   return (
     <View style={styles.container}>
       {/* {activeRouteName === "Tasks" && (

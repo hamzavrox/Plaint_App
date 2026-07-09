@@ -4,8 +4,8 @@ import CustomTabBar from "@/components/CustomTabBar";
 export default function TabLayout() {
   return (
     <Tabs
+    screenOptions={{ headerShown: false ,tabBarHideOnKeyboard:true,}}
       tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen name="Tasks" />
       <Tabs.Screen name="Dashboard" />

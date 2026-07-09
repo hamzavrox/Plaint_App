@@ -2,25 +2,32 @@
 
 ## Overview
 
-**Plaint** is a React Native (Expo) task & project management mobile app. It supports Android, iOS, and Web. Built with Expo Router (file-based routing), React 19, TypeScript, and a custom SF Pro font system.
+Plaint is a cross-platform Expo app for task and project management. It targets Android, iOS, and Web while using Expo Router, React Native, TypeScript, and custom SF Pro fonts.
+
+## Key Features
+
+- Onboarding carousel with auto-advance and call‑to‑action navigation
+- Login screen with animated floating inputs and password visibility toggle
+- Primary task dashboard with search, filters, and status cards
+- Scrollable task table with inline status dropdowns
+- Bottom sheet create task modal with task metadata chips and simulated attachments
+- Custom floating bottom tab bar across app sections
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | React Native 0.86 + Expo ~57 |
-| Language | TypeScript ~6 |
-| Routing | Expo Router ~57 (file-based) |
-| Navigation | React Navigation (Bottom Tabs) |
-| Icons | @expo/vector-icons (Ionicons, Fontisto) + custom SVG icons |
-| Fonts | SF Pro Text (Bold, Light, Medium, Regular, Semibold) via `expo-font` |
-| Gradients | `expo-linear-gradient` |
-| Animations | `react-native-reanimated` 4.5 |
-| Gestures | `react-native-gesture-handler` |
-| SVG | `react-native-svg` |
-| State | React `useState` (local) |
+- Expo SDK ~57
+- React Native 0.86.0
+- React 19.2.3
+- TypeScript ~6.0.3
+- Expo Router ~57.0.2
+- React Navigation via Expo Router Tabs
+- `@expo/vector-icons`, `react-native-svg`
+- `expo-font`, `expo-linear-gradient`, `expo-splash-screen`
+- `react-native-reanimated` 4.5.0
+- `react-native-gesture-handler`
+- `expo-image`, `expo-device`, `expo-constants`, `expo-linking`, `expo-web-browser`
 
 ---
 
@@ -29,22 +36,22 @@
 ```
 Plaint/
 ├── assets/
-│   ├── fonts/              # SF Pro Text font files (.otf)
+│   ├── fonts/              # SF Pro Text font files
 │   ├── icons/              # Custom SVG icon components
-│   └── images/             # App images, logos, tab icons, splash
+│   └── images/             # App visuals, splash, and icons
 ├── scripts/
-│   └── reset-project.js    # Resets app to blank starter
+│   └── reset-project.js    # Reset helper script
 ├── src/
-│   ├── app/                # Expo Router screens (file-based routes)
-│   │   ├── _layout.tsx     # Root layout (ThemeProvider + Stack)
-│   │   ├── index.tsx       # Entry point
-│   │   ├── splashscreem.tsx# Onboarding/splash screen
-│   │   ├── explore.tsx
+│   ├── app/                # Expo Router screens and routes
+│   │   ├── _layout.tsx     # Root layout with ThemeProvider and Stack
+│   │   ├── index.tsx       # Entry route
+│   │   ├── splashscreem.tsx# Onboarding screen
+│   │   ├── explore.tsx     # Expo starter example screen
 │   │   ├── (auth)/
 │   │   │   └── login.tsx   # Login screen
 │   │   └── (tabs)/
-│   │       ├── _layout.tsx # Tab layout (CustomTabBar)
-│   │       ├── Tasks.tsx   # Main tasks screen ← primary screen
+│   │       ├── _layout.tsx # Tabs layout with custom tab bar
+│   │       ├── Tasks.tsx   # Main task dashboard
 │   │       ├── Dashboard.tsx
 │   │       ├── stats.tsx
 │   │       ├── home.tsx
@@ -53,16 +60,16 @@ Plaint/
 │   │       └── grid.tsx
 │   ├── components/         # Reusable UI components
 │   ├── constants/
-│   │   └── theme.ts        # Light/dark colors, fonts, spacing constants
-│   ├── context/            # (reserved for React context providers)
+│   │   └── theme.ts        # Theme constants
+│   ├── context/            # Reserved for React providers
 │   ├── hooks/              # Custom hooks
-│   ├── services/           # (reserved for API/service layer)
+│   ├── services/           # Reserved for service logic
 │   ├── theme/
-│   │   ├── root.tsx        # App-wide Colors, Spacing, Typography, Radius
-│   │   └── useAppFonts.tsx # Font loading hook
-│   ├── utils/              # (reserved for utility functions)
-│   └── global.css          # Global CSS (web)
-├── app.json                # Expo config
+│   │   ├── root.tsx        # Colors, spacing, typography, radius
+│   │   └── useAppFonts.tsx # Font loader hook
+│   ├── utils/              # Utility helpers
+│   └── global.css          # Web global styles
+├── app.json                # Expo configuration
 ├── package.json
 └── tsconfig.json
 ```
@@ -72,131 +79,200 @@ Plaint/
 ## Routing & Navigation
 
 ### Root Layout — `src/app/_layout.tsx`
-- Wraps the entire app in `ThemeProvider` (light/dark via `useColorScheme`)
-- Uses `Stack` navigator with `headerShown: false`
-- Hides splash screen on mount
+- Wraps the app in Expo Router `ThemeProvider`.
+- Uses `useColorScheme()` for light/dark theme selection.
+- Sets `Stack` screen options with `headerShown: false`.
+- Hides the Expo splash screen after mount.
 
 ### Tab Layout — `src/app/(tabs)/_layout.tsx`
-- Uses Expo Router `Tabs` with a fully custom tab bar (`CustomTabBar`)
-- 7 tabs: Tasks, Dashboard, Stats, Home, Chat, Biometric, Grid
+- Uses Expo Router `Tabs` with a custom `CustomTabBar`.
+- Defines 7 bottom tab routes: `Tasks`, `Dashboard`, `stats`, `home`, `chat`, `biometric`, `grid`.
 
 ### App Flow
+
 ```
-index.tsx → splashscreem.tsx (onboarding) → /login → /Tasks (main)
+/ -> splashscreem -> /login -> /(tabs)/Tasks
 ```
+
+`explore.tsx` remains available as a separate starter example screen.
 
 ---
 
 ## Screens
 
-### Onboarding — `splashscreem.tsx`
-- Auto-scrolling image carousel (4 slides, 2.5s interval)
-- Animated dot indicators
-- "Get Started" CTA → navigates to `/login`
-- Uses `TopMintGlow` header gradient
+### Onboarding — `src/app/splashscreem.tsx`
+- Auto-scrolling banner carousel with 4 slides.
+- Uses a custom top gradient header component.
+- Displays dot indicators for current slide.
+- Navigates to `/login` on CTA tap.
 
-### Login — `(auth)/login.tsx`
-- Email + password inputs using `FloatingInput` (animated floating label)
-- Password visibility toggle
-- "Log In" → navigates to `/Tasks`
-- "Forgot Password?" link (placeholder)
-- Uses `TopMintGlow` header gradient
+### Login — `src/app/(auth)/login.tsx`
+- Login form with email and password fields.
+- Uses `FloatingInput` with floating labels.
+- Password field includes an eye toggle.
+- `Log In` button routes to the Tasks tab.
+- Includes a placeholder `Forgot Password?` link.
 
-### Tasks — `(tabs)/Tasks.tsx` ← Primary Screen
-The core screen of the app.
+### Tasks — `src/app/(tabs)/Tasks.tsx`
+The app’s main task management screen.
 
-**Features:**
-- Greeting header with user name + bell notification icon + avatar
-- Search bar with filter button
-- Horizontally scrollable `StatCard` row (8 categories)
-- Vertically scrollable `TaskTable` filtered by active stat card
-- Floating Action Button (FAB) to add new tasks
+Features:
+- Header with greeting, description, notification bell, and avatar initials.
+- Search input and filter button.
+- Scrollable status cards for task category selection.
+- Task table rendered from mocked task data.
+- Floating action button opens the create task modal.
 
-**Stat Card Categories:**
+#### Task Filters
+- All Tasks
+- Due Today
+- Due in 7 days
+- Delayed
+- Created by me
+- Assigned to me
+- Recurring
+- Completed
 
-| ID | Label | Count |
-|---|---|---|
-| all | All Tasks | 1200 |
-| today | Due Today | 05 |
-| week | Due in 7 days | 15 |
-| overdue | Delayed | 03 |
-| created | Created by me | 12 |
-| assigned | Assigned to me | 05 |
-| recurring | Recurring | 15 |
-| completed | Completed | 03 |
+### Dashboard — `src/app/(tabs)/Dashboard.tsx`
+- Placeholder screen showing the shared `AppHeader` component.
 
-**Task Fields:** title, createdBy, createdByInitials, assignedTo, assignedToInitials, dueDate, status, project, extraCount
+### Stats / Home / Chat / Biometric / Grid Tabs
+- `src/app/(tabs)/stats.tsx`
+- `src/app/(tabs)/home.tsx`
+- `src/app/(tabs)/chat.tsx`
+- `src/app/(tabs)/biometric.tsx`
+- `src/app/(tabs)/grid.tsx`
 
-**Task Statuses:** `Pending` · `In-Progress` · `On-Hold` · `Rejected` · `Completed` · `Pending-Approval`
+These tabs are currently placeholders with shared app header scaffolding.
 
-### Dashboard — `(tabs)/Dashboard.tsx`
-Placeholder screen (in development).
+### Explore — `src/app/explore.tsx`
+- Expo starter example screen.
+- Includes theme-aware layout, collapsible sections, and web-specific elements.
 
 ---
 
 ## Components
 
-### `StatCard`
-Horizontally scrollable card showing a task category count.
+### `CustomTabBar`
+- Floating bottom tab bar with pill-shaped container.
+- Active tab icon is highlighted with a white circular background.
+- Uses Ionicons for navigation icons.
 
-| Prop | Type | Description |
-|---|---|---|
-| label | string | Category name |
-| count | string \| number | Task count |
-| iconName | Ionicons name \| ReactNode | Icon (string = Ionicons, node = custom SVG) |
-| active | boolean | Highlights card with teal border |
-| onPress | () => void | Tab selection handler |
+### `AppHeader`
+- Reusable header used across the main screen and placeholder tabs.
+- Shows title, subtitle, notification bell, and avatar initials.
+
+### `StatCard`
+- Displays an icon, label, and count.
+- Supports both Ionicons string icons and custom React nodes.
+- Active card is highlighted with a teal border.
 
 ### `TaskTable`
-Collapsible table section with a horizontal scroll for columns.
-
-| Prop | Type | Description |
-|---|---|---|
-| sectionTitle | string | Section heading |
-| tasks | TaskRowProps[] | Array of task data |
-
-- Collapse/expand toggle via chevron button
-- Manages which row's status dropdown is open (only one at a time)
-- Column headers: Task Title, Created By, Assigned to, Due Date, Status, Comment, Project
+- Collapsible section with a horizontal scroll for wide rows.
+- Renders column headers and multiple `TaskRow` components.
+- Maintains open state so only one row dropdown is expanded at a time.
 
 ### `TaskRow`
-Single task row with inline status dropdown.
+- Displays task title, creator, assignee, due date, status, comment icon, and project name.
+- Includes inline dropdown for changing status.
+- Marks completed tasks with a checkmark and strikethrough styling.
+- Supports statuses: `Pending`, `In-Progress`, `On-Hold`, `Rejected`, `Completed`, `Pending-Approval`.
 
-| Prop | Type | Description |
-|---|---|---|
-| title | string | Task title |
-| createdBy / createdByInitials | string | Creator info |
-| assignedTo / assignedToInitials | string | Assignee info |
-| dueDate | string | Due date string |
-| status | StatusType | Current status |
-| project | string | Project name |
-| extraCount | number | Sub-task count badge |
-| isOpen | boolean | Controls dropdown visibility |
-| onOpenRequest / onClose | () => void | Dropdown open/close callbacks |
-
-**Status Colors:**
-
-| Status | Background | Text |
-|---|---|---|
-| Pending | `#FEF3C7` | `#D97706` |
-| In-Progress | `#DBEAFE` | `#2563EB` |
-| On-Hold | `#F3F4F6` | `#6B7280` |
-| Rejected | `#FEE2E2` | `#DC2626` |
-| Completed | `#D1FAE5` | `#059669` |
-| Pending-Approval | `#EDE9FE` | `#7C3AED` |
-
-Completed tasks show a teal checkmark circle and strikethrough title.
-
-### `CustomTabBar`
-Floating pill-shaped bottom tab bar.
-
-- Black background, rounded pill (`borderRadius: 40`), floating 20px above bottom
-- Active tab: white circular background around icon
-- Inactive tabs: white icon on black
-- 7 tabs with Ionicons icons
+### `CreateTaskModal`
+- Bottom sheet modal for task creation.
+- Includes floating title input and description editor.
+- Shows action chips for assignee, due date, priority, approval, recurring, subtasks, and dependencies.
+- Simulates attachments and tag chips.
+- UI only; created tasks are not persisted.
 
 ### `FloatingInput`
-Animated floating label text input.
+- Animated floating label input field.
+- Handles focus/blur transitions and secure text entry.
+- Includes a password visibility toggle when `secureToggle` is enabled.
+
+### Additional Components
+- `FilterModal` — task filter modal.
+- `CalendarPicker` — date selection UI.
+- `BottomTabBar` — legacy alternate bottom tab bar.
+- `app-tabs.tsx` / `app-tabs.web.tsx` — platform tab abstractions.
+- `animated-icon.tsx` / `animated-icon.web.tsx` — animated icon wrappers.
+- `gradientheader.tsx` — top gradient decoration.
+- `gradientfooter.tsx` — bottom gradient decoration.
+- `radialbottom.tsx` — radial gradient accent.
+- `hint-row.tsx` — hint/tip row.
+- `external-link.tsx` — external link helper.
+- `themed-text.tsx` / `themed-view.tsx` — theme-aware wrappers.
+- `web-badge.tsx` — web-only badge.
+- `ui/collapsible.tsx` — reusable collapsible component.
+
+---
+
+## Theme & Styling
+
+### `src/theme/root.tsx`
+- Primary color: `#1ED9A5`
+- Button background: `#00DFAB`
+- Button text: `#1D1D1D`
+- Background: `#FFFFFF`
+- Primary text: `#1D1D1D`
+- Secondary text: `#6B6B6B`
+- Placeholder: `#E6E6E6`
+- Input border focus: `#1D1D1D`
+- Input border default: `#E6E6E6`
+
+### `src/theme/useAppFonts.tsx`
+- Loads SF Pro Text fonts: `Light`, `Regular`, `Medium`, `Semibold`, `Bold`.
+
+### Web Styles
+- `src/global.css` contains web-specific global styling.
+
+---
+
+## Assets
+
+- `assets/fonts/` — SF Pro Text font files.
+- `assets/icons/` — custom SVG icon components.
+- `assets/images/` — splash, banners, logos, and app imagery.
+
+---
+
+## Configuration
+
+### `package.json`
+- Expo app with React 19.2.3 and React Native 0.86.0.
+- Uses `expo-router`, `expo-font`, `expo-linear-gradient`, `react-native-reanimated`, and `@expo/vector-icons`.
+- Scripts: `start`, `android`, `ios`, `web`, `lint`, `reset-project`.
+
+### `app.json`
+- App name: `Plaint`
+- Scheme: `plaint`
+- Orientation: `portrait`
+- `userInterfaceStyle`: `automatic`
+- Android adaptive icon configuration.
+- Web output: `static`.
+- Uses Expo splash screen plugin with custom image.
+- Enables typed routes and React compiler experiment flags.
+
+---
+
+## Scripts
+
+- `npm run start` — launch Expo dev server.
+- `npm run android` — run on Android.
+- `npm run ios` — run on iOS.
+- `npm run web` — launch web build.
+- `npm run lint` — run Expo lint.
+- `npm run reset-project` — execute `scripts/reset-project.js`.
+
+---
+
+## Notes
+
+- Most app data is currently mocked in `src/app/(tabs)/Tasks.tsx`.
+- Task creation modal is UI-only and does not persist tasks.
+- Several tab screens are placeholders ready for feature expansion.
+- `explore.tsx` and some components are Expo starter template remnants.
+- App structure is set up for iterative development of task management workflows.
 
 | Prop | Type | Description |
 |---|---|---|

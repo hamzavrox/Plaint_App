@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
@@ -31,7 +31,14 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [picking, setPicking] = useState<"start" | "end">("start");
+  const [showMonthDropdown, setShowMonthDropdown] = useState(false);
+  const [showYearDropdown, setShowYearDropdown] = useState(false);
 
+// const YEARS = Array.from({ length: 20 }, (_, i) => 2000 + i); // 2016 - 2036
+const YEARS = Array.from(
+  { length: 201 },
+  (_, i) => viewYear - 100 + i
+);
   const daysInMonth   = getDaysInMonth(viewYear, viewMonth);
   const firstDay      = getFirstDayMon(viewYear, viewMonth);
   const prevMonthDays = getDaysInMonth(viewYear, viewMonth === 0 ? 11 : viewMonth - 1);
@@ -58,6 +65,7 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
       } else {
         onSelectEnd(selected);
         setPicking("start");
+        onDone?.();
       }
     }
   };
@@ -77,7 +85,7 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
           <Ionicons name="chevron-back" size={18} color="#1D1D1D" />
         </TouchableOpacity>
 
-        <View style={styles.navCenter}>
+        {/* <View style={styles.navCenter}>
           <View style={styles.navLabelBtn}>
             <Text style={styles.monthLabel}>{MONTHS[viewMonth].slice(0, 3)}</Text>
             <View style={styles.triangle} />
@@ -86,8 +94,107 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
             <Text style={styles.monthLabel}>{viewYear}</Text>
             <View style={styles.triangle} />
           </View>
+        </View> */}
+
+        <View style={styles.navCenter}>
+          <TouchableOpacity
+  style={styles.navLabelBtn}
+  onPress={() => {
+    setShowMonthDropdown(!showMonthDropdown);
+    setShowYearDropdown(false);
+  }}
+>
+  <Text style={styles.monthLabel}>
+    {MONTHS[viewMonth].slice(0, 3)}
+  </Text>
+
+  <Ionicons
+    name={showMonthDropdown ? "chevron-up" : "chevron-down"}
+    size={14}
+    color="#00DEAB"
+  />
+</TouchableOpacity>
+<TouchableOpacity
+  style={styles.navLabelBtn}
+  onPress={() => {
+    setShowYearDropdown(!showYearDropdown);
+    setShowMonthDropdown(false);
+  }}
+>
+  <Text style={styles.monthLabel}>{viewYear}</Text>
+
+  <Ionicons
+    name={showYearDropdown ? "chevron-up" : "chevron-down"}
+    size={14}
+    color="#00DEAB"
+  />
+</TouchableOpacity>
         </View>
 
+{showMonthDropdown && (
+  <View style={styles.dropdown}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
+    >
+      {MONTHS.map((month, index) => (
+        <TouchableOpacity
+          key={month}
+          style={[
+            styles.dropdownItem,
+            index === viewMonth && styles.selectedItem,
+          ]}
+          onPress={() => {
+            setViewMonth(index);
+            setShowMonthDropdown(false);
+          }}
+        >
+          <Text
+            style={[
+              styles.dropdownText,
+              index === viewMonth && styles.selectedText,
+            ]}
+          >
+            {month}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  </View>
+)}
+
+
+{showYearDropdown && (
+  <View style={styles.dropdown}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
+    >
+      {YEARS.map((year) => (
+        <TouchableOpacity
+          key={year}
+          style={[
+            styles.dropdownItem,
+            year === viewYear && styles.selectedItem,
+          ]}
+          onPress={() => {
+            setViewYear(year);
+            setShowYearDropdown(false);
+          }}
+        >
+          <Text
+            style={[
+              styles.dropdownText,
+              year === viewYear && styles.selectedText,
+            ]}
+          >
+            {year}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  </View>
+)}
         <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
           <Ionicons name="chevron-forward" size={18} color="#1D1D1D" />
         </TouchableOpacity>
@@ -132,21 +239,16 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
         })}
       </View>
 
-      {/* Apply button */}
-      {onDone && (
-        <TouchableOpacity style={styles.doneBtn} onPress={onDone}>
-          <Text style={styles.doneBtnText}>Apply</Text>
-        </TouchableOpacity>
-      )}
+      {/* No Apply button — popup closes automatically after end date is picked */}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 5,
-    paddingVertical: 12,
-    paddingHorizontal: 5,
+    borderRadius: 10,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
     marginTop: 8,
     backgroundColor: "#F4F4F4",
   },
@@ -158,7 +260,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   navBtn: {
-    width: 34, height: 34, borderRadius: 10,
+    width: 34, height: 34, borderRadius: 20,
     borderWidth: 1, borderColor: "#E6E6E6",
     backgroundColor: "#fff",
     alignItems: "center", justifyContent: "center",
@@ -170,6 +272,10 @@ const styles = StyleSheet.create({
   },
   navLabelBtn: {
     flexDirection: "row",
+    backgroundColor: "#fff",
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     alignItems: "center",
     gap: 4,
   },
@@ -180,7 +286,7 @@ const styles = StyleSheet.create({
   },
   triangle: {
     width: 0, height: 0,
-    borderLeftWidth: 4, borderRightWidth: 4, borderTopWidth: 5,
+    borderLeftWidth: 4, borderRightWidth: 4, borderTopWidth: 50,
     borderLeftColor: "transparent", borderRightColor: "transparent",
     borderTopColor: "#00DEAB",
     marginTop: 2,
@@ -239,12 +345,40 @@ const styles = StyleSheet.create({
   },
   doneBtn: {
     marginTop: 10, marginHorizontal: 4,
-    backgroundColor: "#1D1D1D",
-    borderRadius: 10, paddingVertical: 10,
+    backgroundColor: "#00DEAB",
+    borderRadius: 10, paddingVertical: 12,
     alignItems: "center",
   },
   doneBtnText: {
-    color: "#fff", fontSize: 14,
+    color: "#fff", fontSize: 15,
     fontFamily: "SF_Pro_Semibold",
   },
+dropdown: {
+  position: "absolute",
+  top: 50,
+  marginLeft: 58,
+
+  width: 150,
+  maxHeight: 220,
+
+  backgroundColor: "#FFF",
+  borderRadius: 10,
+  borderWidth: 1,
+  borderColor: "#EAEAEA",
+
+  zIndex: 999,
+  elevation: 10,
+},
+
+dropdownItem: {
+  paddingVertical: 12,
+  paddingHorizontal: 12,
+},
+
+dropdownText: {
+  fontSize: 15,
+  textAlign: "center",
+  color: "#1D1D1D",
+  fontFamily: "SF_Pro_Medium",
+},
 });

@@ -6,6 +6,7 @@ import TaskRow, { TaskRowProps, COL_WIDTHS } from "./TaskRow";
 type Props = {
   sectionTitle: string;
   tasks: TaskRowProps[];
+  onTaskPress?: (task: TaskRowProps) => void;
 };
 
 const COLUMNS: { label: string; width: number }[] = [
@@ -18,7 +19,7 @@ const COLUMNS: { label: string; width: number }[] = [
   { label: "Project",      width: COL_WIDTHS.project    },
 ];
 
-export default function TaskTable({ sectionTitle, tasks }: Props) {
+export default function TaskTable({ sectionTitle, tasks, onTaskPress }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [openRowIndex, setOpenRowIndex] = useState<number | null>(null);
 
@@ -40,7 +41,7 @@ export default function TaskTable({ sectionTitle, tasks }: Props) {
       </View>
 
       {!collapsed && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ overflow: "hidden" }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ overflow: "hidden" }} keyboardShouldPersistTaps="always">
           <View>
             <View style={styles.tableHeader}>
               <View style={{ width: COL_WIDTHS.spacer }} />
@@ -57,6 +58,7 @@ export default function TaskTable({ sectionTitle, tasks }: Props) {
                   isOpen={openRowIndex === i}
                   onOpenRequest={() => setOpenRowIndex(i)}
                   onClose={() => setOpenRowIndex(null)}
+                  onPress={() => onTaskPress?.(task)}
                 />
               </View>
             ))}
@@ -83,7 +85,7 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#E6E6E6",
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 0,

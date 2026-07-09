@@ -56,7 +56,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     // width: CARD_WIDTH,
     minWidth: 140,
-    height: 60,
+    height: 42,
+    gap:6,
 
     backgroundColor: "#fff",
 
@@ -65,7 +66,7 @@ const styles = StyleSheet.create({
 
     borderRadius: 10,
 
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
   },
 
   activeCard: {
@@ -74,8 +75,8 @@ const styles = StyleSheet.create({
   },
 
   iconBox: {
-    width: 34,
-    height: 34,
+    width: 30,
+    height: 30,
     borderRadius: 8,
 
     backgroundColor: "#E6FFFF",
@@ -85,7 +86,10 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    marginLeft: 8,
+    flexDirection:"row",
+    alignItems:"center",
+    gap:4,
+    // marginLeft: 8,
     flex: 1,
   },
 
@@ -97,7 +101,7 @@ const styles = StyleSheet.create({
   },
 
   count: {
-    fontSize: 18,
+    fontSize: 14,
     fontFamily: "SF_Pro_Medium",
     // fontWeight: "700",
     color: "#1E1E1E",

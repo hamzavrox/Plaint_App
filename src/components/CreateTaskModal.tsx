@@ -1,7 +1,6 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState } from "react";
-import { Keyboard } from "react-native";
-import { TouchableWithoutFeedback } from "react-native";
+import RichTextEditor, { RichTextEditorRef } from "@/components/texteditor";
+import { Ionicons } from "@expo/vector-icons";
+import { useRef, useState } from "react";
 import {
   Modal,
   ScrollView,
@@ -9,29 +8,25 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
+
+// 👇 adjust this path to wherever RichTextEditor.tsx actually lives in your project
+// import RichTextEditor, {
+//   RichTextEditorRef,
+// } from "@/components/texteditor";
 
 type Props = { visible: boolean; onClose: () => void };
 
 const ACTION_CHIPS = [
-  { id: "assigned",  icon: "people-outline",          label: "Assigned to",       lib: "ion" },
-  { id: "duedate",   icon: "calendar-outline",         label: "Due Date",          lib: "ion" },
-  { id: "priority",  icon: "star-outline",             label: "Priority",          lib: "ion" },
-  { id: "approval",  icon: "checkmark-done-outline",   label: "Approval Required", lib: "ion" },
-  { id: "status",    icon: "sync-circle-outline",      label: "Task Status",       lib: "ion" },
-  { id: "recurring", icon: "camera-outline",           label: "Recurring Task",    lib: "ion" },
-  { id: "subtask",   icon: "git-branch-outline",       label: "Add Subtask",       lib: "ion" },
-  { id: "deps",      icon: "git-compare-outline",      label: "Dependencies",      lib: "ion" },
-];
-
-const FORMAT_TOOLS = [
-  { id: "bold",   icon: "format-bold",        lib: "mci" },
-  { id: "italic", icon: "format-italic",      lib: "mci" },
-  { id: "under",  icon: "format-underline",   lib: "mci" },
-  { id: "emoji",  icon: "emoticon-outline",   lib: "mci" },
-  { id: "link",   icon: "link-variant",       lib: "mci" },
-  { id: "list",   icon: "format-list-bulleted", lib: "mci" },
+  { id: "assigned", icon: "people-outline", label: "Assigned to", lib: "ion" },
+  { id: "duedate", icon: "calendar-outline", label: "Due Date", lib: "ion" },
+  { id: "priority", icon: "star-outline", label: "Priority", lib: "ion" },
+  { id: "approval", icon: "checkmark-done-outline", label: "Approval Required", lib: "ion" },
+  { id: "status", icon: "sync-circle-outline", label: "Task Status", lib: "ion" },
+  { id: "recurring", icon: "camera-outline", label: "Recurring Task", lib: "ion" },
+  { id: "subtask", icon: "git-branch-outline", label: "Add Subtask", lib: "ion" },
+  { id: "deps", icon: "git-compare-outline", label: "Dependencies", lib: "ion" },
 ];
 
 export default function CreateTaskModal({ visible, onClose }: Props) {
@@ -41,8 +36,10 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
   const [descFocused, setDescFocused] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
 
+  const descriptionEditorRef = useRef<RichTextEditorRef>(null);
+
   const titleFloated = titleFocused || title.length > 0;
-  const showDescBox = descFocused || description.length > 0;
+  const descExpanded = descFocused || description.replace(/<[^>]*>/g, "").trim().length > 0;
 
   const handleAttach = () => {
     // Simulate picking a file — replace with real file picker (e.g. expo-document-picker)
@@ -54,8 +51,14 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleCreateTask = async () => {
+    // Pull the latest HTML directly from the editor if you need it on submit
+    const descriptionHtml = await descriptionEditorRef.current?.getContentHtml();
+    console.log({ title, description: descriptionHtml ?? description, attachments });
+    // ...call your create-task API here
+  };
+
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
@@ -64,7 +67,7 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
             <Ionicons name="close" size={18} color="#fff" />
           </TouchableOpacity>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="always">
             {/* Title */}
             <View style={[styles.titleInputWrap, titleFloated && styles.titleInputWrapActive]}>
               <Text style={[styles.floatLabel, titleFloated && styles.floatLabelActive]}>
@@ -81,31 +84,26 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
             </View>
 
             {/* Description */}
-            {showDescBox ? (
-              <View style={[styles.descBox, styles.descBoxActive]}>
-                <Text style={[styles.floatLabel, styles.floatLabelActive]}>Description</Text>
-                <TextInput
-                  style={styles.descInput}
-                  value={description}
-                  onChangeText={setDescription}
-                  multiline
-                  onFocus={() => setDescFocused(true)}
-                  onBlur={() => setDescFocused(false)}
-                  autoFocus={!description}
-                />
-                {/* Format toolbar */}
-                <View style={styles.formatBar}>
-                  {FORMAT_TOOLS.map((t) => (
-                    <TouchableOpacity key={t.id} style={styles.formatBtn}>
-                      <MaterialCommunityIcons name={t.icon as any} size={20} color="#6B7280" />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+            {descExpanded ? (
+              <RichTextEditor
+                ref={descriptionEditorRef}
+                label="Description"
+                initialHTML={description}
+                onChangeHTML={setDescription}
+                onFocus={() => setDescFocused(true)}
+                onBlur={() => setDescFocused(false)}
+                editorHeight={160}
+                containerStyle={styles.descEditor}
+                autoFocus
+              />
             ) : (
-              <TouchableOpacity style={styles.descPlaceholderRow} onPress={() => setDescFocused(true)}>
-                <Ionicons name="document-text-outline" size={20} color="#D1D5DB" />
-                <Text style={styles.descPlaceholder}>Description</Text>
+              <TouchableOpacity
+                style={styles.descIdle}
+                onPress={() => setDescFocused(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="document-text-outline" size={20} color="#C0C0C0" style={{ marginRight: 10 }} />
+                <Text style={styles.descIdlePlaceholder}>Description</Text>
               </TouchableOpacity>
             )}
 
@@ -148,13 +146,12 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
           </ScrollView>
 
           {/* Create Task Button */}
-          <TouchableOpacity style={styles.createBtn} activeOpacity={0.85}>
-            <Text style={styles.createBtnText}>+ Create Task</Text>
+          <TouchableOpacity style={styles.createBtn} activeOpacity={0.85} onPress={handleCreateTask}>
+            <Text style={styles.createBtnText}>+   Create Task</Text>
           </TouchableOpacity>
         </View>
       </View>
     </Modal>
-    </TouchableWithoutFeedback>
   );
 }
 
@@ -173,7 +170,7 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
     maxHeight: "90%",
   },
-  scrollContent: { paddingBottom: 0 , paddingTop: 10},
+  scrollContent: { paddingBottom: 0, paddingTop: 10 },
   closeBtn: {
     alignSelf: "flex-end",
     width: 32, height: 32, borderRadius: 16,
@@ -182,17 +179,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   titleInputWrap: {
-    borderWidth: 1,
-    borderColor: "#E6E6E6",
-    borderRadius: 10,
     paddingHorizontal: 14,
     paddingTop: 14,
     paddingBottom: 12,
     marginBottom: 20,
   },
   titleInputWrapActive: {
+    borderWidth: 1,
     borderColor: "#1D1D1D",
     paddingTop: 22,
+    borderRadius: 10,
   },
   floatLabel: {
     position: "absolute",
@@ -221,48 +217,20 @@ const styles = StyleSheet.create({
   titleInputFloated: {
     // no extra style needed, paddingTop on wrap handles spacing
   },
-  descPlaceholderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 24,
-    paddingVertical: 4,
-  },
-  descPlaceholder: {
-    fontSize: 16,
-    color: "#E6E6E6",
-    fontFamily: "SF_Pro_Regular",
-  },
-  descBox: {
-    borderWidth: 1,
-    borderColor: "#E6E6E6",
-    borderRadius: 10,
-    padding: 14,
+  descEditor: {
     marginBottom: 20,
   },
-  descBoxActive: { borderColor: "#1D1D1D" },
-  descInput: {
-    fontSize: 14,
-    color: "#1D1D1D",
-    fontFamily: "SF_Pro_Regular",
-    minHeight: 160,
-    textAlignVertical: "top",
-    padding: 0,
-    marginTop: 8,
-  },
-  formatBar: {
+  descIdle: {
     flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: "#E6E6E6",
-    paddingTop: 10,
-    marginTop: 10,
-    gap: 4,
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    marginBottom: 20,
   },
-  formatBtn: {
-    padding: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#E6E6E6",
+  descIdlePlaceholder: {
+    fontSize: 15,
+    color: "#C0C0C0",
+    fontFamily: "SF_Pro_Regular",
   },
   chipsWrap: {
     flexDirection: "row",
@@ -275,9 +243,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     borderWidth: 1,
-    borderColor: "#E6E6E6",
+    borderColor: "#AAAAAA",
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 8,
   },
   chipLabel: {
@@ -317,7 +285,7 @@ const styles = StyleSheet.create({
   },
   createBtn: {
     backgroundColor: "#00DEAB",
-    borderRadius: 14,
+    borderRadius: 5,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 12,

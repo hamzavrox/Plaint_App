@@ -24,6 +24,7 @@ export type TaskRowProps = {
   isOpen?: boolean;
   onOpenRequest?: () => void;
   onClose?: () => void;
+  onPress?: () => void;
 };
 
 export const STATUS_COLORS: Record<StatusType, { bg: string; text: string }> = {
@@ -57,7 +58,7 @@ const DROPDOWN_H = ALL_STATUSES.length * ITEM_H;
 export default function TaskRow({
   title, createdBy, createdByInitials, assignedTo, assignedToInitials,
   dueDate, status: initialStatus, project, extraCount,
-  isOpen = false, onOpenRequest, onClose,
+  isOpen = false, onOpenRequest, onClose, onPress,
 }: TaskRowProps) {
   const [status, setStatus] = useState<StatusType>(initialStatus);
   const { bg, text } = STATUS_COLORS[status];
@@ -70,7 +71,7 @@ export default function TaskRow({
   return (
     <View style={styles.wrap}>
       {/* ── Row ── */}
-      <View style={styles.row}>
+      <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
         <View style={styles.accent} />
 
         {/* Check / Checkbox */}
@@ -122,7 +123,7 @@ export default function TaskRow({
         {/* Status pill */}
         <TouchableOpacity
           style={[styles.statusCell, { width: COL_WIDTHS.status, backgroundColor: bg }]}
-          onPress={() => isOpen ? onClose?.() : onOpenRequest?.()}
+          onPress={(e) => { e.stopPropagation(); isOpen ? onClose?.() : onOpenRequest?.(); }}
           activeOpacity={0.8}
         >
           <Text style={[styles.statusText, { color: text }]}>{status}</Text>
@@ -138,7 +139,7 @@ export default function TaskRow({
         <View style={{ width: COL_WIDTHS.project }}>
           <Text style={styles.cellText} numberOfLines={1}>{project ?? ""}</Text>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* ── Dropdown — absolutely above the row, aligned to status column ── */}
       {isOpen && (
@@ -150,7 +151,7 @@ export default function TaskRow({
               onPress={() => { setStatus(s); onClose?.(); }}
             >
               <View style={[styles.dot, { backgroundColor: STATUS_COLORS[s].text }]} />
-              <Text style={[styles.dropdownText, { color: STATUS_COLORS[s].text }]}>{s}</Text>
+              <Text style={{ fontSize: 12, fontFamily: "SF_Pro_Regular", flex: 1, color: STATUS_COLORS[s].text }}>{s}</Text>
               {s === status && (
                 <Ionicons name="checkmark" size={13} color={STATUS_COLORS[s].text} />
               )}
@@ -209,7 +210,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   statusText: { fontSize: 11.5, fontWeight: "600" },
-  commentCell: { alignItems: "center" },
+  commentCell: { alignItems: "left" },
   // Dropdown floats BELOW the row, overlays rows underneath
   dropdown: {
     position: "absolute",
@@ -229,13 +230,13 @@ const styles = StyleSheet.create({
   dropdownItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     height: 40,
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
   },
   dropdownItemActive: { backgroundColor: "#F0FDF9" },
-  dot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
-  dropdownText: { fontSize: 12.5, fontWeight: "500", flex: 1 },
+  dot: { width: 5, height: 5, borderRadius: 4, marginRight: 5 },
+  dropdownText: { fontSize: 12, fontFamily: "SF_Pro_Regular", flex: 1 },
 });

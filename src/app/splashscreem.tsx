@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   ctaGradient: {
     paddingVertical: 18,
     backgroundColor: Colors.bgButtonColor,
-    borderRadius: 16,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -2,183 +2,137 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
   Modal,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import CalendarPicker from "./CalendarPicker";
 import { STATUS_COLORS, StatusType } from "./TaskRow";
 
 const STATUSES: StatusType[] = [
-  "Pending", "In-Progress", "On-Hold", "Pending-Approval", "Rejected", "Completed",
+  "Pending", "In-Progress", "On-Hold", "Rejected", "Pending-Approval", "Completed",
 ];
-const PRIORITIES = ["Low", "Medium", "High", "Critical"];
-const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+const PRIORITIES = ["Low", "Medium", "High"];
+
+const PRIORITY_COLORS: Record<string, string> = {
+  Low:    "#00DEAB",
+  Medium: "#D97706",
+  High:   "#DC2626",
+};
 
 type Props = { visible: boolean; onClose: () => void };
 
-function formatDate(d: Date) {
-  return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}, ${d.getFullYear()}`;
-}
-
 export default function FilterModal({ visible, onClose }: Props) {
-  const [statusOpen, setStatusOpen]         = useState(false);
-  const [priorityOpen, setPriorityOpen]     = useState(false);
   const [selectedStatus, setSelectedStatus]     = useState<string | null>(null);
   const [selectedPriority, setSelectedPriority] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate]     = useState<Date | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [startDate, setStartDate]       = useState<Date | null>(null);
-  const [endDate, setEndDate]           = useState<Date | null>(null);
 
-  const handleClose = () => {
-    setStatusOpen(false);
-    setPriorityOpen(false);
+  const handleReset = () => {
+    setSelectedStatus(null);
+    setSelectedPriority(null);
+    setStartDate(null);
+    setEndDate(null);
     setCalendarOpen(false);
-    onClose();
-  };
-
-  const dateLabel = () => {
-    if (startDate && endDate) return `${formatDate(startDate)}  →  ${formatDate(endDate)}`;
-    if (startDate) return `${formatDate(startDate)}  →  End Date`;
-    return null;
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={handleClose}>
+    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.container}>
-          <TouchableWithoutFeedback onPress={handleClose}>
-            <View style={styles.backdrop} />
-          </TouchableWithoutFeedback>
-
-          <View style={styles.centeredView} pointerEvents="box-none">
-            <View style={styles.card}>
-
-              {/* Close */}
-              <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
-                <Ionicons name="close" size={18} color="#fff" />
-              </TouchableOpacity>
-
-              {/* Header */}
-              <View style={styles.titleRow}>
-                <View style={styles.titleIcon}>
-                  <Ionicons name="options-outline" size={20} color="#1D1D1D" />
-                </View>
-                <Text style={styles.titleText}>Customize Your View</Text>
-              </View>
-
-              {/* Status + Priority */}
-              <View style={styles.row}>
-                {/* Status */}
-                <View style={[styles.dropdownWrap, statusOpen && { zIndex: 20 }]}>
-                  <TouchableOpacity
-                    style={[styles.select, (statusOpen || selectedStatus) && styles.selectActive]}
-                    activeOpacity={0.8}
-                    onPress={() => { setStatusOpen(!statusOpen); setPriorityOpen(false); setCalendarOpen(false); }}
-                  >
-                    {selectedStatus && <Text style={styles.floatLabel}>Status</Text>}
-                    <Text style={[selectedStatus ? styles.selectValue : styles.selectPlaceholder, statusOpen && { color: "#1D1D1D" }]}>
-                      {selectedStatus ?? "Status"}
-                    </Text>
-                    <Ionicons name={statusOpen ? "chevron-up" : "chevron-down"} size={18} color={statusOpen || selectedStatus ? "#1D1D1D" : "#E6E6E6"} />
-                  </TouchableOpacity>
-                  {statusOpen && (
-                    <View style={styles.dropdown}>
-                      {STATUSES.map((item) => (
-                        <TouchableOpacity
-                          key={item}
-                          style={[styles.dropItem, selectedStatus === item && styles.dropItemActive]}
-                          onPress={() => { setSelectedStatus(item); setStatusOpen(false); }}
-                        >
-                          <View style={[styles.dot, { backgroundColor: STATUS_COLORS[item].text }]} />
-                          <Text style={[styles.dropItemText, { color: STATUS_COLORS[item].text }]}>{item}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-
-                {/* Priority */}
-                <View style={[styles.dropdownWrap, priorityOpen && { zIndex: 20 }]}>
-                  <TouchableOpacity
-                    style={[styles.select, (priorityOpen || selectedPriority) && styles.selectActive]}
-                    activeOpacity={0.8}
-                    onPress={() => { setPriorityOpen(!priorityOpen); setStatusOpen(false); setCalendarOpen(false); }}
-                  >
-                    {selectedPriority && <Text style={styles.floatLabel}>Priority</Text>}
-                    <Text style={[selectedPriority ? styles.selectValue : styles.selectPlaceholder, priorityOpen && { color: "#1D1D1D" }]}>
-                      {selectedPriority ?? "Priority"}
-                    </Text>
-                    <Ionicons name={priorityOpen ? "chevron-up" : "chevron-down"} size={18} color={priorityOpen || selectedPriority ? "#1D1D1D" : "#E6E6E6"} />
-                  </TouchableOpacity>
-                  {priorityOpen && (
-                    <View style={styles.dropdown}>
-                      {PRIORITIES.map((item) => (
-                        <TouchableOpacity
-                          key={item}
-                          style={[styles.dropItem, selectedPriority === item && styles.dropItemActive]}
-                          onPress={() => { setSelectedPriority(item); setPriorityOpen(false); }}
-                        >
-                          <View style={[styles.dot, { backgroundColor: "#6B7280" }]} />
-                          <Text style={styles.dropItemText}>{item}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              </View>
-
-              {/* Date row */}
-              <TouchableOpacity
-                style={[
-  styles.dateRow,
-  (calendarOpen || startDate || endDate) && styles.selectActive,
-]}
-                onPress={() => { setCalendarOpen(!calendarOpen); setStatusOpen(false); setPriorityOpen(false); }}
-                activeOpacity={0.8}
-              >
-                {dateLabel() ? (
-                  <Text style={styles.dateValue}>{dateLabel()}</Text>
-                ) : (
-                  <>
-                    <Text style={styles.datePlaceholder}>Start Date</Text>
-                    <Ionicons name="arrow-forward" size={16} color="#E6E6E6" style={{ marginHorizontal: 8 }} />
-                    <Text style={styles.datePlaceholder}>End Date</Text>
-                  </>
-                )}
-                <View style={[
-  styles.calendarBtn,
-  (calendarOpen || startDate || endDate) && {
-    backgroundColor: "#1D1D1D",
-  },
-]}>
-                  <Ionicons
-  name="calendar-outline"
-  size={18}
-  color={
-    calendarOpen || startDate || endDate
-      ? "#FFFFFF"
-      : "#9CA3AF"
-  }
-/>
-                </View>
-              </TouchableOpacity>
-
-              {/* Reusable Calendar */}
-              {calendarOpen && (
-                <CalendarPicker
-                  startDate={startDate}
-                  endDate={endDate}
-                  onSelectStart={setStartDate}
-                  onSelectEnd={setEndDate}
-                  onDone={() => setCalendarOpen(false)}
-                />
-              )}
-
-            </View>
+        <View style={styles.sheet}>
+          {/* Header row */}
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={handleReset}>
+              <Text style={styles.resetText}>Reset</Text>
+            </TouchableOpacity>
+            <Text style={styles.titleText}>Filter</Text>
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+              <Ionicons name="close" size={16} color="#fff" />
+            </TouchableOpacity>
           </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            {/* Status */}
+            <Text style={styles.sectionLabel}>Status</Text>
+            <View style={styles.chipsRow}>
+              {STATUSES.map((s) => {
+                const active = selectedStatus === s;
+                const color  = STATUS_COLORS[s]?.text ?? "#6B7280";
+                return (
+                  <TouchableOpacity
+                    key={s}
+                    style={[styles.chip, active && { backgroundColor: color, borderColor: color }]}
+                    onPress={() => setSelectedStatus(active ? null : s)}
+                  >
+                    {active
+                      ? <Ionicons name="checkmark" size={13} color="#fff" style={{ marginRight: 4 }} />
+                      : <View style={[styles.dot, { backgroundColor: color }]} />
+                    }
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{s}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Priority */}
+            <Text style={styles.sectionLabel}>Priority</Text>
+            <View style={styles.chipsRow}>
+              {PRIORITIES.map((p) => {
+                const active = selectedPriority === p;
+                const color  = PRIORITY_COLORS[p];
+                return (
+                  <TouchableOpacity
+                    key={p}
+                    style={[styles.chip, active && { backgroundColor: color, borderColor: color }]}
+                    onPress={() => setSelectedPriority(active ? null : p)}
+                  >
+                    {active
+                      ? <Ionicons name="checkmark" size={13} color="#fff" style={{ marginRight: 4 }} />
+                      : <View style={[styles.dot, { backgroundColor: color }]} />
+                    }
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{p}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Calendar header */}
+            <View style={styles.calHeaderRow}>
+              <Text style={styles.calHeaderText}>Calendar</Text>
+              <TouchableOpacity onPress={() => setCalendarOpen(true)}>
+                <Ionicons name="calendar" size={22} color="#00DEAB" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Calendar Popup Modal */}
+            <Modal visible={calendarOpen} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setCalendarOpen(false)}>
+              <Pressable style={styles.calOverlay} onPress={() => setCalendarOpen(false)}>
+                <Pressable style={styles.calPopup} onPress={() => {}}>
+                  <CalendarPicker
+                    startDate={startDate}
+                    endDate={endDate}
+                    onSelectStart={setStartDate}
+                    onSelectEnd={setEndDate}
+                    onDone={() => setCalendarOpen(false)}
+                  />
+                </Pressable>
+              </Pressable>
+            </Modal>
+          </ScrollView>
+
+          {/* Apply */}
+          <TouchableOpacity style={styles.applyBtn} activeOpacity={0.85} onPress={onClose}>
+            <Text style={styles.applyText}>Apply</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -186,69 +140,123 @@ export default function FilterModal({ visible, onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)" },
-  backdrop: { ...StyleSheet.absoluteFillObject },
-  centeredView: { flex: 1, justifyContent: "center", paddingHorizontal: 20 },
-  card: {
-    backgroundColor: "#FFFFFF",  
-    borderRadius: 22,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 10,
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  sheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    maxHeight: "92%",
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  resetText: {
+    fontSize: 15,
+    color: "#1D1D1D",
+    fontFamily: "SF_Pro_Regular",
+  },
+  titleText: {
+    fontSize: 17,
+    fontFamily: "SF_Pro_Semibold",
+    color: "#1D1D1D",
   },
   closeBtn: {
-    alignSelf: "flex-end",
-    width: 30, height: 30, borderRadius: 18,
+    width: 30, height: 30, borderRadius: 15,
     backgroundColor: "#1D1D1D",
-    justifyContent: "center", alignItems: "center",
+    alignItems: "center", justifyContent: "center",
   },
-  titleRow: { flexDirection: "row", alignItems: "center", marginBottom: 24 },
-  titleIcon: {
-    width: 30, height: 30, borderRadius: 8,
+  scrollContent: { paddingBottom: 16 },
+  sectionLabel: {
+    fontSize: 16,
+    fontFamily: "SF_Pro_Semibold",
+    color: "#1D1D1D",
+    marginBottom: 12,
+  },
+  chipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+    marginBottom: 16,
+  },
+  chip: {
+    minWidth:50,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    backgroundColor:"#F2F2F2",
+    borderColor: "#F2F2F2",
+    borderRadius: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+  },
+  dot: {
+    width: 5, height: 5, borderRadius: 4,
+    marginRight: 6,
+  },
+  chipText: {
+    fontSize: 13,
+    color: "#1D1D1D",
+    fontFamily: "SF_Pro_Regular",
+  },
+  chipTextActive: {
+    color: "#fff",
+    fontFamily: "SF_Pro_Medium",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#E6E6E6",
+    marginBottom: 16,
+  },
+  calHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  calHeaderText: {
+    fontSize: 16,
+    fontFamily: "SF_Pro_Semibold",
+    color: "#1D1D1D",
+    textDecorationLine: "underline",
+  },
+  calOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  calPopup: {
+    width: "100%",
+    // backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 12,
+  },
+  applyBtn: {
     backgroundColor: "#00DEAB",
-    justifyContent: "center", alignItems: "center", marginRight: 12,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 30,
   },
-  titleText: { fontSize: 16, fontFamily: "SF_Pro_Semibold", color: "#1D1D1D" },
-  row: { flexDirection: "row", marginBottom: 14 },
-  dropdownWrap: { flex: 1, marginHorizontal: 5 },
-  select: {
-    height: 40, minWidth: 140, borderWidth: 1, borderColor: "#E6E6E6",
-    borderRadius: 8, flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 12, backgroundColor: "#fff",
+  applyText: {
+    fontSize: 16,
+    color: "#fff",
+    fontFamily: "SF_Pro_Semibold",
   },
-  selectActive: { borderColor: "#1D1D1D"  },
-  floatLabel: {
-    position: "absolute", top: -9, left: 10, fontSize: 11,
-    backgroundColor: "#fff", color: "#1D1D1D", paddingHorizontal: 4, fontFamily: "SF_Pro_Regular",
-  },
-  selectPlaceholder: { flex: 1, color: "#E6E6E6", fontSize: 14 ,  fontFamily: "SF_Pro_Regular", },
-  selectValue: { flex: 1, color: "#1D1D1D", fontSize: 14, fontFamily: "SF_Pro_Regular",},
-  dropdown: {
-    position: "absolute", top: 52, left: 0, right: 0,
-    backgroundColor: "#fff", borderRadius: 10, borderWidth: 1,
-    borderColor: "#E6E6E6", overflow: "hidden",
-    shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 }, elevation: 8,
-  },
-  dropItem: {
-    flexDirection: "row", alignItems: "center",
-    paddingVertical: 12, paddingHorizontal: 14,
-    borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
-    
-    
-  },
-  dropItemActive: { backgroundColor: "#F0FDF9"  },
-  dot: { width: 5, height: 5, borderRadius: 4, marginRight: 5 },
-  dropItemText: { fontSize: 12, color: "#1D1D1D" , fontFamily: "SF_Pro_Regular", },
-  dateRow: {
-    height: 40, borderRadius: 8, borderWidth: 1, borderColor: "#E6E6E6",
-    flexDirection: "row", alignItems: "center", paddingHorizontal: 8,
-  },
-  datePlaceholder: { flex: 1, color: "#E6E6E6", fontSize: 14, fontFamily: "SF_Pro_Regular" },
-  dateValue: { flex: 1, color: "#1D1D1D", fontSize: 12, fontFamily: "SF_Pro_Regular", },
-  calendarBtn: { padding: 4, backgroundColor: "#E6E6E6", borderRadius: 6  },
 });

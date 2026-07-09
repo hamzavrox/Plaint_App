@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   wrapper: {
     borderWidth: 1,
     borderColor: "#E6E6E6",
-    borderRadius: 12,
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 14,
     backgroundColor: "#fff",

@@ -15,8 +15,8 @@ function SevendayIcon(props) {
     <Svg
       xmlns="http://www.w3.org/2000/svg"
       xmlnsXlink="http://www.w3.org/1999/xlink"
-      width={20}
-      height={20}
+      width={17}
+      height={17}
       viewBox="0 0 14 14"
       fill="none"
       {...props}

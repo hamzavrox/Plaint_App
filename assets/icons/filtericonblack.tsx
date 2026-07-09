@@ -1,6 +1,9 @@
-import Svg, { Defs, Image, Path, Pattern, Use } from "react-native-svg"
-const FilterIcon = (props) => (
-   <Svg
+import * as React from "react"
+import Svg, { Mask, Path, G, Defs, Pattern, Use, Image } from "react-native-svg"
+
+function FilterIconBlack(props) {
+  return (
+    <Svg
       xmlns="http://www.w3.org/2000/svg"
       xmlnsXlink="http://www.w3.org/1999/xlink"
       width={17}
@@ -9,22 +12,36 @@ const FilterIcon = (props) => (
       fill="none"
       {...props}
     >
-      <Path
-        fill="url(#pattern0_1083_4656)"
-        fillOpacity={0.4}
-        d="M0 0H12.2475V12.2475H0z"
-      />
+      <Mask
+        id="a"
+        style={{
+          maskType: "alpha"
+        }}
+        maskUnits="userSpaceOnUse"
+        x={0}
+        y={0}
+        width={13}
+        height={13}
+      >
+        <Path fill="url(#pattern0_1112_1002)" d="M0 0H12.2475V12.2475H0z" />
+      </Mask>
+      <G mask="url(#a)">
+        <Path
+          fill="#1D1D1D"
+          d="M0.886154 -1.49072H14.859753999999999V12.48288H0.886154z"
+        />
+      </G>
       <Defs>
         <Pattern
-          id="pattern0_1083_4656"
+          id="pattern0_1112_1002"
           patternContentUnits="objectBoundingBox"
           width={1}
           height={1}
         >
-          <Use xlinkHref="#image0_1083_4656" transform="scale(.00195)" />
+          <Use xlinkHref="#image0_1112_1002" transform="scale(.00195)" />
         </Pattern>
         <Image
-          id="image0_1083_4656"
+          id="image0_1112_1002"
           width={512}
           height={512}
           preserveAspectRatio="none"
@@ -32,5 +49,7 @@ const FilterIcon = (props) => (
         />
       </Defs>
     </Svg>
-)
-export default FilterIcon
+  )
+}
+
+export default FilterIconBlack
