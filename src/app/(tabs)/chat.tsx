@@ -8,6 +8,9 @@ export default function ChatScreen() {
                         greeting="Good morning, Junaid!"
                         subGreeting="Let's make today productive!"
                         initials="JD"
+                        placeholder="Search chats..."
+                        showSearch
+                        showFilter={false}
                     />
                 </View>;
             </>

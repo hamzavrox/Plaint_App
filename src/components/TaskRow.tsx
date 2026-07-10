@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export type StatusType =
   | "Pending"
@@ -28,11 +28,11 @@ export type TaskRowProps = {
 };
 
 export const STATUS_COLORS: Record<StatusType, { bg: string; text: string }> = {
-  Pending:            { bg: "#FEF3C7", text: "#D97706" },
-  "In-Progress":      { bg: "#DBEAFE", text: "#2563EB" },
-  "On-Hold":          { bg: "#F3F4F6", text: "#6B7280" },
-  Rejected:           { bg: "#FEE2E2", text: "#DC2626" },
-  Completed:          { bg: "#D1FAE5", text: "#059669" },
+  Pending: { bg: "#FEF3C7", text: "#D97706" },
+  "In-Progress": { bg: "#DBEAFE", text: "#2563EB" },
+  "On-Hold": { bg: "#F3F4F6", text: "#6B7280" },
+  Rejected: { bg: "#FEE2E2", text: "#DC2626" },
+  Completed: { bg: "#D1FAE5", text: "#059669" },
   "Pending-Approval": { bg: "#EDE9FE", text: "#7C3AED" },
 };
 
@@ -41,14 +41,14 @@ const ALL_STATUSES: StatusType[] = [
 ];
 
 export const COL_WIDTHS = {
-  spacer:     35,
-  title:      200,
-  createdBy:  120,
+  spacer: 35,
+  title: 200,
+  createdBy: 120,
   assignedTo: 120,
-  dueDate:    100,
-  status:     140,
-  comment:    70,
-  project:    90,
+  dueDate: 100,
+  status: 130,
+  comment: 70,
+  project: 90,
 };
 
 // Height of one dropdown item
@@ -66,7 +66,7 @@ export default function TaskRow({
 
   // Left offset of the status cell inside the row
   const statusLeft = COL_WIDTHS.spacer + COL_WIDTHS.title + COL_WIDTHS.createdBy +
-                     COL_WIDTHS.assignedTo + COL_WIDTHS.dueDate;
+    COL_WIDTHS.assignedTo + COL_WIDTHS.dueDate;
 
   return (
     <View style={styles.wrap}>
@@ -173,17 +173,17 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F3F4F6",
     backgroundColor: "#fff",
   },
-  accent: { width: 3, alignSelf: "stretch", borderRadius:5, backgroundColor: "#EF4444" },
+  accent: { width: 3, height: 40, borderRadius: 10, backgroundColor: "#CB5F00" },
   checkCircle: {
-    width: 20, height: 20, borderRadius: 4,
+    width: 16, height: 16, borderRadius: 4,
     backgroundColor: "#00DEAB", alignItems: "center", justifyContent: "center",
   },
   checkbox: {
-    width: 20, height: 20, borderRadius: 4,
+    width: 16, height: 16, borderRadius: 4,
     borderWidth: 1.5, borderColor: "#D1D5DB", backgroundColor: "#fff",
   },
   titleCell: { flexDirection: "row", alignItems: "center", paddingRight: 8 },
-  titleText: { fontSize: 12, color: "#1D1D1D", flexShrink: 1 ,fontFamily: "SF_Pro_Medium"},
+  titleText: { fontSize: 12, color: "#1D1D1D", flexShrink: 1, fontFamily: "SF_Pro_Medium" },
   strikethrough: { textDecorationLine: "line-through", color: "#9CA3AF" },
   extraBadge: {
     flexDirection: "row", alignItems: "center",
@@ -193,19 +193,19 @@ const styles = StyleSheet.create({
   extraText: { fontSize: 11, color: "#6B7280", marginLeft: 2 },
   userCell: { flexDirection: "row", alignItems: "center", paddingRight: 8 },
   initials: {
-    width: 28, height: 28, borderRadius: 8,
+    width: 24, height: 24, borderRadius: 5,
     backgroundColor: "#00DEAB", alignItems: "center", justifyContent: "center", marginRight: 6,
   },
   initialsAssigned: { backgroundColor: "#3B82F6" },
   initialsText: { fontSize: 10, fontWeight: "700", color: "#fff" },
-  cellText: { fontSize: 12, color: "#1D1D1D", flexShrink: 1 , fontFamily: "SF_Pro_Medium"},
+  cellText: { fontSize: 12, color: "#1D1D1D", flexShrink: 1, fontFamily: "SF_Pro_Medium", },
   dateCell: { flexDirection: "row", alignItems: "center", paddingRight: 8 },
   statusCell: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 5,
     marginRight: 8,
   },

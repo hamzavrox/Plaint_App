@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
 type Props = {
@@ -34,15 +34,15 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
   const [showMonthDropdown, setShowMonthDropdown] = useState(false);
   const [showYearDropdown, setShowYearDropdown] = useState(false);
 
-// const YEARS = Array.from({ length: 20 }, (_, i) => 2000 + i); // 2016 - 2036
-const YEARS = Array.from(
-  { length: 201 },
-  (_, i) => viewYear - 100 + i
-);
-  const daysInMonth   = getDaysInMonth(viewYear, viewMonth);
-  const firstDay      = getFirstDayMon(viewYear, viewMonth);
+  // const YEARS = Array.from({ length: 20 }, (_, i) => 2000 + i); // 2016 - 2036
+  const YEARS = Array.from(
+    { length: 201 },
+    (_, i) => viewYear - 100 + i
+  );
+  const daysInMonth = getDaysInMonth(viewYear, viewMonth);
+  const firstDay = getFirstDayMon(viewYear, viewMonth);
   const prevMonthDays = getDaysInMonth(viewYear, viewMonth === 0 ? 11 : viewMonth - 1);
-  const trailingDays  = 42 - (firstDay + daysInMonth);
+  const trailingDays = 42 - (firstDay + daysInMonth);
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
@@ -72,9 +72,9 @@ const YEARS = Array.from(
 
   type Cell = { day: number; type: "prev" | "curr" | "next" };
   const cells: Cell[] = [
-    ...Array.from({ length: firstDay },      (_, i) => ({ day: prevMonthDays - firstDay + i + 1, type: "prev" as const })),
-    ...Array.from({ length: daysInMonth },   (_, i) => ({ day: i + 1,                            type: "curr" as const })),
-    ...Array.from({ length: trailingDays },  (_, i) => ({ day: i + 1,                            type: "next" as const })),
+    ...Array.from({ length: firstDay }, (_, i) => ({ day: prevMonthDays - firstDay + i + 1, type: "prev" as const })),
+    ...Array.from({ length: daysInMonth }, (_, i) => ({ day: i + 1, type: "curr" as const })),
+    ...Array.from({ length: trailingDays }, (_, i) => ({ day: i + 1, type: "next" as const })),
   ];
 
   return (
@@ -98,103 +98,103 @@ const YEARS = Array.from(
 
         <View style={styles.navCenter}>
           <TouchableOpacity
-  style={styles.navLabelBtn}
-  onPress={() => {
-    setShowMonthDropdown(!showMonthDropdown);
-    setShowYearDropdown(false);
-  }}
->
-  <Text style={styles.monthLabel}>
-    {MONTHS[viewMonth].slice(0, 3)}
-  </Text>
+            style={styles.navLabelBtn}
+            onPress={() => {
+              setShowMonthDropdown(!showMonthDropdown);
+              setShowYearDropdown(false);
+            }}
+          >
+            <Text style={styles.monthLabel}>
+              {MONTHS[viewMonth].slice(0, 3)}
+            </Text>
 
-  <Ionicons
-    name={showMonthDropdown ? "chevron-up" : "chevron-down"}
-    size={14}
-    color="#00DEAB"
-  />
-</TouchableOpacity>
-<TouchableOpacity
-  style={styles.navLabelBtn}
-  onPress={() => {
-    setShowYearDropdown(!showYearDropdown);
-    setShowMonthDropdown(false);
-  }}
->
-  <Text style={styles.monthLabel}>{viewYear}</Text>
+            <Ionicons
+              name={showMonthDropdown ? "chevron-up" : "chevron-down"}
+              size={14}
+              color="#00DEAB"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.navLabelBtn}
+            onPress={() => {
+              setShowYearDropdown(!showYearDropdown);
+              setShowMonthDropdown(false);
+            }}
+          >
+            <Text style={styles.monthLabel}>{viewYear}</Text>
 
-  <Ionicons
-    name={showYearDropdown ? "chevron-up" : "chevron-down"}
-    size={14}
-    color="#00DEAB"
-  />
-</TouchableOpacity>
+            <Ionicons
+              name={showYearDropdown ? "chevron-up" : "chevron-down"}
+              size={14}
+              color="#00DEAB"
+            />
+          </TouchableOpacity>
         </View>
 
-{showMonthDropdown && (
-  <View style={styles.dropdown}>
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      nestedScrollEnabled
-    >
-      {MONTHS.map((month, index) => (
-        <TouchableOpacity
-          key={month}
-          style={[
-            styles.dropdownItem,
-            index === viewMonth && styles.selectedItem,
-          ]}
-          onPress={() => {
-            setViewMonth(index);
-            setShowMonthDropdown(false);
-          }}
-        >
-          <Text
-            style={[
-              styles.dropdownText,
-              index === viewMonth && styles.selectedText,
-            ]}
-          >
-            {month}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
-  </View>
-)}
+        {showMonthDropdown && (
+          <View style={styles.dropdown}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+            >
+              {MONTHS.map((month, index) => (
+                <TouchableOpacity
+                  key={month}
+                  style={[
+                    styles.dropdownItem,
+                    index === viewMonth && styles.selectedItem,
+                  ]}
+                  onPress={() => {
+                    setViewMonth(index);
+                    setShowMonthDropdown(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownText,
+                      index === viewMonth && styles.selectedText,
+                    ]}
+                  >
+                    {month}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
 
-{showYearDropdown && (
-  <View style={styles.dropdown}>
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      nestedScrollEnabled
-    >
-      {YEARS.map((year) => (
-        <TouchableOpacity
-          key={year}
-          style={[
-            styles.dropdownItem,
-            year === viewYear && styles.selectedItem,
-          ]}
-          onPress={() => {
-            setViewYear(year);
-            setShowYearDropdown(false);
-          }}
-        >
-          <Text
-            style={[
-              styles.dropdownText,
-              year === viewYear && styles.selectedText,
-            ]}
-          >
-            {year}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
-  </View>
-)}
+        {showYearDropdown && (
+          <View style={styles.dropdown}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+            >
+              {YEARS.map((year) => (
+                <TouchableOpacity
+                  key={year}
+                  style={[
+                    styles.dropdownItem,
+                    year === viewYear && styles.selectedItem,
+                  ]}
+                  onPress={() => {
+                    setViewYear(year);
+                    setShowYearDropdown(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownText,
+                      year === viewYear && styles.selectedText,
+                    ]}
+                  >
+                    {year}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
         <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
           <Ionicons name="chevron-forward" size={18} color="#1D1D1D" />
         </TouchableOpacity>
@@ -208,27 +208,33 @@ const YEARS = Array.from(
       {/* Grid */}
       <View style={styles.grid}>
         {cells.map((cell, i) => {
-          const isCurr    = cell.type === "curr";
-          const date      = isCurr ? new Date(viewYear, viewMonth, cell.day) : null;
-          const isToday   = date ? isSameDay(date, today) : false;
-          const isStart   = date && startDate ? isSameDay(date, startDate) : false;
-          const isEnd     = date && endDate   ? isSameDay(date, endDate)   : false;
-          const inRange   = date && startDate && endDate ? isBetween(date, startDate, endDate) : false;
+          const isCurr = cell.type === "curr";
+          const date = isCurr ? new Date(viewYear, viewMonth, cell.day) : null;
+          const isToday = date ? isSameDay(date, today) : false;
+          const isStart = date && startDate ? isSameDay(date, startDate) : false;
+          const isEnd = date && endDate ? isSameDay(date, endDate) : false;
+          const inRange = date && startDate && endDate ? isBetween(date, startDate, endDate) : false;
           const isSelected = isStart || isEnd;
 
           return (
             <View key={i} style={styles.cellWrap}>
               <TouchableOpacity
-                style={[styles.cell, inRange && styles.cellInRange, isSelected && styles.cellSelected]}
+                // style={[styles.cell, inRange && styles.cellInRange, isSelected && styles.cellSelected]}
+               style={[
+  styles.cell,
+  isToday && !isSelected && styles.cellToday,
+  inRange && styles.cellInRange,
+  isSelected && styles.cellSelected,
+]}
                 onPress={() => isCurr && handleDayPress(cell.day)}
                 activeOpacity={isCurr ? 0.7 : 1}
               >
                 <Text style={[
                   styles.dayText,
-                  !isCurr    && styles.dayTextGrey,
-                  isToday    && !isSelected && styles.dayTextToday,
+                  !isCurr && styles.dayTextGrey,
+                  isToday && !isSelected && styles.dayTextToday,
                   isSelected && styles.dayTextSelected,
-                  inRange    && styles.dayTextInRange,
+                  inRange && styles.dayTextInRange,
                 ]}>
                   {cell.day}
                 </Text>
@@ -334,14 +340,21 @@ const styles = StyleSheet.create({
     color: "#1D1D1D",
     fontFamily: "SF_Pro_Medium",
   },
-  dayTextGrey:     { color: "#C0C0C0" },
-  dayTextToday:    { color: "#00DEAB", fontFamily: "SF_Pro_Semibold" },
-  dayTextSelected: { color: "#fff",    fontFamily: "SF_Pro_Semibold" },
-  dayTextInRange:  { color: "#00DEAB" },
+  cellToday: {
+  borderWidth: 1.5,
+  borderColor: "#00DEAB",
+},
+  dayTextGrey: { color: "#C0C0C0" },
+  dayTextToday: { color: "#00DEAB", fontFamily: "SF_Pro_Semibold" },
+  dayTextSelected: { color: "#fff", fontFamily: "SF_Pro_Semibold" },
+  dayTextInRange: { color: "#00DEAB" },
   todayUnderline: {
     position: "absolute", bottom: 3,
     width: 16, height: 2, borderRadius: 1,
     backgroundColor: "#00DEAB",
+    // borderWidth: 1,
+    // borderColor: "#00DEAB",
+    // borderRadius: 5,
   },
   doneBtn: {
     marginTop: 10, marginHorizontal: 4,
@@ -353,32 +366,34 @@ const styles = StyleSheet.create({
     color: "#fff", fontSize: 15,
     fontFamily: "SF_Pro_Semibold",
   },
-dropdown: {
-  position: "absolute",
-  top: 50,
-  marginLeft: 58,
+  dropdown: {
+    position: "absolute",
+    top: 50,
+    marginLeft: 74,
 
-  width: 150,
-  maxHeight: 220,
+    width: 150,
+    maxHeight: 220,
 
-  backgroundColor: "#FFF",
-  borderRadius: 10,
-  borderWidth: 1,
-  borderColor: "#EAEAEA",
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#EAEAEA",
 
-  zIndex: 999,
-  elevation: 10,
-},
+    zIndex: 999,
+    elevation: 10,
+  },
 
-dropdownItem: {
-  paddingVertical: 12,
-  paddingHorizontal: 12,
-},
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
 
-dropdownText: {
-  fontSize: 15,
-  textAlign: "center",
-  color: "#1D1D1D",
-  fontFamily: "SF_Pro_Medium",
-},
+  dropdownText: {
+    fontSize: 15,
+    textAlign: "center",
+    color: "#1D1D1D",
+    fontFamily: "SF_Pro_Medium",
+  },
+  selectedItem: {},
+  selectedText: {},
 });

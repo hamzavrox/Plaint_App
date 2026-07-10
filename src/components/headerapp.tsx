@@ -17,6 +17,8 @@ type AppHeaderProps = {
   subGreeting: string;
   initials: string;
   showSearch?: boolean;
+  showFilter?: boolean;
+  placeholder: string;
   onNotificationPress?: () => void;
   onFilterPress?: () => void;
 };
@@ -26,6 +28,8 @@ export default function AppHeader({
   subGreeting,
   initials,
   showSearch = false,
+  showFilter = true,
+  placeholder,
   onFilterPress,
 }: AppHeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -34,7 +38,7 @@ export default function AppHeader({
   return (
     <Pressable style={styles.headerContainer} onPress={() => searchOpen && setSearchOpen(false)}>
       <View style={styles.header}>
-        <View style={{ flexDirection: "column", width: "65%" }}>
+        <View style={{ flexDirection: "column", width: "70%" }}>
           <Text style={styles.greeting}>{greeting}</Text>
           <Text style={styles.subGreeting}>{subGreeting}</Text>
         </View>
@@ -64,24 +68,26 @@ export default function AppHeader({
             <Ionicons name="search-outline" size={18} color="#9CA3AF" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search Task"
+              placeholder={placeholder}
               placeholderTextColor="#9CA3AF"
               value={search}
               onChangeText={setSearch}
               autoFocus
             />
           </View>
-         <Pressable
-  onPress={onFilterPress}
-  style={({ pressed }) => [
-    styles.filterBtn,
-    pressed && styles.filterBtnPressed,
-  ]}
->
-  {({ pressed }) =>
-    pressed ? <FilterIconBlack /> : <FilterIcon />
-  }
-</Pressable>
+ {showFilter && (
+    <Pressable
+      onPress={onFilterPress}
+      style={({ pressed }) => [
+        styles.filterBtn,
+        pressed && styles.filterBtnPressed,
+      ]}
+    >
+      {({ pressed }) =>
+        pressed ? <FilterIconBlack /> : <FilterIcon />
+      }
+    </Pressable>
+  )}
           </View>
         </Pressable>
       )}
@@ -132,7 +138,7 @@ const styles = StyleSheet.create({
   filterBtn: {
     width: 35,
     height: 35,
-    borderRadius: 10,
+    borderRadius: 8,
     // borderWidth: 1,
     backgroundColor: "#E6E6E6",
     alignItems: "center",
@@ -147,7 +153,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 15,
   },

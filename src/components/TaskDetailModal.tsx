@@ -1,6 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
+  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -45,7 +46,7 @@ type Comment = {
 type Props = { visible: boolean; onClose: () => void; task: TaskDetail | null };
 
 const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
-  Urgent: { bg: "#F97316", text: "#fff" },
+  Urgent: { bg: "#CB5F00", text: "#fff" },
   High:   { bg: "#EF4444", text: "#fff" },
   Medium: { bg: "#F59E0B", text: "#fff" },
   Low:    { bg: "#10B981", text: "#fff" },
@@ -93,7 +94,7 @@ function SectionTable({ title, rows, showAdd }: { title: string; rows: SubTask[]
       {showAdd && (
         <View style={styles.addRow}>
           <TouchableOpacity style={styles.addBtn}>
-            <Ionicons name="add" size={20} color="#fff" />
+            <Ionicons name="add" size={20} color="#000" />
           </TouchableOpacity>
           <Text style={styles.addRowText}>Touch the add for create a subtask</Text>
         </View>
@@ -115,8 +116,10 @@ function CommentBubble({ comment }: { comment: Comment }) {
           <Text style={styles.bubbleAvatarText}>{comment.initials}</Text>
         </View>
         <View style={styles.bubbleNameRow}>
-          <Text style={styles.bubbleName} numberOfLines={1}>{comment.name}</Text>
-          <Text style={styles.bubbleTime} numberOfLines={1}>{comment.time}</Text>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={{ flex: 1 }}>
+            <Text style={styles.bubbleName}>{comment.name}</Text>
+            <Text style={styles.bubbleTime}>  {comment.time}</Text>
+          </Text>
         </View>
         {comment.pinned && (
           <MaterialCommunityIcons name="pin" size={16} color="#00DEAB" style={styles.pinIcon} />
@@ -157,6 +160,35 @@ function CommentBubble({ comment }: { comment: Comment }) {
 export default function TaskDetailModal({ visible, onClose, task }: Props) {
   const [activeTab, setActiveTab] = useState<"details" | "comments">("details");
   const [commentText, setCommentText] = useState("");
+  const [focused, setFocused] = useState(false);
+
+  const floated = focused || !!commentText;
+  const labelAnim = useRef(new Animated.Value(floated ? 1 : 0)).current;
+
+  const handleFocus = () => {
+    setFocused(true);
+    Animated.timing(labelAnim, { toValue: 1, duration: 150, useNativeDriver: false }).start();
+  };
+
+  const handleBlur = () => {
+    setFocused(false);
+    if (!commentText) {
+      Animated.timing(labelAnim, { toValue: 0, duration: 150, useNativeDriver: false }).start();
+    }
+  };
+
+  const labelTop = labelAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [10, -9],
+  });
+  const labelSize = labelAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [13, 11],
+  });
+  const labelColor = labelAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#C0C0C0", "#1D1D1D"],
+  });
 
   if (!task) return null;
 
@@ -187,7 +219,7 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
     {
       icon: "git-branch-outline", label: "Subtask:",
       value: task.subtasks.length > 0
-        ? <View style={styles.cntBadge}><MaterialCommunityIcons name="file-tree-outline" size={14} color="#6B7280" /><Text style={styles.cntBadgeText}>+{task.subtasks.length}</Text></View>
+        ? <View style={styles.cntBadgeGray}><MaterialCommunityIcons name="file-tree-outline" size={14} color="#fff" /><Text style={styles.cntBadgeText}>+{task.subtasks.length}</Text></View>
         : <Text style={styles.infoValue}>—</Text>,
     },
     {
@@ -291,8 +323,8 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
                   <View style={styles.section}>
                     <View style={styles.attachHeader}>
                       <Text style={styles.sectionTitle}>Attachments</Text>
-                      <View style={styles.cntBadge}>
-                        <MaterialCommunityIcons name="file-tree-outline" size={13} color="#6B7280" />
+                      <View style={styles.cntBadgeGray}>
+                        <MaterialCommunityIcons name="file-tree-outline" size={13} color="#fff" />
                         <Text style={styles.cntBadgeText}>+{task.attachments.length}</Text>
                       </View>
                     </View>
@@ -327,34 +359,47 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
 
                 {/* Input box */}
                 <View style={styles.inputBox}>
-                  <Text style={styles.inputLabel}>Comment</Text>
+                  <Animated.Text
+                    style={[
+                      styles.inputLabel,
+                      {
+                        top: labelTop,
+                        fontSize: labelSize,
+                        color: labelColor,
+                      },
+                    ]}
+                  >
+                    Comment
+                  </Animated.Text>
                   <TextInput
                     style={styles.inputField}
                     value={commentText}
                     onChangeText={setCommentText}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
                     multiline
-                    placeholderTextColor="#C0C0C0"
+                    placeholderTextColor="transparent"
                   />
                   <View style={styles.inputToolbar}>
                     <View style={styles.toolbarLeft}>
                       <TouchableOpacity style={styles.toolBtn}>
-                        <Ionicons name="add" size={22} color="#6B7280" />
+                        <Ionicons name="add" size={16} color="#1D1D1D" />
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.toolBtn}>
-                        <Ionicons name="at" size={22} color="#6B7280" />
+                        <Ionicons name="at" size={16} color="#1D1D1D" />
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.toolBtn}>
-                        <MaterialCommunityIcons name="emoticon-plus-outline" size={22} color="#6B7280" />
+                        <MaterialCommunityIcons name="emoticon-plus-outline" size={16} color="#1D1D1D" />
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.toolBtn}>
-                        <Ionicons name="mic-outline" size={22} color="#6B7280" />
+                        <Ionicons name="mic-outline" size={16} color="#1D1D1D" />
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.toolBtn}>
-                        <Ionicons name="videocam-outline" size={22} color="#6B7280" />
+                        <Ionicons name="videocam-outline" size={16} color="#1D1D1D" />
                       </TouchableOpacity>
                     </View>
                     <TouchableOpacity style={styles.sendBtn}>
-                      <Ionicons name="send" size={18} color="#fff" />
+                      <Ionicons name="send" size={14} color="#fff" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -405,21 +450,28 @@ const styles = StyleSheet.create({
   },
   tabActive: { backgroundColor: "#F9F9F9" },
   tabActiveText: { fontSize: 14, color: "#1D1D1D", fontFamily: "SF_Pro_Semibold" },
-  tabInactiveText: { fontSize: 14, color: "#C0C0C0", fontFamily: "SF_Pro_Regular" },
+  tabInactiveText: { fontSize: 14, color: "#E6E6E6", fontFamily: "SF_Pro_Semibold" },
   tabDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#00DEAB" },
 
   // Content area below tabs
   detailsScroll: { paddingBottom: 40, paddingTop: 16 },
 
   // Info rows
+  
   cntBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: "#00DFAB", borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 5,
+    backgroundColor: "#00DFAB", borderRadius: 4,
+    paddingHorizontal: 8, paddingVertical: 5,
+    alignSelf: "flex-start", marginBottom: 10,
+  },
+   cntBadgeGray: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "#AAAAAA", borderRadius: 4,
+    paddingHorizontal: 8, paddingVertical: 5,
     alignSelf: "flex-start", marginBottom: 10,
   },
   cntBadgeText: { fontSize: 12, color: "#fff", fontFamily: "SF_Pro_Regular" },
-  taskTitle: { fontSize: 22, fontFamily: "SF_Pro_Semibold", color: "#1D1D1D", marginBottom: 20 },
+  taskTitle: { fontSize: 18, fontFamily: "SF_Pro_Medium", color: "#1D1D1D", marginBottom: 20 },
   infoRow: {
     flexDirection: "row", alignItems: "center",
     paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
@@ -430,13 +482,13 @@ const styles = StyleSheet.create({
   infoValue: { fontSize: 13, color: "#AAAAAA", fontFamily: "SF_Pro_Regular" },
   assignedRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   initials: {
-    width: 28, height: 28, borderRadius: 8,
+    width: 24, height: 24, borderRadius: 5,
     backgroundColor: "#00DEAB", alignItems: "center", justifyContent: "center",
   },
   initialsText: { fontSize: 10, fontWeight: "700", color: "#fff" },
-  badge: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4, alignSelf: "flex-start" },
+  badge: { borderRadius: 5, paddingHorizontal: 12, paddingVertical: 4, alignSelf: "flex-start" },
   badgeText: { fontSize: 12, fontFamily: "SF_Pro_Medium" },
-  depLink: { fontSize: 13, color: "#00DEAB", fontFamily: "SF_Pro_Regular" },
+  depLink: { fontSize: 13, backgroundColor:"#F0FFF8", maxWidth: 100, padding:5, borderRadius: 5, textAlign:"center", color: "#00DEAB", fontFamily: "SF_Pro_Regular" },
 
   // Description
   section: { marginTop: 24 },
@@ -445,7 +497,7 @@ const styles = StyleSheet.create({
   descBadgesRow: { flexDirection: "row", gap: 8, marginTop: 14 },
   descBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
-    borderWidth: 1, backgroundColor: "#1D1D1D", borderRadius: 8,
+    borderWidth: 1, backgroundColor: "#1D1D1D", borderRadius: 5,
     paddingHorizontal: 10, paddingVertical: 5,
   },
   descBadgeText: { fontSize: 12, color: "#fff" },
@@ -470,7 +522,7 @@ const styles = StyleSheet.create({
   tblAccent: { width: 3, alignSelf: "stretch", borderRadius: 5, backgroundColor: "#EF4444", marginRight: 8 },
   tblCell: { fontSize: 12, color: "#1D1D1D", fontFamily: "SF_Pro_Regular", paddingRight: 8 },
   tblCreatedBy: { flexDirection: "row", alignItems: "center", gap: 6 },
-  tblAvatar: { width: 26, height: 26, borderRadius: 13, backgroundColor: "#D1D5DB" },
+  tblAvatar: { width: 24, height: 24, borderRadius: 8, backgroundColor: "#D1D5DB" },
   tblDueDate: { flexDirection: "row", alignItems: "center" },
   addRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 12 },
   addBtn: {
@@ -517,7 +569,7 @@ const styles = StyleSheet.create({
     marginBottom: 10, gap: 8, flexWrap: "nowrap",
   },
   bubbleAvatar: {
-    width: 34, height: 34, borderRadius: 10,
+    width: 24, height: 24, borderRadius: 5,
     backgroundColor: "#00DEAB", alignItems: "center", justifyContent: "center",
     flexShrink: 0,
   },
@@ -540,32 +592,37 @@ const styles = StyleSheet.create({
   // Comment input
   inputBox: {
     borderWidth: 1, borderColor: "#1D1D1D",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingTop: 14,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingTop: 10,
     paddingBottom: 10,
     marginBottom: 20,
     position: "relative",
   },
   inputLabel: {
-    position: "absolute", top: -10, left: 14,
+    position: "absolute", left: 12,
     backgroundColor: "#F9F9F9", paddingHorizontal: 4,
-    fontSize: 12, color: "#1D1D1D", fontFamily: "SF_Pro_Regular",
+    fontFamily: "SF_Pro_Regular",
   },
   inputField: {
-    fontSize: 15, color: "#1D1D1D",
+    fontSize: 13, color: "#1D1D1D",
     fontFamily: "SF_Pro_Regular",
-    minHeight: 36, maxHeight: 90,
-    paddingTop: 4, paddingBottom: 6,
+    minHeight: 38, maxHeight: 80,
+    paddingTop: 2, paddingBottom: 2,
+    textAlignVertical: "top",
   },
   inputToolbar: {
     flexDirection: "row", alignItems: "center",
-    justifyContent: "space-between", marginTop: 6,
+    justifyContent: "space-between", marginTop: 8,
   },
-  toolbarLeft: { flexDirection: "row", alignItems: "center", gap: 0 },
-  toolBtn: { padding: 6 },
+  toolbarLeft: { flexDirection: "row", alignItems: "center", gap: 5 },
+  toolBtn: {
+    width: 28, height: 28, borderRadius: 4,
+    backgroundColor: "#E6E6E6",
+    alignItems: "center", justifyContent: "center",
+  },
   sendBtn: {
-    width: 42, height: 42, borderRadius: 10,
+    width: 28, height: 28, borderRadius: 4,
     backgroundColor: "#00DEAB",
     alignItems: "center", justifyContent: "center",
   },

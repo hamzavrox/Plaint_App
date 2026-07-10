@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
   container: {
     borderWidth: 1,
     borderColor: '#1D1D1D',
-    borderRadius: 14,
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingBottom: 12,
     paddingTop: 16,

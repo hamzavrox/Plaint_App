@@ -1,7 +1,7 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import TaskRow, { TaskRowProps, COL_WIDTHS } from "./TaskRow";
+import { useState } from "react";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import TaskRow, { COL_WIDTHS, TaskRowProps } from "./TaskRow";
 
 type Props = {
   sectionTitle: string;
@@ -10,13 +10,13 @@ type Props = {
 };
 
 const COLUMNS: { label: string; width: number }[] = [
-  { label: "Task Title",   width: COL_WIDTHS.title      },
-  { label: "Created By",   width: COL_WIDTHS.createdBy  },
-  { label: "Assigned to",  width: COL_WIDTHS.assignedTo },
-  { label: "Due Date",     width: COL_WIDTHS.dueDate    },
-  { label: "Status",       width: COL_WIDTHS.status     },
-  { label: "Comment",      width: COL_WIDTHS.comment    },
-  { label: "Project",      width: COL_WIDTHS.project    },
+  { label: "Task Title", width: COL_WIDTHS.title },
+  { label: "Created By", width: COL_WIDTHS.createdBy },
+  { label: "Assigned to", width: COL_WIDTHS.assignedTo },
+  { label: "Due Date", width: COL_WIDTHS.dueDate },
+  { label: "Status", width: COL_WIDTHS.status },
+  { label: "Comment", width: COL_WIDTHS.comment },
+  { label: "Project", width: COL_WIDTHS.project },
 ];
 
 export default function TaskTable({ sectionTitle, tasks, onTaskPress }: Props) {

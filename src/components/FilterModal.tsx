@@ -160,12 +160,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   resetText: {
-    fontSize: 15,
+    fontSize: 16,
     color: "#1D1D1D",
-    fontFamily: "SF_Pro_Regular",
+    fontFamily: "SF_Pro_Medium",
   },
   titleText: {
-    fontSize: 17,
+    fontSize: 18,
     fontFamily: "SF_Pro_Semibold",
     color: "#1D1D1D",
   },
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     color: "#1D1D1D",
-    fontFamily: "SF_Pro_Regular",
+    fontFamily: "SF_Pro_Medium",
   },
   chipTextActive: {
     color: "#fff",
@@ -233,13 +233,14 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
   },
   calPopup: {
     width: "100%",
     // backgroundColor: "#fff",
     borderRadius: 20,
-    padding: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 16,
     shadowColor: "#000",
     shadowOpacity: 0.2,
     shadowRadius: 20,
@@ -248,15 +249,15 @@ const styles = StyleSheet.create({
   },
   applyBtn: {
     backgroundColor: "#00DEAB",
-    borderRadius: 14,
+    borderRadius: 10,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 8,
     marginBottom: 30,
   },
   applyText: {
-    fontSize: 16,
-    color: "#fff",
+    fontSize: 18,
+    color: "#1D1D1D",
     fontFamily: "SF_Pro_Semibold",
   },
 });

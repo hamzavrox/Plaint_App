@@ -102,7 +102,7 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                 onPress={() => setDescFocused(true)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="document-text-outline" size={20} color="#C0C0C0" style={{ marginRight: 10 }} />
+                <Ionicons name="document-text-outline" size={20} color="#E6E6E6" style={{ marginRight: 10 }} />
                 <Text style={styles.descIdlePlaceholder}>Description</Text>
               </TouchableOpacity>
             )}
@@ -187,8 +187,8 @@ const styles = StyleSheet.create({
   titleInputWrapActive: {
     borderWidth: 1,
     borderColor: "#1D1D1D",
-    paddingTop: 22,
-    borderRadius: 10,
+    paddingTop: 20,
+    borderRadius: 8,
   },
   floatLabel: {
     position: "absolute",
@@ -206,6 +206,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#1D1D1D",
     paddingHorizontal: 4,
+    fontFamily: "SF_Pro_Regular",
   },
   titleInput: {
     fontSize: 16,
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
   },
   descIdlePlaceholder: {
     fontSize: 15,
-    color: "#C0C0C0",
+    color: "#E6E6E6",
     fontFamily: "SF_Pro_Regular",
   },
   chipsWrap: {

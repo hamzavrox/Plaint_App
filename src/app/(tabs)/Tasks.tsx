@@ -1,23 +1,26 @@
+import AllTasksIcon from "@/assets/icons/alltask";
+import AssignIcon from "@/assets/icons/assignicon";
+import CompletedIcon from "@/assets/icons/completedicon";
+import CreatedIcon from "@/assets/icons/createdicon";
+import DelayIcon from "@/assets/icons/delayicon";
 import DueTodayIcon from "@/assets/icons/duetoday";
+import RecurringIcon from "@/assets/icons/recurringicon";
 import SevendayIcon from "@/assets/icons/sevenday";
-import StatCard from "@/components/StatCard";
-import TaskTable from "@/components/TaskTable";
-import FilterModal from "@/components/FilterModal";
 import CreateTaskModal from "@/components/CreateTaskModal";
+import FilterModal from "@/components/FilterModal";
+import AppHeader from "@/components/headerapp";
+import StatCard from "@/components/StatCard";
 import TaskDetailModal, { TaskDetail } from "@/components/TaskDetailModal";
-import { Fontisto, Ionicons } from "@expo/vector-icons";
+import TaskTable from "@/components/TaskTable";
+import { Fontisto } from "@expo/vector-icons";
 import { useState } from "react";
 import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
-import AppHeader from "@/components/headerapp";
-import FilterIconBlack from "@/assets/icons/filtericonblack";
-import AllTasksIcon from "@/assets/icons/alltask";
 
 const TASKS = [
   { title: "update current fund price and pdf file upload fund price", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "6, July", status: "Completed", project: "Website", extraCount: undefined },
@@ -53,14 +56,14 @@ const TASKS_MAP: Record<string, typeof TASKS> = {
 };
 
 const STATS = [
-  { label: "All Tasks", count: "1200", iconName: <AllTasksIcon/>, id: "all" },
+  { label: "All Tasks", count: "1200", iconName: <AllTasksIcon />, id: "all" },
   { label: "Due Today", count: "05", iconName: <DueTodayIcon />, id: "today" },
   { label: "Due in 7 days", count: "15", iconName: <SevendayIcon />, id: "week" },
-  { label: "Delayed", count: "03", iconName: <AllTasksIcon/>, id: "overdue" },
-  { label: "Created by me", count: "12", iconName: <DueTodayIcon />, id: "created" },
-  { label: "Assigned to me", count: "05", iconName: <AllTasksIcon/>, id: "assigned" },
-  { label: "Recurring", count: "15", iconName: <SevendayIcon />, id: "recurring" },
-  { label: "Completed", count: "03", iconName: <AllTasksIcon/>, id: "completed" },
+  { label: "Delayed", count: "03", iconName: <DelayIcon />, id: "overdue" },
+  { label: "Created by me", count: "12", iconName: <CreatedIcon />, id: "created" },
+  { label: "Assigned to me", count: "05", iconName: <AssignIcon />, id: "assigned" },
+  { label: "Recurring", count: "15", iconName: <RecurringIcon />, id: "recurring" },
+  { label: "Completed", count: "03", iconName: <CompletedIcon />, id: "completed" },
 ];
 
 export default function TasksScreen() {
@@ -100,6 +103,7 @@ export default function TasksScreen() {
           greeting="Tasks"
           subGreeting="Assign tasks, track progress, and boost productivity."
           initials="JD"
+          placeholder="Search Tasks..."
           showSearch
           onFilterPress={() => setFilterVisible(true)}
         />
@@ -158,14 +162,14 @@ export default function TasksScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#fff", position: "relative" },
   safe: { flex: 1 },
-  headerContainer: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#E6E6E6",
-  },
+  // headerContainer: {
+  //   borderBottomWidth: 1,
+  //   borderBottomColor: "#E6E6E6",
+  // },
   statsScroll: { maxHeight: 50 },
-  statsContent: { paddingHorizontal: 20, paddingBottom: 6, gap: 6 },
+  statsContent: { paddingHorizontal: 16, paddingBottom: 6, gap: 6 },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 120 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 },
   fab: {
     position: "absolute",
     bottom: 100,

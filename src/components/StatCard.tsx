@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
 
     borderRadius: 10,
 
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
   },
 
   activeCard: {
@@ -75,8 +75,8 @@ const styles = StyleSheet.create({
   },
 
   iconBox: {
-    width: 30,
-    height: 30,
+    width: 25,
+    height: 25,
     borderRadius: 8,
 
     backgroundColor: "#E6FFFF",
