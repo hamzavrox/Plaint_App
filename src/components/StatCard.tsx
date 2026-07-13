@@ -10,6 +10,10 @@ type Props = {
   iconName?: React.ComponentProps<typeof Ionicons>["name"] | React.ReactNode;
   active?: boolean;
   onPress?: () => void;
+  style?: any;
+  cardContentStyle?: any;
+  labelStyle?: any;
+  countStyle?: any;
 };
 
 export default function StatCard({
@@ -18,6 +22,10 @@ export default function StatCard({
   iconName,
   active,
   onPress,
+  style,
+  cardContentStyle,
+  labelStyle,
+  countStyle,
 }: Props) {
   const renderIcon = () => {
     if (!iconName) return null;
@@ -31,7 +39,7 @@ export default function StatCard({
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={onPress}
-      style={[styles.card, active && styles.activeCard]}
+      style={[styles.card, active && styles.activeCard, style]}
     >
       {iconName && (
         <View style={styles.iconBox}>
@@ -39,12 +47,12 @@ export default function StatCard({
         </View>
       )}
 
-      <View style={styles.content}>
-        <Text numberOfLines={1} style={styles.label}>
+      <View style={[styles.content, cardContentStyle]}>
+        <Text numberOfLines={1} style={[styles.label, labelStyle]}>
           {label}
         </Text>
 
-        <Text style={styles.count}>{count}</Text>
+        <Text style={[styles.count, countStyle]}>{count}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -55,6 +63,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     // width: CARD_WIDTH,
+    // textAlign:"center",
     minWidth: 140,
     height: 42,
     gap:6,
@@ -88,6 +97,7 @@ const styles = StyleSheet.create({
   content: {
     flexDirection:"row",
     alignItems:"center",
+    // justifyContent: "center",
     gap:4,
     // marginLeft: 8,
     flex: 1,

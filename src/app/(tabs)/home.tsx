@@ -5,7 +5,7 @@ export default function HomeScreen() {
             <>
                 <View style={{ flex: 1, backgroundColor: "#fff" }} >
                     <AppHeader
-                        greeting="Good morning, Junaid!"
+                        greeting="Good afternoon, Muhammad Hamza!"
                         subGreeting="Let's make today productive!"
                         initials="JD"
                     />

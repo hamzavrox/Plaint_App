@@ -12,8 +12,9 @@ import AppHeader from "@/components/headerapp";
 import StatCard from "@/components/StatCard";
 import TaskDetailModal, { TaskDetail } from "@/components/TaskDetailModal";
 import TaskTable from "@/components/TaskTable";
+import { TaskRowProps, StatusType } from "@/components/TaskRow";
 import { Fontisto } from "@expo/vector-icons";
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -22,57 +23,80 @@ import {
   View
 } from "react-native";
 
-const TASKS = [
-  { title: "update current fund price and pdf file upload fund price", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "6, July", status: "Completed", project: "Website", extraCount: undefined },
-  { title: "update current fund price and pdf file upload fund price", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "3, July", status: "Completed", project: "Mobile App", extraCount: undefined },
-  { title: "update current fund price and pdf file upload fund price", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "2, July", status: "Completed", project: "Backend", extraCount: undefined },
-  { title: "update current fund price and pdf file upload fund price", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "1, July", status: "Completed", project: "Website", extraCount: undefined },
-  { title: "Learn React Native Basics with Expo", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "30, June", status: "Completed", project: "Mobile App", extraCount: 7 },
-  { title: "Setup CI/CD pipeline", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "28, June", status: "In-Progress", project: "DevOps", extraCount: undefined },
-  { title: "API integration for payments", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "25, June", status: "Pending-Approval", project: "Backend", extraCount: undefined },
-  { title: "Database schema migration", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "20, June", status: "Rejected", project: "Backend", extraCount: undefined },
-  { title: "Setup CI/CD pipeline", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "28, June", status: "In-Progress", project: "DevOps", extraCount: undefined },
-  { title: "API integration for payments", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "25, June", status: "Pending-Approval", project: "Backend", extraCount: undefined },
-  { title: "Database schema migration", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "20, June", status: "Rejected", project: "Backend", extraCount: undefined },
-
+const TASKS: TaskRowProps[] = [
+  { id: "task-1", title: "update current fund price and pdf file upload fund price", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "6, July", status: "Completed", project: "Website" },
+  { id: "task-2", title: "update current fund price and pdf file upload fund price", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "3, July", status: "Completed", project: "Mobile App" },
+  { id: "task-3", title: "update current fund price and pdf file upload fund price", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "2, July", status: "Completed", project: "Backend" },
+  { id: "task-4", title: "update current fund price and pdf file upload fund price", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "1, July", status: "Completed", project: "Website" },
+  { id: "task-5", title: "Learn React Native Basics with Expo", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "30, June", status: "Completed", project: "Mobile App", extraCount: 7 },
+  { id: "task-6", title: "Setup CI/CD pipeline", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "28, June", status: "In-Progress", project: "DevOps" },
+  { id: "task-7", title: "API integration for payments", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "25, June", status: "Pending-Approval", project: "Backend" },
+  { id: "task-8", title: "Database schema migration", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "20, June", status: "Rejected", project: "Backend" },
+  { id: "task-9", title: "Setup CI/CD pipeline", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "28, June", status: "In-Progress", project: "DevOps" },
+  { id: "task-10", title: "API integration for payments", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "25, June", status: "Pending-Approval", project: "Backend" },
+  { id: "task-11", title: "Database schema migration", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "20, June", status: "Rejected", project: "Backend" },
 ];
 
-const DUE_TODAY_TASKS = [
-  { title: "Push hotfix to production", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "25, Apr", status: "In-Progress", project: "Backend", extraCount: undefined },
-  { title: "Client demo preparation", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "25, Apr", status: "Pending-Approval", project: "Website", extraCount: 3 },
-  { title: "Review PR #42", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "25, Apr", status: "Pending", project: "Mobile App", extraCount: undefined },
-  { title: "Deploy staging build", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "25, Apr", status: "Completed", project: "DevOps", extraCount: undefined },
+const DUE_TODAY_TASKS: TaskRowProps[] = [
+  { id: "today-1", title: "Push hotfix to production", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "25, Apr", status: "In-Progress", project: "Backend" },
+  { id: "today-2", title: "Client demo preparation", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "25, Apr", status: "Pending-Approval", project: "Website", extraCount: 3 },
+  { id: "today-3", title: "Review PR #42", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "25, Apr", status: "Pending", project: "Mobile App" },
+  { id: "today-4", title: "Deploy staging build", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "25, Apr", status: "Completed", project: "DevOps" },
 ];
 
-const TASKS_MAP: Record<string, typeof TASKS> = {
-  all: TASKS,
-  today: DUE_TODAY_TASKS,
-  week: TASKS.filter((t) => ["In-Progress", "Pending"].includes(t.status)),
-  overdue: TASKS.filter((t) => t.status === "Rejected"),
-  created: TASKS.filter((_, i) => i % 2 === 0),
-  assigned: DUE_TODAY_TASKS.filter((_, i) => i % 2 !== 0),
-  recurring: TASKS.filter((t) => t.status === "Pending-Approval"),
-  completed: TASKS.filter((t) => t.status === "Completed"),
-};
-
-const STATS = [
-  { label: "All Tasks", count: "1200", iconName: <AllTasksIcon />, id: "all" },
-  { label: "Due Today", count: "05", iconName: <DueTodayIcon />, id: "today" },
-  { label: "Due in 7 days", count: "15", iconName: <SevendayIcon />, id: "week" },
-  { label: "Delayed", count: "03", iconName: <DelayIcon />, id: "overdue" },
-  { label: "Created by me", count: "12", iconName: <CreatedIcon />, id: "created" },
-  { label: "Assigned to me", count: "05", iconName: <AssignIcon />, id: "assigned" },
-  { label: "Recurring", count: "15", iconName: <RecurringIcon />, id: "recurring" },
-  { label: "Completed", count: "03", iconName: <CompletedIcon />, id: "completed" },
-];
+// Helpers to format counts
+const pad = (n: number) => String(n).padStart(2, "0");
 
 export default function TasksScreen() {
+  const [tasksState, setTasksState] = useState<TaskRowProps[]>(TASKS);
+  const [dueTodayTasksState, setDueTodayTasksState] = useState<TaskRowProps[]>(DUE_TODAY_TASKS);
+
   const [activeTab, setActiveTab] = useState("all");
   const [filterVisible, setFilterVisible] = useState(false);
   const [createVisible, setCreateVisible] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskDetail | null>(null);
 
-  const handleTaskPress = (task: typeof TASKS[0]) => {
+  // Derive task lists dynamically on render based on state
+  const tasksMap = useMemo<Record<string, TaskRowProps[]>>(() => {
+    return {
+      all: tasksState,
+      today: dueTodayTasksState,
+      week: tasksState.filter((t) => ["In-Progress", "Pending"].includes(t.status)),
+      overdue: tasksState.filter((t) => t.status === "Rejected"),
+      created: tasksState.filter((_, i) => i % 2 === 0),
+      assigned: dueTodayTasksState.filter((_, i) => i % 2 !== 0),
+      recurring: tasksState.filter((t) => t.status === "Pending-Approval"),
+      completed: tasksState.filter((t) => t.status === "Completed"),
+    };
+  }, [tasksState, dueTodayTasksState]);
+
+  // Derive stats dynamically on render so badge counts update on-the-fly
+  const statsList = useMemo(() => {
+    return [
+      { label: "All Tasks",      count: pad(tasksState.length), iconName: <AllTasksIcon />, id: "all" },
+      { label: "Due Today",      count: pad(dueTodayTasksState.length), iconName: <DueTodayIcon />, id: "today" },
+      { label: "Due in 7 days",  count: pad(tasksMap.week.length), iconName: <SevendayIcon />, id: "week" },
+      { label: "Delayed",        count: pad(tasksMap.overdue.length), iconName: <DelayIcon />, id: "overdue" },
+      { label: "Created by me",  count: pad(tasksMap.created.length), iconName: <CreatedIcon />, id: "created" },
+      { label: "Assigned to me", count: pad(tasksMap.assigned.length), iconName: <AssignIcon />, id: "assigned" },
+      { label: "Recurring",      count: pad(tasksMap.recurring.length), iconName: <RecurringIcon />, id: "recurring" },
+      { label: "Completed",      count: pad(tasksMap.completed.length), iconName: <CompletedIcon />, id: "completed" },
+    ];
+  }, [tasksState, dueTodayTasksState, tasksMap]);
+
+  const handleStatusChange = useCallback((targetTask: TaskRowProps, newStatus: StatusType) => {
+    const updateItem = (item: TaskRowProps) => {
+      if (item.id && targetTask.id) {
+        return item.id === targetTask.id ? { ...item, status: newStatus } : item;
+      }
+      return item.title === targetTask.title ? { ...item, status: newStatus } : item;
+    };
+
+    setTasksState((prev) => prev.map(updateItem));
+    setDueTodayTasksState((prev) => prev.map(updateItem));
+  }, []);
+
+  const handleTaskPress = (task: TaskRowProps) => {
     setSelectedTask({
       title: task.title,
       assignedTo: task.assignedTo,
@@ -94,6 +118,27 @@ export default function TasksScreen() {
     });
   };
 
+  const statuses = [
+    "Pending", "In-Progress", "On-Hold", "Rejected", "Pending-Approval", "Completed",
+  ];
+  
+  const priorities = ["Low", "Medium", "High"];
+  
+  const priorityColors = {
+    Low: "#0DDFD8",
+    Medium: "#737373",
+    High: "#DF0D0D",
+  };
+  
+  const statusColors = {
+    Pending: "#DFA70D",
+    "In-Progress": "#607EF9",
+    "On-Hold": "#0DDFAB",
+    Rejected: "#FF0000",
+    "Pending-Approval": "#1D1D1D",
+    Completed: "#1CB333",
+  };
+
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe}>
@@ -107,7 +152,11 @@ export default function TasksScreen() {
           showSearch
           onFilterPress={() => setFilterVisible(true)}
         />
-        <FilterModal visible={filterVisible} onClose={() => setFilterVisible(false)} />
+        <FilterModal visible={filterVisible} onClose={() => setFilterVisible(false)}   statuses={statuses}
+  statusColors={statusColors}
+  priorities={priorities}
+  priorityColors={priorityColors}
+  showPriority={true} />
 
         {/* Stat Cards */}
         <ScrollView
@@ -116,7 +165,7 @@ export default function TasksScreen() {
           style={styles.statsScroll}
           contentContainerStyle={styles.statsContent}
         >
-          {STATS.map((s) => (
+          {statsList.map((s) => (
             <StatCard
               key={s.id}
               label={s.label}
@@ -136,9 +185,10 @@ export default function TasksScreen() {
           showsVerticalScrollIndicator={false}
         >
           <TaskTable
-            sectionTitle={STATS.find((s) => s.id === activeTab)?.label ?? "All Tasks"}
-            tasks={TASKS_MAP[activeTab] ?? TASKS}
+            sectionTitle={statsList.find((s) => s.id === activeTab)?.label ?? "All Tasks"}
+            tasks={tasksMap[activeTab] ?? tasksState}
             onTaskPress={handleTaskPress}
+            onStatusChange={handleStatusChange}
           />
         </ScrollView>
         {/* </View> */}

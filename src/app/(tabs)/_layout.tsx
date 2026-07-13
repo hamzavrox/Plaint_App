@@ -7,9 +7,9 @@ export default function TabLayout() {
     screenOptions={{ headerShown: false ,tabBarHideOnKeyboard:true,}}
       tabBar={(props) => <CustomTabBar {...props} />}
     >
-      <Tabs.Screen name="Tasks" />
-      <Tabs.Screen name="Dashboard" />
-      <Tabs.Screen name="stats" />
+      <Tabs.Screen name="tasks" />
+      <Tabs.Screen name="leaves" />
+      <Tabs.Screen name="performance" />
       <Tabs.Screen name="home" />
       <Tabs.Screen name="chat" />
       <Tabs.Screen name="biometric" />

@@ -52,7 +52,7 @@ export default function Login() {
          </View>
 
         <Pressable style={styles.loginBtn} onPress={()=>{
-          router.replace('/Tasks')
+          router.replace('/tasks')
         }}>
           <Text style={styles.loginBtnText}>Log In</Text>
         </Pressable>

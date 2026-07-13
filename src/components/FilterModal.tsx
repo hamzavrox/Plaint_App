@@ -10,27 +10,40 @@ import {
   View,
 } from "react-native";
 import CalendarPicker from "./CalendarPicker";
-import { STATUS_COLORS, StatusType } from "./TaskRow";
+import { StatusType } from "./TaskRow";
 
-const STATUSES: StatusType[] = [
-  "Pending", "In-Progress", "On-Hold", "Rejected", "Pending-Approval", "Completed",
-];
+// const STATUSES: StatusType[] = [
+//   "Pending", "In-Progress", "On-Hold", "Rejected", "Pending-Approval", "Completed",
+// ];
 
-const PRIORITIES = ["Low", "Medium", "High"];
+// const PRIORITIES = ["Low", "Medium", "High"];
 
-const PRIORITY_COLORS: Record<string, string> = {
-  Low:    "#00DEAB",
-  Medium: "#D97706",
-  High:   "#DC2626",
-};
+// const PRIORITY_COLORS: Record<string, string> = {
+//   Low: "#0DDFD8",
+//   Medium: "#737373",
+//   High: "#DF0D0D",
+// };
+
+// const STATUS_COLORS: Record<StatusType, string> = {
+//   Pending: "#DFA70D",
+//   "In-Progress": "#607EF9",
+//   "On-Hold": "#0DDFAB",
+//   Rejected: "#FF0000",
+//   "Pending-Approval": "#FFCE70",
+//   Completed: "#1CB333",
+// };
 
 type Props = { visible: boolean; onClose: () => void };
 
-export default function FilterModal({ visible, onClose }: Props) {
-  const [selectedStatus, setSelectedStatus]     = useState<string | null>(null);
+export default function FilterModal({ visible, onClose ,statuses,
+  statusColors,
+  priorities = [],
+  priorityColors = {},
+  showPriority = true, }: Props) {
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedPriority, setSelectedPriority] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate]     = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
 
   const handleReset = () => {
@@ -60,9 +73,9 @@ export default function FilterModal({ visible, onClose }: Props) {
             {/* Status */}
             <Text style={styles.sectionLabel}>Status</Text>
             <View style={styles.chipsRow}>
-              {STATUSES.map((s) => {
+              {statuses.map((s) => {
                 const active = selectedStatus === s;
-                const color  = STATUS_COLORS[s]?.text ?? "#6B7280";
+                const color =   statusColors[s];
                 return (
                   <TouchableOpacity
                     key={s}
@@ -70,7 +83,7 @@ export default function FilterModal({ visible, onClose }: Props) {
                     onPress={() => setSelectedStatus(active ? null : s)}
                   >
                     {active
-                      ? <Ionicons name="checkmark" size={13} color="#fff" style={{ marginRight: 4 }} />
+                      ? <Ionicons name="checkmark" size={13} color="#fff" style={{ marginRight: 2 }} />
                       : <View style={[styles.dot, { backgroundColor: color }]} />
                     }
                     <Text style={[styles.chipText, active && styles.chipTextActive]}>{s}</Text>
@@ -82,41 +95,76 @@ export default function FilterModal({ visible, onClose }: Props) {
             <View style={styles.divider} />
 
             {/* Priority */}
-            <Text style={styles.sectionLabel}>Priority</Text>
-            <View style={styles.chipsRow}>
-              {PRIORITIES.map((p) => {
-                const active = selectedPriority === p;
-                const color  = PRIORITY_COLORS[p];
-                return (
-                  <TouchableOpacity
-                    key={p}
-                    style={[styles.chip, active && { backgroundColor: color, borderColor: color }]}
-                    onPress={() => setSelectedPriority(active ? null : p)}
-                  >
-                    {active
-                      ? <Ionicons name="checkmark" size={13} color="#fff" style={{ marginRight: 4 }} />
-                      : <View style={[styles.dot, { backgroundColor: color }]} />
-                    }
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{p}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+           {showPriority && (
+  <>
+    <Text style={styles.sectionLabel}>Priority</Text>
 
-            <View style={styles.divider} />
+    <View style={styles.chipsRow}>
+      {priorities.map((p) => {
+        const active = selectedPriority === p;
+        const color = priorityColors[p];
+
+        return (
+          <TouchableOpacity
+            key={p}
+            style={[
+              styles.chip,
+              active && {
+                backgroundColor: color,
+                borderColor: color,
+              },
+            ]}
+            onPress={() =>
+              setSelectedPriority(active ? null : p)
+            }
+          >
+            {active ? (
+              <Ionicons
+                name="checkmark"
+                size={13}
+                color="#fff"
+                style={{ marginRight: 2 }}
+              />
+            ) : (
+              <View
+                style={[
+                  styles.dot,
+                  { backgroundColor: color },
+                ]}
+              />
+            )}
+
+            <Text
+              style={[
+                styles.chipText,
+                active && styles.chipTextActive,
+              ]}
+            >
+              {p}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+
+    <View style={styles.divider} />
+  </>
+)}
+
+            {/* <View style={styles.divider} /> */}
 
             {/* Calendar header */}
-            <View style={styles.calHeaderRow}>
-              <Text style={styles.calHeaderText}>Calendar</Text>
-              <TouchableOpacity onPress={() => setCalendarOpen(true)}>
+            <TouchableOpacity onPress={() => setCalendarOpen(true)}>
+              <View style={styles.calHeaderRow}>
+                <Text style={styles.calHeaderText}>Calendar</Text>
                 <Ionicons name="calendar" size={22} color="#00DEAB" />
-              </TouchableOpacity>
-            </View>
+              </View>
+            </TouchableOpacity>
 
             {/* Calendar Popup Modal */}
             <Modal visible={calendarOpen} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setCalendarOpen(false)}>
               <Pressable style={styles.calOverlay} onPress={() => setCalendarOpen(false)}>
-                <Pressable style={styles.calPopup} onPress={() => {}}>
+                <Pressable style={styles.calPopup} onPress={() => { }}>
                   <CalendarPicker
                     startDate={startDate}
                     endDate={endDate}
@@ -184,26 +232,26 @@ const styles = StyleSheet.create({
   chipsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 4,
+    gap: 3,
     marginBottom: 16,
   },
   chip: {
-    minWidth:50,
+    minWidth: 60,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    backgroundColor:"#F2F2F2",
+    backgroundColor: "#F2F2F2",
     borderColor: "#F2F2F2",
     borderRadius: 3,
     paddingHorizontal: 6,
-    paddingVertical: 5,
+    paddingVertical: 4,
   },
   dot: {
     width: 5, height: 5, borderRadius: 4,
-    marginRight: 6,
+    marginRight: 5,
   },
   chipText: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#1D1D1D",
     fontFamily: "SF_Pro_Medium",
   },

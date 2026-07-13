@@ -11,6 +11,7 @@ export type StatusType =
   | "Pending-Approval";
 
 export type TaskRowProps = {
+  id?: string;
   title: string;
   createdBy: string;
   createdByInitials: string;
@@ -47,7 +48,7 @@ export const COL_WIDTHS = {
   assignedTo: 120,
   dueDate: 100,
   status: 130,
-  comment: 70,
+  comment: 80,
   project: 90,
 };
 
@@ -71,7 +72,7 @@ export default function TaskRow({
   return (
     <View style={styles.wrap}>
       {/* ── Row ── */}
-      <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.row}>
         <View style={styles.accent} />
 
         {/* Check / Checkbox */}
@@ -86,7 +87,11 @@ export default function TaskRow({
         </View>
 
         {/* Title */}
-        <View style={[styles.titleCell, { width: COL_WIDTHS.title }]}>
+        <TouchableOpacity
+          style={[styles.titleCell, { width: COL_WIDTHS.title }]}
+          onPress={onPress}
+          activeOpacity={0.7}
+        >
           <Text style={[styles.titleText, isCompleted && styles.strikethrough]} numberOfLines={1}>
             {title}
           </Text>
@@ -96,7 +101,7 @@ export default function TaskRow({
               <Text style={styles.extraText}>+{extraCount}</Text>
             </View>
           ) : null}
-        </View>
+        </TouchableOpacity>
 
         {/* Created By */}
         <View style={[styles.userCell, { width: COL_WIDTHS.createdBy }]}>
@@ -131,7 +136,7 @@ export default function TaskRow({
         </TouchableOpacity>
 
         {/* Comment */}
-        <View style={[styles.commentCell, { width: COL_WIDTHS.comment }]}>
+        <View style={styles.commentCell}>
           <Ionicons name="chatbox-outline" size={18} color="#D1D5DB" />
         </View>
 
@@ -139,7 +144,7 @@ export default function TaskRow({
         <View style={{ width: COL_WIDTHS.project }}>
           <Text style={styles.cellText} numberOfLines={1}>{project ?? ""}</Text>
         </View>
-      </TouchableOpacity>
+      </View>
 
       {/* ── Dropdown — absolutely above the row, aligned to status column ── */}
       {isOpen && (
@@ -167,7 +172,7 @@ const styles = StyleSheet.create({
   wrap: { position: "relative" },
   row: {
     flexDirection: "row",
-    alignItems: "center",
+    // alignItems: "center",
     minHeight: 52,
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
@@ -210,7 +215,13 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   statusText: { fontSize: 11.5, fontWeight: "600" },
-  commentCell: { alignItems: "left" },
+  commentCell: {
+    // paddingLeft: 10,
+    width: COL_WIDTHS.comment,
+    justifyContent: "center",
+    alignItems: "flex-start",
+
+  },
   // Dropdown floats BELOW the row, overlays rows underneath
   dropdown: {
     position: "absolute",

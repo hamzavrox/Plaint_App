@@ -3,16 +3,69 @@ import { useEffect, useState } from "react";
 import { View, TouchableOpacity, StyleSheet , Keyboard, } from "react-native";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Ionicons, Fontisto } from "@expo/vector-icons";
+import TaskIconBlack from "@/assets/icons/tabicons/taskblack";
+import TaskIconsWhite from "@/assets/icons/tabicons/taskwhite";
+import HomeIconBlack from "@/assets/icons/tabicons/homeblack";
+import LeaveIconBlack from "@/assets/icons/tabicons/Leaveblack";
+import LeaveIconWhite from "@/assets/icons/tabicons/leavewhite";
+import HomeIconWhite from "@/assets/icons/tabicons/homewhite";
+import PEIconBlack from "@/assets/icons/tabicons/peblack";
+import PEIconWhite from "@/assets/icons/tabicons/pewhite";
+import ChatIconBlack from "@/assets/icons/tabicons/chatblack";
+import ChatIconWhite from "@/assets/icons/tabicons/chatwhite";
 
-const TABS: { name: string; icon: React.ComponentProps<typeof Ionicons>["name"] }[] = [
-  { name: "Tasks",     icon: "checkbox-outline"      },
-  { name: "Dashboard", icon: "calendar-outline"       },
-  { name: "stats",     icon: "stats-chart-outline"    },
-  { name: "home",      icon: "home-outline"           },
-  { name: "chat",      icon: "chatbubble-outline"     },
-  { name: "biometric", icon: "finger-print-outline"   },
-  { name: "grid",      icon: "grid-outline"           },
+type TabItem = {
+  name: string;
+  activeIcon?: React.ComponentType<any>;
+  inactiveIcon?: React.ComponentType<any>;
+  ionicon?: React.ComponentProps<typeof Ionicons>["name"];
+};
+
+const TABS: TabItem[] = [
+  {
+    name: "tasks",
+    activeIcon: TaskIconBlack,
+    inactiveIcon: TaskIconsWhite,
+  },
+  {
+    name: "leaves",
+    activeIcon: LeaveIconBlack,
+    inactiveIcon: LeaveIconWhite,
+  },
+  {
+    name: "performance",
+    activeIcon: PEIconBlack,
+    inactiveIcon: PEIconWhite,
+  },
+  {
+    name: "home",
+    activeIcon: HomeIconBlack,
+    inactiveIcon: HomeIconWhite,
+  },
+  {
+    name: "chat",
+    activeIcon: ChatIconBlack,
+    inactiveIcon: ChatIconWhite,
+  },
+  {
+    name: "biometric",
+    ionicon: "finger-print-outline",
+  },
+  {
+    name: "grid",
+    ionicon: "grid-outline",
+  },
 ];
+
+// const TABS: { name: string;  icon: React.ComponentProps<typeof Ionicons>["name"] }[] = [
+//   { name: "Tasks",     icon: "checkbox-outline"      },
+//   { name: "Dashboard", icon: "calendar-outline"       },
+//   { name: "stats",     icon: "stats-chart-outline"    },
+//   { name: "home",      icon: "home-outline"           },
+//   { name: "chat",      icon: "chatbubble-outline"     },
+//   { name: "biometric", icon: "finger-print-outline"   },
+//   { name: "grid",      icon: "grid-outline"           },
+// ];
 
 export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   // const activeRouteName = state.routes[state.index].name;
@@ -46,6 +99,12 @@ if (keyboardVisible) {
     <View style={{ height: 0 }} />
   );
 }
+
+// console.log("Current Index:", state.index);
+// console.log("Current Route:", state.routes[state.index].name);
+// console.log(state.routes);
+// console.log(state.routeNames);
+const currentRoute = state.routes[state.index]?.name.toLowerCase();
   return (
     <View style={styles.container}>
       {/* {activeRouteName === "Tasks" && (
@@ -55,7 +114,8 @@ if (keyboardVisible) {
       )} */}
       <View style={styles.bar}>
         {TABS.map((tab, i) => {
-          const focused = state.index === i;
+          // const focused = state.index === i;
+          const focused = currentRoute === tab.name.toLowerCase();
           return (
             <TouchableOpacity
               key={tab.name}
@@ -64,12 +124,20 @@ if (keyboardVisible) {
               onPress={() => navigation.navigate(tab.name)}
             >
               <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-                <Ionicons
-                  name={tab.icon}
-                  size={24}
-                  color={focused ? "#000" : "#fff"}
-                />
-              </View>
+       {tab.activeIcon ? (
+    focused ? (
+      <tab.activeIcon width={24} height={24} />
+    ) : (
+      <tab.inactiveIcon width={24} height={24} />
+    )
+  ) : (
+    <Ionicons
+      name={tab.ionicon!}
+      size={24}
+      color={focused ? "#000" : "#fff"}
+    />
+  )}
+</View>
             </TouchableOpacity>
           );
         })}
@@ -123,8 +191,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   iconWrapActive: {
-    width: 46,
-    height: 46,
+    width: 48,
+    height: 48,
     backgroundColor: "#fff",
     borderRadius: 50,
   },

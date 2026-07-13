@@ -8,14 +8,14 @@ export default function StatsScreen() {
         <>
             <View style={{ flex: 1, backgroundColor: "#fff" }} >
                 <AppHeader
-                    greeting="Good morning, Junaid!"
-                    subGreeting="Let's make today productive!"
+                    greeting="My Evaluation"
+                    subGreeting="Track and review your performance"
                     initials="JD"
-                    showSearch
-                    onFilterPress={() => setFilterVisible(true)}
+                    // showSearch
+                    // onFilterPress={() => setFilterVisible(true)}
 
                 />
-                        <FilterModal visible={filterVisible} onClose={() => setFilterVisible(false)} />
+                        {/* <FilterModal visible={filterVisible} onClose={() => setFilterVisible(false)} /> */}
             </View>;
         </>
     )
