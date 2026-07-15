@@ -3,6 +3,7 @@ import DynamicTable, { Column } from "@/components/DynamicTable";
 import FilterModal from "@/components/FilterModal";
 import AppHeader from "@/components/headerapp";
 import StatCard from "@/components/StatCard";
+import LeaveDetailModal from "@/components/LeaveDetailModal";
 import { Fontisto, Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import {
@@ -24,6 +25,7 @@ interface LeaveItem {
     totalLeaves: number;
     status: "Approved" | "Absent" | "Pending" | "Disapproved";
     actionTakenBy: string;
+    reason?: string;
 }
 
 const LEAVES_DATA: LeaveItem[] = [
@@ -37,6 +39,7 @@ const LEAVES_DATA: LeaveItem[] = [
         totalLeaves: 0.5,
         status: "Approved",
         actionTakenBy: "Muhammad Zanaen UII...",
+        reason: "Half-day leave today due to an urgent personal piece of work.",
     },
     {
         id: "2",
@@ -48,6 +51,7 @@ const LEAVES_DATA: LeaveItem[] = [
         totalLeaves: 0.5,
         status: "Approved",
         actionTakenBy: "Muhammad Zanaen UII...",
+        reason: "Personal work.",
     },
     {
         id: "3",
@@ -59,6 +63,7 @@ const LEAVES_DATA: LeaveItem[] = [
         totalLeaves: 1,
         status: "Absent",
         actionTakenBy: "System",
+        reason: "Absent due to medical emergency.",
     },
     {
         id: "4",
@@ -70,13 +75,23 @@ const LEAVES_DATA: LeaveItem[] = [
         totalLeaves: 1,
         status: "Approved",
         actionTakenBy: "-",
+        reason: "Family function.",
     },
 ];
 
 export default function Dashboard() {
-    const [filterVisible, setFilterVisible] = useState(false);
+   const [searchFilterVisible, setSearchFilterVisible] = useState(false);
+   const [leaveFilterVisible, setLeaveFilterVisible] = useState(false);
+    const [reason, setReason] = useState("");
     const [createVisible, setCreateVisible] = useState(false);
+    const [detailVisible, setDetailVisible] = useState(false);
+    const [selectedLeave, setSelectedLeave] = useState<LeaveItem | null>(null);
     const [leaves, setLeaves] = useState<LeaveItem[]>(LEAVES_DATA);
+
+    const handleViewDetails = (item: LeaveItem) => {
+        setSelectedLeave(item);
+        setDetailVisible(true);
+    };
 
     const statuses = [
         "All",
@@ -190,8 +205,12 @@ export default function Dashboard() {
                 key: "action",
                 title: "Action",
                 width: 80,
-                render: () => (
-                    <TouchableOpacity style={styles.actionCell} activeOpacity={0.7}>
+                render: (item) => (
+                    <TouchableOpacity
+                        style={styles.actionCell}
+                        activeOpacity={0.7}
+                        onPress={() => handleViewDetails(item)}
+                    >
                         <Ionicons name="eye-outline" size={18} color="#4B5563" />
                     </TouchableOpacity>
                 ),
@@ -209,7 +228,7 @@ export default function Dashboard() {
                     initials="JD"
                     showSearch
                     placeholder="Search Leaves..."
-                    onFilterPress={() => setFilterVisible(true)}
+                    onFilterPress={() => setSearchFilterVisible(true)}
                 />
 
                 <ScrollView
@@ -280,19 +299,59 @@ export default function Dashboard() {
                 </ScrollView>
 
                 <FilterModal
-                    visible={filterVisible}
-                    onClose={() => setFilterVisible(false)}
+                    visible={searchFilterVisible}
+                    onClose={() => setSearchFilterVisible(false)}
                     statuses={statuses}
                     statusColors={statusColors}
                     showPriority={false}
+                     showLeaveMode={false}
+                     showLeaveType={false}
+                      showReasonInput={false}
                 />
 
                 {/* FAB */}
-                <TouchableOpacity style={styles.fab} activeOpacity={0.85} onPress={() => setCreateVisible(true)}>
+                <TouchableOpacity style={styles.fab} activeOpacity={0.85} onPress={() => setLeaveFilterVisible(true)}>
                     <Fontisto name="plus-a" size={24} color="black" />
                 </TouchableOpacity>
 
-                <CreateTaskModal visible={createVisible} onClose={() => setCreateVisible(false)} />
+                {/* <CreateTaskModal visible={createVisible} onClose={() => setCreateVisible(false)} /> */}
+                <FilterModal
+  visible={leaveFilterVisible}
+  onClose={() => setLeaveFilterVisible(false)}
+
+  // Hide
+  showStatus={false}
+  showPriority={false}
+
+  // Show
+  showLeaveMode={true}
+  leaveModes={["Full Day", "Half-Day"]}
+  leaveModeColors={{
+    "Full Day": "#00DEAB",
+    "Half-Day": "#607EF9",
+  }}
+
+  showLeaveType={true}
+  leaveTypes={["Annual", "Paternity", "Marriage Leave","Umrah","Hajj","Bereavement"]}
+  leaveTypeColors={{
+    Annual: "#00DEAB",
+    Paternity: "#F59E0B",
+    "Marriage Leave": "#EF4444",
+    Umrah: "#EF4444",
+    Hajj: "#EF4444",
+    Bereavement: "#EF4444",
+  }}
+
+  showReasonInput={true}
+  reasonValue={reason}
+  onChangeReason={setReason}
+/>
+
+                <LeaveDetailModal
+                    visible={detailVisible}
+                    onClose={() => setDetailVisible(false)}
+                    leave={selectedLeave}
+                />
             </SafeAreaView>
         </View>
     );

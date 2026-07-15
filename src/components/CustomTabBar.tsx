@@ -6,7 +6,7 @@ import { Ionicons, Fontisto } from "@expo/vector-icons";
 import TaskIconBlack from "@/assets/icons/tabicons/taskblack";
 import TaskIconsWhite from "@/assets/icons/tabicons/taskwhite";
 import HomeIconBlack from "@/assets/icons/tabicons/homeblack";
-import LeaveIconBlack from "@/assets/icons/tabicons/Leaveblack";
+import LeaveIconBlack from "@/assets/icons/tabicons/leaveblack";
 import LeaveIconWhite from "@/assets/icons/tabicons/leavewhite";
 import HomeIconWhite from "@/assets/icons/tabicons/homewhite";
 import PEIconBlack from "@/assets/icons/tabicons/peblack";
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#000",
     borderRadius: 40,
-    height: 68,
+    height: 66,
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 8,
@@ -191,8 +191,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   iconWrapActive: {
-    width: 48,
-    height: 48,
+    width: 53,
+    height: 53,
     backgroundColor: "#fff",
     borderRadius: 50,
   },

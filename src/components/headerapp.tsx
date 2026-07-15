@@ -11,6 +11,7 @@ import {
 import BellIcon from "@/assets/icons/bellicon";
 import FilterIconBlack from "@/assets/icons/filtericonblack";
 import FilterIcon from "@/assets/icons/filtericon";
+import InboxModal from "./InboxModal";
 
 type AppHeaderProps = {
   greeting: string;
@@ -34,6 +35,7 @@ export default function AppHeader({
 }: AppHeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [inboxOpen, setInboxOpen] = useState(false);
 
   return (
     <Pressable style={styles.headerContainer} onPress={() => searchOpen && setSearchOpen(false)}>
@@ -50,10 +52,14 @@ export default function AppHeader({
             </TouchableOpacity>
           )}
 
-          <View style={styles.bellWrap}>
+          <TouchableOpacity
+            style={styles.bellWrap}
+            activeOpacity={0.75}
+            onPress={() => setInboxOpen(true)}
+          >
             <BellIcon />
             <View style={styles.bellDot} />
-          </View>
+          </TouchableOpacity>
 
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
@@ -91,6 +97,8 @@ export default function AppHeader({
           </View>
         </Pressable>
       )}
+
+      <InboxModal visible={inboxOpen} onClose={() => setInboxOpen(false)} />
     </Pressable>
   );
 }

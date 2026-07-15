@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import CalendarPicker from "./CalendarPicker";
 import { StatusType } from "./TaskRow";
+import FloatingInput from "./FloatingInput";
 
 // const STATUSES: StatusType[] = [
 //   "Pending", "In-Progress", "On-Hold", "Rejected", "Pending-Approval", "Completed",
@@ -33,15 +34,65 @@ import { StatusType } from "./TaskRow";
 //   Completed: "#1CB333",
 // };
 
-type Props = { visible: boolean; onClose: () => void };
+// type Props = { visible: boolean; onClose: () => void };
+type Props = {
+  visible: boolean;
+  onClose: () => void;
 
-export default function FilterModal({ visible, onClose ,statuses,
-  statusColors,
+  // Status
+  statuses?: string[];
+  statusColors?: Record<string, string>;
+  showStatus?: boolean;
+
+  // Priority
+  priorities?: string[];
+  priorityColors?: Record<string, string>;
+  showPriority?: boolean;
+
+  // Leave Mode
+  leaveModes?: string[];
+  leaveModeColors?: Record<string, string>;
+  showLeaveMode?: boolean;
+
+  // New Field (example)
+  leaveTypes?: string[];
+  leaveTypeColors?: Record<string, string>;
+  showLeaveType?: boolean;
+
+   // Reason
+showReasonInput?: boolean;
+reasonValue?: string;
+onChangeReason?: (text: string) => void;
+};
+
+export default function FilterModal({ 
+  visible,
+  onClose,
+
+  statuses = [],
+  statusColors = {},
+  showStatus = true,
+
   priorities = [],
   priorityColors = {},
-  showPriority = true, }: Props) {
+  showPriority = true,
+
+  leaveModes = [],
+  leaveModeColors = {},
+  showLeaveMode = false,
+
+  leaveTypes = [],
+  leaveTypeColors = {},
+  showLeaveType = false,
+
+ showReasonInput = false,
+reasonValue = "",
+onChangeReason = () => {},
+}: Props) {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedPriority, setSelectedPriority] = useState<string | null>(null);
+  const [selectedLeaveMode, setSelectedLeaveMode] = useState<string | null>(null);
+  const [selectedLeaveType, setSelectedLeaveType] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -49,6 +100,9 @@ export default function FilterModal({ visible, onClose ,statuses,
   const handleReset = () => {
     setSelectedStatus(null);
     setSelectedPriority(null);
+      setSelectedLeaveMode(null);
+  setSelectedLeaveType(null);
+    onChangeReason("");
     setStartDate(null);
     setEndDate(null);
     setCalendarOpen(false);
@@ -71,28 +125,62 @@ export default function FilterModal({ visible, onClose ,statuses,
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             {/* Status */}
-            <Text style={styles.sectionLabel}>Status</Text>
-            <View style={styles.chipsRow}>
-              {statuses.map((s) => {
-                const active = selectedStatus === s;
-                const color =   statusColors[s];
-                return (
-                  <TouchableOpacity
-                    key={s}
-                    style={[styles.chip, active && { backgroundColor: color, borderColor: color }]}
-                    onPress={() => setSelectedStatus(active ? null : s)}
-                  >
-                    {active
-                      ? <Ionicons name="checkmark" size={13} color="#fff" style={{ marginRight: 2 }} />
-                      : <View style={[styles.dot, { backgroundColor: color }]} />
-                    }
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{s}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            {showStatus && (
+  <>
+    <Text style={styles.sectionLabel}>Status</Text>
 
-            <View style={styles.divider} />
+    <View style={styles.chipsRow}>
+      {statuses.map((s) => {
+        const active = selectedStatus === s;
+        const color = statusColors[s];
+
+        return (
+          <TouchableOpacity
+            key={s}
+            style={[
+              styles.chip,
+              active && {
+                backgroundColor: color,
+                borderColor: color,
+              },
+            ]}
+            onPress={() =>
+              setSelectedStatus(active ? null : s)
+            }
+          >
+            {active ? (
+              <Ionicons
+                name="checkmark"
+                size={13}
+                color="#fff"
+                style={{ marginRight: 2 }}
+              />
+            ) : (
+              <View
+                style={[
+                  styles.dot,
+                  { backgroundColor: color },
+                ]}
+              />
+            )}
+
+            <Text
+              style={[
+                styles.chipText,
+                active && styles.chipTextActive,
+              ]}
+            >
+              {s}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+
+    <View style={styles.divider} />
+  </>
+)}
+
 
             {/* Priority */}
            {showPriority && (
@@ -149,8 +237,140 @@ export default function FilterModal({ visible, onClose ,statuses,
 
     <View style={styles.divider} />
   </>
-)}
+            )}
+             {/* Leave Mode */}
+            {showLeaveMode && (
+  <>
+    <Text style={styles.sectionLabel}>Leave Mode</Text>
 
+    <View style={styles.chipsRow}>
+      {leaveModes.map((mode) => {
+        const active = selectedLeaveMode === mode;
+        const color = leaveModeColors[mode];
+
+        return (
+          <TouchableOpacity
+            key={mode}
+            style={[
+              styles.chip,
+              active && {
+                backgroundColor: color,
+                borderColor: color,
+              },
+            ]}
+            onPress={() =>
+              setSelectedLeaveMode(active ? null : mode)
+            }
+          >
+            {active ? (
+              <Ionicons
+                name="checkmark"
+                size={13}
+                color="#fff"
+                style={{ marginRight: 2 }}
+              />
+            ) : (
+              <View
+                style={[
+                  styles.dot,
+                  { backgroundColor: color },
+                ]}
+              />
+            )}
+
+            <Text
+              style={[
+                styles.chipText,
+                active && styles.chipTextActive,
+              ]}
+            >
+              {mode}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+
+    <View style={styles.divider} />
+  </>
+             )}
+              {/* Leave type */}
+              {showLeaveType && (
+  <>
+    <Text style={styles.sectionLabel}>Leave Type</Text>
+
+    <View style={styles.chipsRow}>
+      {leaveTypes.map((type) => {
+        const active = selectedLeaveType === type;
+        const color = leaveTypeColors[type];
+
+        return (
+          <TouchableOpacity
+            key={type}
+            style={[
+              styles.chipleavetype,
+              active && {
+                backgroundColor: color,
+                borderColor: color,
+              },
+            ]}
+            onPress={() =>
+              setSelectedLeaveType(active ? null : type)
+            }
+          >
+            {active ? (
+              <Ionicons
+                name="checkmark"
+                size={13}
+                color="#fff"
+                style={{ marginRight: 0 }}
+              />
+            ) : (
+              <View
+                style={[
+                  styles.dot,
+                  { backgroundColor: color },
+                ]}
+              />
+            )}
+
+            <Text
+              style={[
+                styles.chipText,
+                active && styles.chipTextActive,
+              ]}
+            >
+              {type}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+
+    <View style={styles.divider} />
+  </>
+)}
+               {/* Reason */}
+{showReasonInput && (
+  <>
+    <Text style={styles.sectionLabel}>Reason</Text>
+
+    <View style={{ paddingBottom: 16 }}>
+      <FloatingInput
+        label="Reason* "
+        value={reasonValue}
+        onChangeText={onChangeReason}
+        keyboardType="default"
+        autoCapitalize="sentences"
+        multiline
+        numberOfLines={4}
+      />
+    </View>
+
+    {/* <View style={styles.divider} /> */}
+  </>
+)}
+               
             {/* <View style={styles.divider} /> */}
 
             {/* Calendar header */}
@@ -236,6 +456,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   chip: {
+    minWidth: 60,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    backgroundColor: "#F2F2F2",
+    borderColor: "#F2F2F2",
+    borderRadius: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+   chipleavetype: {
     minWidth: 60,
     flexDirection: "row",
     alignItems: "center",
