@@ -12,6 +12,7 @@ import BellIcon from "@/assets/icons/bellicon";
 import FilterIconBlack from "@/assets/icons/filtericonblack";
 import FilterIcon from "@/assets/icons/filtericon";
 import InboxModal from "./InboxModal";
+import { router } from "expo-router";
 
 type AppHeaderProps = {
   greeting: string;
@@ -61,9 +62,11 @@ export default function AppHeader({
             <View style={styles.bellDot} />
           </TouchableOpacity>
 
+          <TouchableOpacity onPress={() => router.push("/profile")}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
+          </TouchableOpacity>
         </View>
       </View>
 

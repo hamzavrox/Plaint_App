@@ -1,0 +1,450 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Dimensions,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from "react-native";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface AddPeopleUser {
+  id: string;
+  name: string;
+  email?: string;
+  /** Optional: pre-computed initials. Falls back to first letter of name. */
+  initials?: string;
+}
+
+export interface AddPeopleModalProps {
+  /** Whether the modal is visible */
+  visible: boolean;
+  /** Full list of users to search through */
+  users: AddPeopleUser[];
+  /** Called when the modal should be closed */
+  onClose: () => void;
+  /** Called whenever the search query changes */
+  onSearch?: (query: string) => void;
+  /** Called when a user row is tapped */
+  onSelectUser?: (user: AddPeopleUser) => void;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Returns two-character initials from a full name */
+// function getInitials(name: string, override?: string): string {
+//   if (override) return override.slice(0, 2).toUpperCase();
+//   const parts = name.trim().split(/\s+/);
+//   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+//   return name.slice(0, 2).toUpperCase();
+// }
+
+function getInitials(name: string, override?: string): string {
+  if (override) return override.charAt(0).toUpperCase();
+  return name.trim().charAt(0).toUpperCase();
+}
+
+/** Deterministic avatar background color from name */
+const AVATAR_COLORS = [
+  "#00DEAB",
+  "#1ED9A5",
+  "#12C298",
+  "#0BC5A8",
+  "#05B89B",
+];
+function avatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+// ─── Floating Label Search Input ──────────────────────────────────────────────
+
+interface FloatingSearchProps {
+  value: string;
+  onChangeText: (t: string) => void;
+}
+
+function FloatingSearchInput({ value, onChangeText }: FloatingSearchProps) {
+  const anim = useRef(new Animated.Value(value ? 1 : 0)).current;
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+
+  const animate = (to: number) =>
+    Animated.timing(anim, { toValue: to, duration: 180, useNativeDriver: false }).start();
+
+  const handleFocus = () => { animate(1); setFocused(true); };
+  const handleBlur = () => { if (!value) animate(0); setFocused(false); };
+
+  const labelTop = anim.interpolate({ inputRange: [0, 1], outputRange: [13, -10] });
+  const labelSize = anim.interpolate({ inputRange: [0, 1], outputRange: [14, 11] });
+  // const labelColor = anim.interpolate({ inputRange: [0, 1], outputRange: ["#A0A0A0", "#6B6B6B"] });
+  const activeColor = "#1D1D1D";
+  const labelColor = focused || value
+    ? activeColor
+    : "#A0A0A0";
+  const borderColor = focused ? "#1D1D1D" : "#D1D5DB";
+
+  return (
+    <TouchableWithoutFeedback onPress={() => inputRef.current?.focus()}>
+      <View style={[searchStyles.wrapper, { borderColor }]}>
+        {/* Floating label */}
+        <Animated.Text
+          style={[
+            searchStyles.label,
+            {
+              top: labelTop,
+              fontSize: labelSize,
+              color: labelColor,
+            },
+          ]}
+        >
+          Search people
+        </Animated.Text>
+
+        {/* Text input */}
+        <TextInput
+          ref={inputRef}
+          style={searchStyles.input}
+          value={value}
+          onChangeText={onChangeText}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          autoCorrect={false}
+          autoCapitalize="none"
+          returnKeyType="search"
+        />
+
+        {/* Search icon */}
+        <Ionicons
+          name="search-outline"
+          size={19}
+          color={focused || value ? "#1D1D1D" : "#9CA3AF"}
+          style={searchStyles.icon}
+        />      </View>
+    </TouchableWithoutFeedback>
+  );
+}
+
+const searchStyles = StyleSheet.create({
+  wrapper: {
+    borderWidth: 1.3,
+    borderRadius: 8,
+    marginHorizontal: 20,
+    marginBottom: 15,
+    paddingHorizontal: 14,
+    backgroundColor: "#fff",
+    flexDirection: "row",
+    alignItems: "center",
+    height: 45,
+    position: "relative",
+  },
+  label: {
+    position: "absolute",
+    left: 12,
+    backgroundColor: "#fff",
+    paddingHorizontal: 3,
+    fontFamily: "SF_Pro_Regular",
+    zIndex: 1,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: "SF_Pro_Semibold",
+    color: "#1D1D1D",
+    paddingVertical: 0,
+    paddingRight: 30,
+    height: "100%",
+  },
+  icon: {
+    position: "absolute",
+    right: 14,
+  },
+});
+
+// ─── User Row ─────────────────────────────────────────────────────────────────
+
+interface UserRowProps {
+  user: AddPeopleUser;
+  onPress: () => void;
+}
+
+function UserRow({ user, onPress }: UserRowProps) {
+  const initials = getInitials(user.name, user.initials);
+  const bgColor = avatarColor(user.name);
+
+  return (
+    <TouchableOpacity style={rowStyles.row} activeOpacity={0.65} onPress={onPress}>
+      {/* Avatar */}
+      <View style={[rowStyles.avatar]}>
+        <Text style={rowStyles.initials}>{initials}</Text>
+      </View>
+
+      {/* Name + email */}
+      <View style={rowStyles.info}>
+        <Text style={rowStyles.name} numberOfLines={1}>{user.name}</Text>
+        {!!user.email && (
+          <Text style={rowStyles.email} numberOfLines={1}>{user.email}</Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const rowStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 6,
+    gap: 14,
+  },
+  avatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#00DEAB",
+  },
+  initials: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "SF_Pro_Regular",
+    letterSpacing: 0.3,
+  },
+  info: {
+    flex: 1,
+    gap: 2,
+  },
+  name: {
+    fontSize: 15,
+    fontFamily: "SF_Pro_Regular",
+    color: "#1D1D1D",
+  },
+  email: {
+    fontSize: 12,
+    fontFamily: "SF_Pro_Regular",
+    color: "#6B7280",
+  },
+});
+
+// ─── Empty States ─────────────────────────────────────────────────────────────
+
+function EmptySearch() {
+  return (
+    <View style={emptyStyles.wrap}>
+      <Ionicons name="search-outline" size={40} color="#D1D5DB" />
+      <Text style={emptyStyles.text}>No users found</Text>
+      <Text style={emptyStyles.sub}>Try a different name or email</Text>
+    </View>
+  );
+}
+
+const emptyStyles = StyleSheet.create({
+  wrap: {
+    alignItems: "center",
+    paddingTop: 40,
+    paddingBottom: 24,
+    gap: 8,
+  },
+  text: {
+    fontSize: 15,
+    fontFamily: "SF_Pro_Semibold",
+    color: "#6B7280",
+  },
+  sub: {
+    fontSize: 12,
+    fontFamily: "SF_Pro_Regular",
+    color: "#9CA3AF",
+  },
+});
+
+// ─── Main Modal Component ─────────────────────────────────────────────────────
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+export default function AddPeopleModal({
+  visible,
+  users,
+  onClose,
+  onSearch,
+  onSelectUser,
+}: AddPeopleModalProps) {
+  const [query, setQuery] = useState("");
+  const [keyboardShown, setKeyboardShown] = useState(false);
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardShown(true));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardShown(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
+  // Filter only when the user has typed something
+
+  // const hasQuery = query.trim().length > 0;
+  // const filtered = hasQuery
+  //   ? users.filter(
+  //     (u) =>
+  //       u.name.toLowerCase().includes(query.toLowerCase()) ||
+  //       (u.email ?? "").toLowerCase().includes(query.toLowerCase())
+  //   )
+  //   : [];
+
+  const filtered = users.filter(
+    (u) =>
+      u.name.toLowerCase().includes(query.toLowerCase()) ||
+      (u.email ?? "").toLowerCase().includes(query.toLowerCase())
+  );
+
+  const handleChangeText = (text: string) => {
+    setQuery(text);
+    onSearch?.(text);
+  };
+
+  const handleClose = () => {
+    Keyboard.dismiss();
+    setQuery("");
+    onClose();
+  };
+
+  const handleSelect = (user: AddPeopleUser) => {
+    onSelectUser?.(user);
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={handleClose}
+      statusBarTranslucent
+    >
+      {/* Dimmed backdrop — tap to close */}
+      <TouchableWithoutFeedback onPress={handleClose}>
+        <View style={modalStyles.backdrop} />
+      </TouchableWithoutFeedback>
+
+      {/* Bottom sheet */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={modalStyles.kavWrapper}
+      >
+        <View style={[modalStyles.sheet, { minHeight: SCREEN_HEIGHT * 0.50, maxHeight: SCREEN_HEIGHT * 0.88 }]}>
+          {/* ── Close button ── */}
+          <TouchableOpacity
+            style={modalStyles.closeBtn}
+            onPress={handleClose}
+            activeOpacity={0.8}
+            hitSlop={8}
+          >
+            <Ionicons name="close" size={17} color="#fff" />
+          </TouchableOpacity>
+
+          {/* ── Title ── */}
+          <Text style={modalStyles.title}>Add People</Text>
+
+          {/* ── Floating label search ── */}
+          <FloatingSearchInput value={query} onChangeText={handleChangeText} />
+
+          {/* ── Results / empty states ── */}
+
+          {/* {!hasQuery ? null : filtered.length === 0 ? (
+            <EmptySearch />
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <UserRow user={item} onPress={() => handleSelect(item)} />
+              )}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              style={keyboardShown ? { maxHeight: SCREEN_HEIGHT * 0.45 } : undefined}
+              contentContainerStyle={{ paddingBottom: 32 }}
+            />
+          )} */}
+
+          {filtered.length === 0 ? (
+            <EmptySearch />
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <UserRow
+                  user={item}
+                  onPress={() => handleSelect(item)}
+                />
+              )}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              style={keyboardShown ? { maxHeight: SCREEN_HEIGHT * 0.40 } : undefined}
+              contentContainerStyle={{ paddingBottom: 32 }}
+            />
+          )}
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+// ─── Modal Styles ─────────────────────────────────────────────────────────────
+
+const modalStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.38)",
+  },
+  kavWrapper: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  sheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 32,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 12,
+  },
+  closeBtn: {
+    position: "absolute",
+    top: 18,
+    right: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#1D1D1D",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 5,
+  },
+  title: {
+    fontSize: 26,
+    fontFamily: "SF_Pro_Regular",
+    color: "#1D1D1D",
+    marginHorizontal: 20,
+    marginBottom: 22,
+  },
+});

@@ -1,19 +1,44 @@
 import MainChatIcon from "@/assets/icons/chaticon";
 import AppHeader from "@/components/headerapp";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import AddPeopleModal, { AddPeopleUser } from "@/components/AddPeopleModal";
+import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
     SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
 
+// ─── Mock Data ────────────────────────────────────────────────────────────────
+// hasUnread: true  → dot is visible on the chip
+// hasUnread: false → no dot (no new messages)
+const CHIP_DATA = [
+    { id: "channels", label: "Channels", hasUnread: true  },
+    { id: "groups",   label: "Groups",   hasUnread: true  },
+];
+
+const ALL_USERS: AddPeopleUser[] = [
+    { id: "1", name: "Muhammad Salman", email: "salman@email.com"  },
+    { id: "2", name: "Muhammad Haris",  email: "haris@email.com"   },
+    { id: "3", name: "Najam Ali",        email: "najam@email.com"   },
+    { id: "4", name: "Junaid",           email: "junaid@email.com"  },
+    { id: "5", name: "Awais",            email: "awais@email.com"   },
+    { id: "6", name: "Afzal Saleem",     email: "afzal@email.com"   },
+    { id: "7", name: "Nida Mumtaz",      email: "nida@email.com"    },
+    { id: "8", name: "Wahab Ahmad",      email: "wahab@email.com"   },
+    { id: "9", name: "Maryam",           email: "maryam@email.com"  },
+    { id: "10", name: "Afzal Saleem",     email: "afzal@email.com"   },
+    { id: "11", name: "Nida Mumtaz",      email: "nida@email.com"    },
+    { id: "12", name: "Wahab Ahmad",      email: "wahab@email.com"   },
+    { id: "13", name: "Maryam",           email: "maryam@email.com"  },
+];
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 export default function ChatScreen() {
-    const [searchText, setSearchText] = useState("");
+    const [addPeopleOpen, setAddPeopleOpen] = useState(false);
 
     return (
         <View style={styles.root}>
@@ -28,73 +53,34 @@ export default function ChatScreen() {
                     showFilter={false}
                 />
 
-                {/* Content scroll area */}
+                {/* Scrollable content */}
                 <ScrollView
                     style={styles.scroll}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* Search Input Box */}
-                    {/* <View style={styles.searchContainer}>
-                        <Ionicons
-                            name="search-outline"
-                            size={18}
-                            color="#9CA3AF"
-                            style={styles.searchIcon}
-                        />
-                        <TextInput
-                            style={styles.searchInput}
-                            placeholder="Search Task"
-                            placeholderTextColor="#9CA3AF"
-                            value={searchText}
-                            onChangeText={setSearchText}
-                        />
-                    </View> */}
-
-                    {/* Category Chips */}
+                    {/* ── Category Chips ── */}
                     <View style={styles.chipsContainer}>
-                        <TouchableOpacity
-                            style={styles.chipButton}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.chipText}>Channels</Text>
-                            <View style={styles.unreadDot} />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.chipButton}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.chipText}>Groups</Text>
-                        </TouchableOpacity>
+                        {CHIP_DATA.map((chip) => (
+                            <TouchableOpacity
+                                key={chip.id}
+                                style={styles.chipButton}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.chipText}>{chip.label}</Text>
+                                {/* Dot only when there are unread messages */}
+                                {chip.hasUnread && <View style={styles.unreadDot} />}
+                            </TouchableOpacity>
+                        ))}
                     </View>
 
-                    {/* Centered empty workspace layout */}
+                    {/* ── Empty / workspace state ── */}
                     <View style={styles.workspaceContainer}>
-                        {/* Custom Stacked Speech Bubble Icons */}
                         <View style={styles.iconStack}>
-                            {/* Background Bubble (Dark Grey) */}
-                            {/* <MaterialCommunityIcons
-                                name="message-text"
-                                size={68}
-                                color="#1D1D1D"
-                                style={styles.bgBubble}
-                            /> */}
-                            {/* Foreground Bubble (Teal Green) */}
-                            {/* <MaterialCommunityIcons
-                                name="message-text"
-                                size={68}
-                                color="#00DEAB"
-                                style={styles.fgBubble}
-                            /> */}
-
-                            <MainChatIcon/>
+                            <MainChatIcon />
                         </View>
 
-                        {/* Text details */}
-                        <Text style={styles.workspaceTitle}>
-                            Private workspace
-                        </Text>
+                        <Text style={styles.workspaceTitle}>Private workspace</Text>
                         <Text style={styles.workspaceDescription}>
                             A place just for you to capture ideas, draft messages,
                             and keep everything organized for later.
@@ -104,6 +90,7 @@ export default function ChatScreen() {
                         <TouchableOpacity
                             style={styles.addPeopleButton}
                             activeOpacity={0.85}
+                            onPress={() => setAddPeopleOpen(true)}
                         >
                             <Ionicons
                                 name="person-add"
@@ -116,10 +103,23 @@ export default function ChatScreen() {
                     </View>
                 </ScrollView>
             </SafeAreaView>
+
+            {/* ── Reusable Add People Modal ── */}
+            <AddPeopleModal
+                visible={addPeopleOpen}
+                users={ALL_USERS}
+                onClose={() => setAddPeopleOpen(false)}
+                onSearch={(query) => console.log("Search:", query)}
+                onSelectUser={(user) => {
+                    console.log("Selected:", user.name);
+                    setAddPeopleOpen(false);
+                }}
+            />
         </View>
     );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
     root: {
         flex: 1,
@@ -135,28 +135,8 @@ const styles = StyleSheet.create({
         paddingTop: 8,
         paddingBottom: 40,
     },
-    searchContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: "#E6E6E6",
-        borderRadius: 10,
-        marginHorizontal: 16,
-        paddingHorizontal: 12,
-        height: 40,
-        backgroundColor: "#fff",
-        marginBottom: 16,
-    },
-    searchIcon: {
-        marginRight: 8,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: 14,
-        fontFamily: "SF_Pro_Regular",
-        color: "#1D1D1D",
-        padding: 0,
-    },
+
+    // Chips
     chipsContainer: {
         flexDirection: "row",
         paddingHorizontal: 16,
@@ -188,6 +168,8 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#fff",
     },
+
+    // Empty state
     workspaceContainer: {
         flex: 1,
         alignItems: "center",
@@ -196,21 +178,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
     },
     iconStack: {
-        // width: 100,
-        // height: 80,
         position: "relative",
         marginBottom: 16,
-    },
-    bgBubble: {
-        position: "absolute",
-        bottom: 4,
-        right: 12,
-        transform: [{ scaleX: -1 }], // Flip or adjust bubble layout if needed to stack naturally
-    },
-    fgBubble: {
-        position: "absolute",
-        top: 0,
-        left: 12,
     },
     workspaceTitle: {
         fontSize: 22,
@@ -225,18 +194,16 @@ const styles = StyleSheet.create({
         color: "#4B5563",
         textAlign: "center",
         lineHeight: 20,
-        // paddingHorizontal: 0,
         marginBottom: 24,
     },
     addPeopleButton: {
         flexDirection: "row",
-        justifyContent:"center",
+        justifyContent: "center",
         minWidth: 200,
         alignItems: "center",
         backgroundColor: "#00DEAB",
         borderRadius: 8,
         paddingVertical: 12,
-        // paddingHorizontal: 4,
         shadowColor: "#00DEAB",
         shadowOpacity: 0.15,
         shadowRadius: 6,
