@@ -1,4 +1,4 @@
-﻿import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -15,13 +15,15 @@ import TopMintGlow from "@/components/gradientheader";
 import { Colors } from "@/theme/root";
 import useAppFonts from "@/theme/useAppFonts";
 
+import Images from "@/constants/images";
+
 const { width: SW } = Dimensions.get("window");
 
 const SLIDES = [
-  require("../../assets/images/mainbanner.png"),
-  require("../../assets/images/mainbanner.png"),
-  require("../../assets/images/mainbanner.png"),
-  require("../../assets/images/mainbanner.png"),
+  Images.MainBanner,
+  Images.MainBanner,
+  Images.MainBanner,
+  Images.MainBanner,
 ];
 
 function Dots({ active }: { active: number }) {

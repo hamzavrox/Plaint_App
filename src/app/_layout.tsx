@@ -13,8 +13,8 @@ export default function TabLayout() {
   }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <>
       <Stack screenOptions={{ headerShown: false }} />
-    </ThemeProvider>
+    </>
   );
 }

@@ -1,8 +1,10 @@
-import MainChatIcon from "@/assets/icons/chaticon";
-import AppHeader from "@/components/headerapp";
+import Icons from "@/constants/icons";
+const { ChatIcon: MainChatIcon } = Icons;
 import AddPeopleModal, { AddPeopleUser } from "@/components/AddPeopleModal";
+import AppHeader from "@/components/headerapp";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import { router } from "expo-router";
+import { useState } from "react";
 import {
     SafeAreaView,
     ScrollView,
@@ -16,24 +18,24 @@ import {
 // hasUnread: true  → dot is visible on the chip
 // hasUnread: false → no dot (no new messages)
 const CHIP_DATA = [
-    { id: "channels", label: "Channels", hasUnread: true  },
-    { id: "groups",   label: "Groups",   hasUnread: true  },
+    { id: "channels", label: "Channels", hasUnread: true },
+    { id: "groups", label: "Groups", hasUnread: true },
 ];
 
 const ALL_USERS: AddPeopleUser[] = [
-    { id: "1", name: "Muhammad Salman", email: "salman@email.com"  },
-    { id: "2", name: "Muhammad Haris",  email: "haris@email.com"   },
-    { id: "3", name: "Najam Ali",        email: "najam@email.com"   },
-    { id: "4", name: "Junaid",           email: "junaid@email.com"  },
-    { id: "5", name: "Awais",            email: "awais@email.com"   },
-    { id: "6", name: "Afzal Saleem",     email: "afzal@email.com"   },
-    { id: "7", name: "Nida Mumtaz",      email: "nida@email.com"    },
-    { id: "8", name: "Wahab Ahmad",      email: "wahab@email.com"   },
-    { id: "9", name: "Maryam",           email: "maryam@email.com"  },
-    { id: "10", name: "Afzal Saleem",     email: "afzal@email.com"   },
-    { id: "11", name: "Nida Mumtaz",      email: "nida@email.com"    },
-    { id: "12", name: "Wahab Ahmad",      email: "wahab@email.com"   },
-    { id: "13", name: "Maryam",           email: "maryam@email.com"  },
+    { id: "1", name: "Muhammad Salman", email: "salman@email.com" },
+    { id: "2", name: "Muhammad Haris", email: "haris@email.com" },
+    { id: "3", name: "Najam Ali", email: "najam@email.com" },
+    { id: "4", name: "Junaid", email: "junaid@email.com" },
+    { id: "5", name: "Awais", email: "awais@email.com" },
+    { id: "6", name: "Afzal Saleem", email: "afzal@email.com" },
+    { id: "7", name: "Nida Mumtaz", email: "nida@email.com" },
+    { id: "8", name: "Wahab Ahmad", email: "wahab@email.com" },
+    { id: "9", name: "Maryam", email: "maryam@email.com" },
+    { id: "10", name: "Afzal Saleem", email: "afzal@email.com" },
+    { id: "11", name: "Nida Mumtaz", email: "nida@email.com" },
+    { id: "12", name: "Wahab Ahmad", email: "wahab@email.com" },
+    { id: "13", name: "Maryam", email: "maryam@email.com" },
 ];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -50,7 +52,6 @@ export default function ChatScreen() {
                     initials="JD"
                     placeholder="Search chats..."
                     showSearch
-                    showFilter={false}
                 />
 
                 {/* Scrollable content */}
@@ -111,8 +112,14 @@ export default function ChatScreen() {
                 onClose={() => setAddPeopleOpen(false)}
                 onSearch={(query) => console.log("Search:", query)}
                 onSelectUser={(user) => {
-                    console.log("Selected:", user.name);
                     setAddPeopleOpen(false);
+                    router.push({
+                        pathname: "/conversation",
+                        params: {
+                            name: user.name,
+                            initials: user.name.charAt(0).toUpperCase(),
+                        },
+                    });
                 }}
             />
         </View>

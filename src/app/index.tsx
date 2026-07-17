@@ -6,6 +6,8 @@ import { Image, StyleSheet, View } from "react-native";
 import TopMintGlow from "@/components/gradientheader";
 import BottomMintGlow from "@/components/gradientfooter";
 
+import Images from "@/constants/images";
+
 export default function SplashScreen() {
   const router = useRouter();
 
@@ -25,7 +27,7 @@ export default function SplashScreen() {
 
         <TopMintGlow/>
         <Image
-          source={require("@/assets/images/Plaintlogo.png")}
+          source={Images.PlaintLogo}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -47,7 +49,7 @@ export default function SplashScreen() {
         style={styles.container}
       >
         <Image
-          source={require("@/assets/images/Plaintlogo.png")}
+          source={Images.PlaintLogo}
           style={styles.logo}
           resizeMode="contain"
         />

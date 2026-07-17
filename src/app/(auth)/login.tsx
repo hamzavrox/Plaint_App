@@ -1,12 +1,14 @@
 import BottomGlow from "@/components/gradientfooter";
 import FloatingInput from "@/components/FloatingInput";
 import { useState } from "react";
-import { Image, Keyboard, Pressable, StyleSheet, Text, TouchableWithoutFeedback, View } from "react-native";
+import { Image, Keyboard, Pressable, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import TopMintGlow from "@/components/gradientheader";
 import { Color } from "expo-router";
 import { Colors } from "@/theme/root";
 import { router } from "expo-router";
+
+import Images from "@/constants/images";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -25,7 +27,7 @@ export default function Login() {
 
       <View style={styles.content}>
         <Image
-          source={require("@/assets/images/Plaintlogo.png")}
+          source={Images.PlaintLogo}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -57,9 +59,9 @@ export default function Login() {
           <Text style={styles.loginBtnText}>Log In</Text>
         </Pressable>
 
-        <Pressable>
+        <TouchableOpacity onPress={()=>router.replace('/forgetpassword')}>
           <Text style={styles.forgotText}>Forgot Password?</Text>
-        </Pressable>
+        </TouchableOpacity>
       </View>
 
       {/* <BottomGlow /> */}

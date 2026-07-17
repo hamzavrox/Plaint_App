@@ -1,18 +1,21 @@
-import React from "react";
-import { useEffect, useState } from "react";
-import { View, TouchableOpacity, StyleSheet , Keyboard, } from "react-native";
+import Icons from "@/constants/icons";
+import { Ionicons } from "@expo/vector-icons";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { Ionicons, Fontisto } from "@expo/vector-icons";
-import TaskIconBlack from "@/assets/icons/tabicons/taskblack";
-import TaskIconsWhite from "@/assets/icons/tabicons/taskwhite";
-import HomeIconBlack from "@/assets/icons/tabicons/homeblack";
-import LeaveIconBlack from "@/assets/icons/tabicons/leaveblack";
-import LeaveIconWhite from "@/assets/icons/tabicons/leavewhite";
-import HomeIconWhite from "@/assets/icons/tabicons/homewhite";
-import PEIconBlack from "@/assets/icons/tabicons/peblack";
-import PEIconWhite from "@/assets/icons/tabicons/pewhite";
-import ChatIconBlack from "@/assets/icons/tabicons/chatblack";
-import ChatIconWhite from "@/assets/icons/tabicons/chatwhite";
+import React, { useEffect, useState } from "react";
+import { Keyboard, StyleSheet, TouchableOpacity, View, } from "react-native";
+
+const {
+  ChatBlackIcon: ChatIconBlack,
+  ChatWhiteIcon: ChatIconWhite,
+  HomeBlackIcon: HomeIconBlack,
+  HomeWhiteIcon: HomeIconWhite,
+  LeaveBlackIcon: LeaveIconBlack,
+  LeaveWhiteIcon: LeaveIconWhite,
+  PEBlackIcon: PEIconBlack,
+  PEWhiteIcon: PEIconWhite,
+  TaskBlackIcon: TaskIconBlack,
+  TaskWhiteIcon: TaskIconsWhite,
+} = Icons;
 
 type TabItem = {
   name: string;
@@ -22,10 +25,19 @@ type TabItem = {
 };
 
 const TABS: TabItem[] = [
+  // {
+  //   name: "biometric",
+  //   ionicon: "finger-print-outline",
+  // },
   {
     name: "tasks",
     activeIcon: TaskIconBlack,
     inactiveIcon: TaskIconsWhite,
+  },
+  {
+    name: "home",
+    activeIcon: HomeIconBlack,
+    inactiveIcon: HomeIconWhite,
   },
   {
     name: "leaves",
@@ -37,24 +49,17 @@ const TABS: TabItem[] = [
     activeIcon: PEIconBlack,
     inactiveIcon: PEIconWhite,
   },
-  {
-    name: "home",
-    activeIcon: HomeIconBlack,
-    inactiveIcon: HomeIconWhite,
-  },
+
   {
     name: "chat",
     activeIcon: ChatIconBlack,
     inactiveIcon: ChatIconWhite,
   },
-  {
-    name: "biometric",
-    ionicon: "finger-print-outline",
-  },
-  {
-    name: "grid",
-    ionicon: "grid-outline",
-  },
+  
+  // {
+  //   name: "grid",
+  //   ionicon: "grid-outline",
+  // },
 ];
 
 // const TABS: { name: string;  icon: React.ComponentProps<typeof Ionicons>["name"] }[] = [
@@ -72,39 +77,39 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   useEffect(() => {
 
-  const showKeyboard = Keyboard.addListener(
-    "keyboardDidShow",
-    () => {
-      setKeyboardVisible(true);
-    }
-  );
+    const showKeyboard = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
 
-  const hideKeyboard = Keyboard.addListener(
-    "keyboardDidHide",
-    () => {
-      setKeyboardVisible(false);
-    }
-  );
+    const hideKeyboard = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
 
 
-  return () => {
-    showKeyboard.remove();
-    hideKeyboard.remove();
-  };
+    return () => {
+      showKeyboard.remove();
+      hideKeyboard.remove();
+    };
 
-}, []);
+  }, []);
 
-if (keyboardVisible) {
-  return (
-    <View style={{ height: 0 }} />
-  );
-}
+  if (keyboardVisible) {
+    return (
+      <View style={{ height: 0 }} />
+    );
+  }
 
-// console.log("Current Index:", state.index);
-// console.log("Current Route:", state.routes[state.index].name);
-// console.log(state.routes);
-// console.log(state.routeNames);
-const currentRoute = state.routes[state.index]?.name.toLowerCase();
+  // console.log("Current Index:", state.index);
+  // console.log("Current Route:", state.routes[state.index].name);
+  // console.log(state.routes);
+  // console.log(state.routeNames);
+  const currentRoute = state.routes[state.index]?.name.toLowerCase();
   return (
     <View style={styles.container}>
       {/* {activeRouteName === "Tasks" && (
@@ -124,20 +129,20 @@ const currentRoute = state.routes[state.index]?.name.toLowerCase();
               onPress={() => navigation.navigate(tab.name)}
             >
               <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-       {tab.activeIcon ? (
-    focused ? (
-      <tab.activeIcon width={24} height={24} />
-    ) : (
-      <tab.inactiveIcon width={24} height={24} />
-    )
-  ) : (
-    <Ionicons
-      name={tab.ionicon!}
-      size={24}
-      color={focused ? "#000" : "#fff"}
-    />
-  )}
-</View>
+                {tab.activeIcon ? (
+                  focused ? (
+                    <tab.activeIcon width={24} height={24} />
+                  ) : (
+                    <tab.inactiveIcon width={24} height={24} />
+                  )
+                ) : (
+                  <Ionicons
+                    name={tab.ionicon!}
+                    size={24}
+                    color={focused ? "#000" : "#fff"}
+                  />
+                )}
+              </View>
             </TouchableOpacity>
           );
         })}

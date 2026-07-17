@@ -1,5 +1,9 @@
-import React, { useState } from "react";
+import Icons from "@/constants/icons";
+
+const { BellIcon, FilterIcon, FilterIconBlack } = Icons;
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -8,11 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import BellIcon from "@/assets/icons/bellicon";
-import FilterIconBlack from "@/assets/icons/filtericonblack";
-import FilterIcon from "@/assets/icons/filtericon";
 import InboxModal from "./InboxModal";
-import { router } from "expo-router";
 
 type AppHeaderProps = {
   greeting: string;
@@ -30,7 +30,7 @@ export default function AppHeader({
   subGreeting,
   initials,
   showSearch = false,
-  showFilter = true,
+  showFilter = false,
   placeholder,
   onFilterPress,
 }: AppHeaderProps) {
@@ -63,9 +63,9 @@ export default function AppHeader({
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.push("/profile")}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials}</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -73,30 +73,30 @@ export default function AppHeader({
       {showSearch && searchOpen && (
         <Pressable onPress={(e) => e.stopPropagation()}>
           <View style={styles.searchRow}>
-          <View style={styles.searchBox}>
-            <Ionicons name="search-outline" size={18} color="#9CA3AF" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder={placeholder}
-              placeholderTextColor="#9CA3AF"
-              value={search}
-              onChangeText={setSearch}
-              autoFocus
-            />
-          </View>
- {showFilter && (
-    <Pressable
-      onPress={onFilterPress}
-      style={({ pressed }) => [
-        styles.filterBtn,
-        pressed && styles.filterBtnPressed,
-      ]}
-    >
-      {({ pressed }) =>
-        pressed ? <FilterIconBlack /> : <FilterIcon />
-      }
-    </Pressable>
-  )}
+            <View style={styles.searchBox}>
+              <Ionicons name="search-outline" size={18} color="#9CA3AF" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder={placeholder}
+                placeholderTextColor="#9CA3AF"
+                value={search}
+                onChangeText={setSearch}
+                autoFocus
+              />
+            </View>
+            {showFilter && (
+              <Pressable
+                onPress={onFilterPress}
+                style={({ pressed }) => [
+                  styles.filterBtn,
+                  pressed && styles.filterBtnPressed,
+                ]}
+              >
+                {({ pressed }) =>
+                  pressed ? <FilterIconBlack /> : <FilterIcon />
+                }
+              </Pressable>
+            )}
           </View>
         </Pressable>
       )}
@@ -115,11 +115,11 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: "row",
     borderWidth: 1,
-    borderColor: "#E6E6E6", 
+    borderColor: "#E6E6E6",
     borderRadius: 10,
     marginHorizontal: 16,
     // paddingHorizontal: 12,
-    paddingRight:2,
+    paddingRight: 2,
     paddingVertical: 12,
     height: 40,
     gap: 4,
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 40,
     gap: 8,
-  
+
   },
   searchInput: {
     flex: 1,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   },
 
   filterBtnPressed: {
-  backgroundColor: "#00DEAB",
+    backgroundColor: "#00DEAB",
   },
 
   header: {
@@ -220,5 +220,5 @@ const styles = StyleSheet.create({
     fontFamily: "SF_Pro_Bold",
     fontSize: 14,
   },
-  
+
 });

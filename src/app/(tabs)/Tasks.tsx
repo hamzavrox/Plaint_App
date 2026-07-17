@@ -1,20 +1,15 @@
-import AllTasksIcon from "@/assets/icons/alltask";
-import AssignIcon from "@/assets/icons/assignicon";
-import CompletedIcon from "@/assets/icons/completedicon";
-import CreatedIcon from "@/assets/icons/createdicon";
-import DelayIcon from "@/assets/icons/delayicon";
-import DueTodayIcon from "@/assets/icons/duetoday";
-import RecurringIcon from "@/assets/icons/recurringicon";
-import SevendayIcon from "@/assets/icons/sevenday";
+import Icons from "@/constants/icons";
+
+const { AllTaskIcon: AllTasksIcon, AssignIcon, CompletedIcon, CreatedIcon, DelayIcon, DueTodayIcon, RecurringIcon, SevenDayIcon: SevendayIcon } = Icons;
 import CreateTaskModal from "@/components/CreateTaskModal";
 import FilterModal from "@/components/FilterModal";
 import AppHeader from "@/components/headerapp";
 import StatCard from "@/components/StatCard";
 import TaskDetailModal, { TaskDetail } from "@/components/TaskDetailModal";
+import { StatusType, TaskRowProps } from "@/components/TaskRow";
 import TaskTable from "@/components/TaskTable";
-import { TaskRowProps, StatusType } from "@/components/TaskRow";
 import { Fontisto } from "@expo/vector-icons";
-import { useState, useMemo, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -73,14 +68,14 @@ export default function TasksScreen() {
   // Derive stats dynamically on render so badge counts update on-the-fly
   const statsList = useMemo(() => {
     return [
-      { label: "All Tasks",      count: pad(tasksState.length), iconName: <AllTasksIcon />, id: "all" },
-      { label: "Due Today",      count: pad(dueTodayTasksState.length), iconName: <DueTodayIcon />, id: "today" },
-      { label: "Due in 7 days",  count: pad(tasksMap.week.length), iconName: <SevendayIcon />, id: "week" },
-      { label: "Delayed",        count: pad(tasksMap.overdue.length), iconName: <DelayIcon />, id: "overdue" },
-      { label: "Created by me",  count: pad(tasksMap.created.length), iconName: <CreatedIcon />, id: "created" },
+      { label: "All Tasks", count: pad(tasksState.length), iconName: <AllTasksIcon />, id: "all" },
+      { label: "Due Today", count: pad(dueTodayTasksState.length), iconName: <DueTodayIcon />, id: "today" },
+      { label: "Due in 7 days", count: pad(tasksMap.week.length), iconName: <SevendayIcon />, id: "week" },
+      { label: "Delayed", count: pad(tasksMap.overdue.length), iconName: <DelayIcon />, id: "overdue" },
+      { label: "Created by me", count: pad(tasksMap.created.length), iconName: <CreatedIcon />, id: "created" },
       { label: "Assigned to me", count: pad(tasksMap.assigned.length), iconName: <AssignIcon />, id: "assigned" },
-      { label: "Recurring",      count: pad(tasksMap.recurring.length), iconName: <RecurringIcon />, id: "recurring" },
-      { label: "Completed",      count: pad(tasksMap.completed.length), iconName: <CompletedIcon />, id: "completed" },
+      { label: "Recurring", count: pad(tasksMap.recurring.length), iconName: <RecurringIcon />, id: "recurring" },
+      { label: "Completed", count: pad(tasksMap.completed.length), iconName: <CompletedIcon />, id: "completed" },
     ];
   }, [tasksState, dueTodayTasksState, tasksMap]);
 
@@ -121,15 +116,15 @@ export default function TasksScreen() {
   const statuses = [
     "Pending", "In-Progress", "On-Hold", "Rejected", "Pending-Approval", "Completed",
   ];
-  
+
   const priorities = ["Low", "Medium", "High"];
-  
+
   const priorityColors = {
     Low: "#0DDFD8",
     Medium: "#737373",
     High: "#DF0D0D",
   };
-  
+
   const statusColors = {
     Pending: "#DFA70D",
     "In-Progress": "#607EF9",
@@ -152,11 +147,11 @@ export default function TasksScreen() {
           showSearch
           onFilterPress={() => setFilterVisible(true)}
         />
-        <FilterModal visible={filterVisible} onClose={() => setFilterVisible(false)}   statuses={statuses}
-  statusColors={statusColors}
-  priorities={priorities}
-  priorityColors={priorityColors}
-  showPriority={true} />
+        <FilterModal visible={filterVisible} onClose={() => setFilterVisible(false)} statuses={statuses}
+          statusColors={statusColors}
+          priorities={priorities}
+          priorityColors={priorityColors}
+          showPriority={true} />
 
         {/* Stat Cards */}
         <ScrollView
@@ -177,21 +172,16 @@ export default function TasksScreen() {
           ))}
         </ScrollView>
 
-        {/* Task Table — conditional on active stat card */}
-        {/* <View style={{ flex: 1, overflow: "hidden" , width: "95%"}}> */}
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent]}
-          showsVerticalScrollIndicator={false}
-        >
-          <TaskTable
+        {/* Task Table */}
+       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>          <TaskTable
             sectionTitle={statsList.find((s) => s.id === activeTab)?.label ?? "All Tasks"}
             tasks={tasksMap[activeTab] ?? tasksState}
             onTaskPress={handleTaskPress}
             onStatusChange={handleStatusChange}
           />
+
         </ScrollView>
-        {/* </View> */}
+
 
         {/* Bottom Tab Bar */}
         {/* <BottomTabBar active="tasks" /> */}

@@ -178,6 +178,7 @@ function TaskTable({ sectionTitle, tasks, onTaskPress, onStatusChange }: Props) 
       keyExtractor={(_item, i) => String(i)}
       emptyText="No tasks found."
       collapsible={false}
+      maxHeight={550} 
     />
   );
 }

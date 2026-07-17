@@ -21,11 +21,14 @@ import React, {
   memo,
   useCallback,
   useMemo,
+  useRef,
   useState,
   ReactNode,
 } from "react";
 import {
   ActivityIndicator,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   ScrollView,
   StyleSheet,
   Text,
@@ -125,6 +128,8 @@ export interface DynamicTableProps<T = any> {
   openRowZIndex?: number;
   /** Whether the table is collapsible — defaults to true */
   collapsible?: boolean;
+  /** Max height of the scrollable rows area — defaults to 300 */
+  maxHeight?: number;
 }
 
 // ─── DynamicRow (memoised) ────────────────────────────────────────────────────
@@ -295,6 +300,7 @@ function DynamicTable<T = any>({
   rowZIndex = 1,
   openRowZIndex = 9999,
   collapsible = true,
+  maxHeight = 300,
 }: DynamicTableProps<T>): React.ReactElement {
   const [collapsed, setCollapsed] = useState(false);
   const [openRowIndex, setOpenRowIndex] = useState<number | null>(null);
@@ -361,58 +367,26 @@ function DynamicTable<T = any>({
 
       {/* ── Table body ──────────────────────────────────────────────────── */}
       {(!collapsed || !collapsible) && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ overflow: "hidden" }}
-          keyboardShouldPersistTaps="always"
-        >
-          <View>
-            {/* Header row */}
-            <View style={styles.tableHeader}>
-              {leadingColumnWidth != null && leadingColumnWidth > 0 && (
-                <View style={{ width: leadingColumnWidth }} />
-              )}
-              {headerCells}
-            </View>
-
-            {/* Loading state */}
-            {loading && (
-              <View style={styles.centeredState}>
-                <ActivityIndicator size="small" color="#00DEAB" />
-              </View>
-            )}
-
-            {/* Empty state */}
-            {!loading && data.length === 0 && (
-              <View style={styles.centeredState}>
-                <Text style={styles.emptyText}>{emptyText}</Text>
-              </View>
-            )}
-
-            {/* Data rows */}
-            {!loading &&
-              data.map((item, i) => (
-                <DynamicRow<T>
-                  key={resolveKey(item, i)}
-                  item={item}
-                  rowIndex={i}
-                  columns={columns}
-                  renderCell={renderCell}
-                  renderDropdown={renderDropdown}
-                  actionColumnKey={actionColumnKey}
-                  leadingColumnWidth={leadingColumnWidth}
-                  renderLeadingCell={renderLeadingCell}
-                  onRowPress={onRowPress}
-                  isOpen={openRowIndex === i}
-                  onOpenRequest={() => handleOpenRow(i)}
-                  onClose={handleCloseRow}
-                  rowZIndex={rowZIndex}
-                  openRowZIndex={openRowZIndex}
-                />
-              ))}
-          </View>
-        </ScrollView>
+        <StickyHeaderTable<T>
+          columns={columns}
+          data={data}
+          headerCells={headerCells}
+          leadingColumnWidth={leadingColumnWidth}
+          loading={loading}
+          emptyText={emptyText}
+          renderCell={renderCell}
+          renderDropdown={renderDropdown}
+          actionColumnKey={actionColumnKey}
+          renderLeadingCell={renderLeadingCell}
+          onRowPress={onRowPress}
+          openRowIndex={openRowIndex}
+          handleOpenRow={handleOpenRow}
+          handleCloseRow={handleCloseRow}
+          rowZIndex={rowZIndex}
+          openRowZIndex={openRowZIndex}
+          resolveKey={resolveKey}
+          maxHeight={maxHeight}
+        />
       )}
     </View>
   );
@@ -420,6 +394,128 @@ function DynamicTable<T = any>({
 
 // Export a memoised version so parent re-renders don't cascade unless props change
 export default memo(DynamicTable) as typeof DynamicTable;
+
+// ─── StickyHeaderTable — fixed header + scrollable rows ──────────────────────
+
+interface StickyHeaderTableProps<T> {
+  columns: Column<T>[];
+  data: T[];
+  headerCells: ReactNode[];
+  leadingColumnWidth?: number;
+  loading: boolean;
+  emptyText: string;
+  renderCell?: DynamicTableProps<T>["renderCell"];
+  renderDropdown?: DynamicTableProps<T>["renderDropdown"];
+  actionColumnKey?: string;
+  renderLeadingCell?: (item: T, rowIndex: number) => ReactNode;
+  onRowPress?: (item: T, rowIndex: number) => void;
+  openRowIndex: number | null;
+  handleOpenRow: (i: number) => void;
+  handleCloseRow: () => void;
+  rowZIndex: number;
+  openRowZIndex: number;
+  resolveKey: (item: T, i: number) => string;
+  maxHeight: number;
+}
+
+function StickyHeaderTable<T>({
+  columns, data, headerCells, leadingColumnWidth, loading, emptyText,
+  renderCell, renderDropdown, actionColumnKey, renderLeadingCell, onRowPress,
+  openRowIndex, handleOpenRow, handleCloseRow, rowZIndex, openRowZIndex, resolveKey,
+  maxHeight,
+}: StickyHeaderTableProps<T>) {
+  const headerScrollRef = useRef<ScrollView>(null);
+  const bodyHScrollRef = useRef<ScrollView>(null);
+  const isSyncingHeader = useRef(false);
+  const isSyncingBody = useRef(false);
+
+  const onHeaderScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (isSyncingHeader.current) { isSyncingHeader.current = false; return; }
+      isSyncingBody.current = true;
+      bodyHScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
+    }, []
+  );
+
+  const onBodyScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (isSyncingBody.current) { isSyncingBody.current = false; return; }
+      isSyncingHeader.current = true;
+      headerScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
+    }, []
+  );
+
+  return (
+    <View>
+      {/* Fixed header — horizontal sync only */}
+      <ScrollView
+        ref={headerScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        scrollEnabled={false}
+        onScroll={onHeaderScroll}
+        scrollEventThrottle={16}
+      >
+        <View style={styles.tableHeader}>
+          {leadingColumnWidth != null && leadingColumnWidth > 0 && (
+            <View style={{ width: leadingColumnWidth }} />
+          )}
+          {headerCells}
+        </View>
+      </ScrollView>
+
+      {/* Horizontal scroll wrapper — synced with header */}
+      <ScrollView
+        ref={bodyHScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="always"
+        onScroll={onBodyScroll}
+        scrollEventThrottle={16}
+      >
+        {/* Vertical scroll — rows only */}
+        <ScrollView
+          vertical
+          showsVerticalScrollIndicator={false}
+          style={{ maxHeight }}
+          keyboardShouldPersistTaps="always"
+          nestedScrollEnabled
+        >
+          {loading && (
+            <View style={styles.centeredState}>
+              <ActivityIndicator size="small" color="#00DEAB" />
+            </View>
+          )}
+          {!loading && data.length === 0 && (
+            <View style={styles.centeredState}>
+              <Text style={styles.emptyText}>{emptyText}</Text>
+            </View>
+          )}
+          {!loading &&
+            data.map((item, i) => (
+              <DynamicRow<T>
+                key={resolveKey(item, i)}
+                item={item}
+                rowIndex={i}
+                columns={columns}
+                renderCell={renderCell}
+                renderDropdown={renderDropdown}
+                actionColumnKey={actionColumnKey}
+                leadingColumnWidth={leadingColumnWidth}
+                renderLeadingCell={renderLeadingCell}
+                onRowPress={onRowPress}
+                isOpen={openRowIndex === i}
+                onOpenRequest={() => handleOpenRow(i)}
+                onClose={handleCloseRow}
+                rowZIndex={rowZIndex}
+                openRowZIndex={openRowZIndex}
+              />
+            ))}
+        </ScrollView>
+      </ScrollView>
+    </View>
+  );
+}
 
 // ─── Styles — pixel-perfect copy of original TaskTable / TaskRow ──────────────
 
