@@ -187,6 +187,7 @@ export default function TasksScreen() {
             tasks={tasksMap[activeTab] ?? tasksState}
             onTaskPress={handleTaskPress}
             onStatusChange={handleStatusChange}
+            onFilterPress={() => setFilterVisible(true)}
           />
         </ScrollView>
 

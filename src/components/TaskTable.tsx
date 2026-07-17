@@ -24,6 +24,7 @@ type Props = {
   tasks: TaskRowProps[];
   onTaskPress?: (task: TaskRowProps) => void;
   onStatusChange?: (task: TaskRowProps, newStatus: StatusType) => void;
+  onFilterPress?: () => void;
 };
 
 // ─── Static column keys (order = left to right) ───────────────────────────────
@@ -64,7 +65,7 @@ const LeadingCell = memo(function LeadingCell({ item }: { item: TaskRowProps }) 
 
 // ─── TaskTable ────────────────────────────────────────────────────────────────
 
-function TaskTable({ sectionTitle, tasks, onTaskPress, onStatusChange }: Props) {
+function TaskTable({ sectionTitle, tasks, onTaskPress, onStatusChange, onFilterPress }: Props) {
   /**
    * Per-row status state.
    * Initialised from the tasks prop, then updated locally when the user
@@ -179,6 +180,7 @@ function TaskTable({ sectionTitle, tasks, onTaskPress, onStatusChange }: Props) 
       emptyText="No tasks found."
       collapsible={false}
       maxHeight={550}
+      onFilterPress={onFilterPress}
     />
   );
 }

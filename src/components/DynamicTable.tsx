@@ -30,12 +30,16 @@ import {
   ActivityIndicator,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import Icons from "@/constants/icons";
+
+const { FilterIconBlack } = Icons;
 
 // ─── Column definition ────────────────────────────────────────────────────────
 
@@ -130,6 +134,8 @@ export interface DynamicTableProps<T = any> {
   collapsible?: boolean;
   /** Max height of the scrollable rows area — defaults to 300 */
   maxHeight?: number;
+  /** Optional callback when the filter button is pressed — renders a filter button instead of the collapse chevron */
+  onFilterPress?: () => void;
 }
 
 // ─── DynamicRow (memoised) ────────────────────────────────────────────────────
@@ -301,6 +307,7 @@ function DynamicTable<T = any>({
   openRowZIndex = 9999,
   collapsible = true,
   maxHeight = 300,
+  onFilterPress,
 }: DynamicTableProps<T>): React.ReactElement {
   const [collapsed, setCollapsed] = useState(false);
   const [openRowIndex, setOpenRowIndex] = useState<number | null>(null);
@@ -349,7 +356,23 @@ function DynamicTable<T = any>({
       {sectionTitle != null && (
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{sectionTitle}</Text>
-          {collapsible && (
+          {onFilterPress ? (
+            <Pressable
+              onPress={onFilterPress}
+              style={({ pressed }) => [
+                styles.filterBtn,
+                pressed && styles.filterBtnPressed,
+              ]}
+            >
+              {({ pressed }) =>
+                pressed ? (
+                  <FilterIconBlack width={18} height={18} color="#fff" />
+                ) : (
+                  <FilterIconBlack width={18} height={18} />
+                )
+              }
+            </Pressable>
+          ) : collapsible ? (
             <TouchableOpacity
               style={styles.chevronBox}
               onPress={handleToggleCollapse}
@@ -361,7 +384,7 @@ function DynamicTable<T = any>({
                 color="#E6E6E6"
               />
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
       )}
 
@@ -475,7 +498,6 @@ function StickyHeaderTable<T>({
       >
         {/* Vertical scroll — rows only */}
         <ScrollView
-          vertical
           showsVerticalScrollIndicator={false}
           style={{ maxHeight }}
           keyboardShouldPersistTaps="always"
@@ -539,6 +561,17 @@ const styles = StyleSheet.create({
     borderColor: "#E6E6E6",
     alignItems: "center",
     justifyContent: "center",
+  },
+  filterBtn: {
+    width: 35,
+    height: 35,
+    borderRadius: 8,
+    backgroundColor: "#E6E6E6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterBtnPressed: {
+    backgroundColor: "#00DEAB",
   },
 
   // Table header row
