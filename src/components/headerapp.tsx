@@ -1,7 +1,7 @@
 import Icons from "@/constants/icons";
 
 const { BellIcon, FilterIcon, FilterIconBlack } = Icons;
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -21,6 +21,7 @@ type AppHeaderProps = {
   showSearch?: boolean;
   showFilter?: boolean;
   placeholder: string;
+  forceSearchOpen?: boolean;
   onNotificationPress?: () => void;
   onFilterPress?: () => void;
 };
@@ -32,11 +33,17 @@ export default function AppHeader({
   showSearch = false,
   showFilter = false,
   placeholder,
+  forceSearchOpen = false,
   onFilterPress,
 }: AppHeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const isSearchVisible = forceSearchOpen || searchOpen;
+  // Reset manual open state when forceSearchOpen takes over
+  const prevForce = useState(forceSearchOpen);
+  if (forceSearchOpen && searchOpen) setSearchOpen(false);
   const [search, setSearch] = useState("");
   const [inboxOpen, setInboxOpen] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   return (
     <Pressable style={styles.headerContainer} onPress={() => searchOpen && setSearchOpen(false)}>
@@ -47,7 +54,7 @@ export default function AppHeader({
         </View>
 
         <View style={styles.headerRight}>
-          {showSearch && (
+          {showSearch && !forceSearchOpen && (
             <TouchableOpacity onPress={() => setSearchOpen(!searchOpen)} hitSlop={8}>
               <Ionicons name="search-outline" size={22} color="#000000" />
             </TouchableOpacity>
@@ -62,7 +69,7 @@ export default function AppHeader({
             <View style={styles.bellDot} />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.push("/profile")}>
+          <TouchableOpacity onPress={() => setShowProfileMenu(true)}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{initials}</Text>
             </View>
@@ -70,7 +77,38 @@ export default function AppHeader({
         </View>
       </View>
 
-      {showSearch && searchOpen && (
+      {showProfileMenu && (
+  <>
+    {/* Background Overlay */}
+    <Pressable
+      style={StyleSheet.absoluteFill}
+      onPress={() => setShowProfileMenu(false)}
+    />
+
+    {/* Dropdown */}
+    <View style={styles.profileMenu}>
+      <TouchableOpacity
+        style={styles.menuItem}
+        onPress={() => {
+          setShowProfileMenu(false);
+
+          // Sign out logic
+          router.replace("/login");
+        }}
+      >
+        <MaterialCommunityIcons
+          name="logout"
+          size={18}
+          color="#6B7280"
+        />
+
+        <Text style={styles.menuText}>Sign out</Text>
+      </TouchableOpacity>
+    </View>
+  </>
+)}
+
+      {showSearch && isSearchVisible && (
         <Pressable onPress={(e) => e.stopPropagation()}>
           <View style={styles.searchRow}>
             <View style={styles.searchBox}>
@@ -209,7 +247,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 35,
     height: 35,
-    borderRadius: 10,
+    borderRadius: 5,
     backgroundColor: "#1D1D1D",
     justifyContent: "center",
     alignItems: "center",
@@ -220,5 +258,36 @@ const styles = StyleSheet.create({
     fontFamily: "SF_Pro_Bold",
     fontSize: 14,
   },
+  profileMenu: {
+  position: "absolute",
+  top: 70,
+  right: 16,
+  width: 120,
+  backgroundColor: "#fff",
+  borderRadius: 4,
+  paddingVertical: 6,
+
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.15,
+  shadowRadius: 8,
+  elevation: 8,
+
+  zIndex: 999,
+},
+
+menuItem: {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 16,
+  paddingVertical: 6,
+},
+
+menuText: {
+  marginLeft: 5,
+  fontSize: 12,
+  color: "#212529",
+  fontFamily: "SF_Pro_Medium",
+},
 
 });

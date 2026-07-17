@@ -17,13 +17,14 @@
  * Design tokens are preserved identically from the original TaskTable/TaskRow.
  */
 
+import { Ionicons } from "@expo/vector-icons";
 import React, {
   memo,
+  ReactNode,
   useCallback,
   useMemo,
   useRef,
   useState,
-  ReactNode,
 } from "react";
 import {
   ActivityIndicator,
@@ -35,7 +36,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 
 // ─── Column definition ────────────────────────────────────────────────────────
 

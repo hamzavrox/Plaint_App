@@ -20,6 +20,11 @@ const MOCK_USERS = [
   { id: "3", name: "Muhammad Najam Ali", initials: "N", color: "#F97316" },
   { id: "4", name: "Muhammad Junaid", initials: "J", color: "#DFA70D" },
   { id: "5", name: "Muhammad Awais", initials: "A", color: "#DF0D0D" },
+  { id: "6", name: "Muhammad Salman", initials: "S", color: "#0DDFAB" },
+  { id: "7", name: "Muhammad Haris", initials: "H", color: "#607EF9" },
+  { id: "8", name: "Muhammad Najam Ali", initials: "N", color: "#F97316" },
+  { id: "9", name: "Muhammad Junaid", initials: "J", color: "#DFA70D" },
+  { id: "10", name: "Muhammad Awais", initials: "A", color: "#DF0D0D" },
 ];
 
 const TOP_CHIPS = [
@@ -55,6 +60,15 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [recurringOpen, setRecurringOpen] = useState(false);
   const [recurringEnabled, setRecurringEnabled] = useState(false);
+
+  const togglePanel = (panel: "assign" | "duedate" | "priority" | "approval" | "status" | "recurring") => {
+    setAssignOpen(panel === "assign" ? !assignOpen : false);
+    setDueDateOpen(panel === "duedate" ? !dueDateOpen : false);
+    setPriorityOpen(panel === "priority" ? !priorityOpen : false);
+    setApprovalOpen(panel === "approval" ? !approvalOpen : false);
+    setStatusOpen(panel === "status" ? !statusOpen : false);
+    setRecurringOpen(panel === "recurring" ? !recurringOpen : false);
+  };
 
   const STATUSES = [
     { label: "Pending", color: "#F97316" },
@@ -148,17 +162,17 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                     key={chip.id}
                     style={[styles.chip, active && styles.chipActive]}
                     onPress={() => {
-                      if (isAssign) { setAssignOpen((v) => !v); setDueDateOpen(false); setPriorityOpen(false); }
-                      if (isDueDate) { setDueDateOpen((v) => !v); setAssignOpen(false); setPriorityOpen(false); }
-                      if (isPriority) { setPriorityOpen((v) => !v); setAssignOpen(false); setDueDateOpen(false); }
+                      if (isAssign) togglePanel("assign");
+                      if (isDueDate) togglePanel("duedate");
+                      if (isPriority) togglePanel("priority");
                     }}
                   >
                     <Ionicons name={chip.icon as any} size={16} color={active ? "#fff" : "#AAAAAA"} />
                     <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
                       {hasUser ? assignedUser!.name.split(" ")[0] + " " + assignedUser!.name.split(" ")[1]
                         : hasDate ? `${startDate!.getDate()}, ${startDate!.toLocaleString("default", { month: "short" })}`
-                        : hasPriority ? selectedPriority!
-                        : chip.label}
+                          : hasPriority ? selectedPriority!
+                            : chip.label}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -188,6 +202,7 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
             )}
 
             {/* Due Date calendar */}
+            <View style={{marginBottom:dueDateOpen?10:0}}>
             {dueDateOpen && (
               <CalendarPicker
                 startDate={startDate}
@@ -197,12 +212,16 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                 onDone={() => setDueDateOpen(false)}
               />
             )}
+            </View>
 
             {/* Assign to search panel */}
             {assignOpen && (
               <View style={styles.assignPanel}>
                 {/* Floating label search input */}
-                <View style={styles.searchWrap}>
+                <View style={[
+    styles.searchWrap,
+    (assignFocused || assignSearch.length > 0) && styles.searchWrapActive,
+  ]}>
                   <Text style={[styles.searchLabel, (assignFocused || assignSearch.length > 0) && styles.searchLabelFloated]}>
                     Search people
                   </Text>
@@ -214,11 +233,15 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                     onBlur={() => setAssignFocused(false)}
                     autoFocus
                   />
-                  <Ionicons name="search-outline" size={18} color="#AAAAAA" style={styles.searchIcon} />
+                  <Ionicons name="search-outline" size={18}  color={
+    assignFocused || assignSearch.length > 0
+      ? "#1D1D1D"
+      : "#AAAAAA"
+  } style={styles.searchIcon} />
                 </View>
 
                 {/* User list */}
-                {filteredUsers.map((user) => (
+                {/* {filteredUsers.map((user) => (
                   <TouchableOpacity
                     key={user.id}
                     style={styles.userRow}
@@ -229,89 +252,136 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                     </View>
                     <Text style={styles.userName}>{user.name}</Text>
                   </TouchableOpacity>
-                ))}
+                ))} */}
+
+                {/* <View style={styles.userListContainer}>
+                  <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    nestedScrollEnabled
+                  > */}
+                {assignSearch.trim().length > 0 &&
+                  filteredUsers.map((user) => (
+                    <TouchableOpacity
+                      key={user.id}
+                      style={styles.userRow}
+                      onPress={() => {
+                        setAssignedUser(user);
+                        setAssignOpen(false);
+                        setAssignSearch("");
+                      }}
+                    >
+                      <View
+                        style={[
+                          styles.userAvatar,
+                          { backgroundColor: "#0DDFAB" },
+                        ]}
+                      >
+                        <Text style={styles.userAvatarText}>
+                          {user.initials}
+                        </Text>
+                      </View>
+
+                      <Text style={styles.userName}>
+                        {user.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))
+                }
+                {/* </ScrollView>
+                </View> */}
               </View>
             )}
 
             {/* Bottom chips + approval + status panels */}
-            <View>
-              <View style={styles.chipsRow}>
-                {BOTTOM_CHIPS.map((chip) => {
-                  const isApproval = chip.id === "approval";
-                  const isStatus = chip.id === "status";
-                  const isRecurring = chip.id === "recurring";
-                  const active = (isApproval && approvalOpen) || (isStatus && statusOpen) || (isRecurring && recurringOpen);
-                  const hasApproval = isApproval && selectedApproval;
-                  const hasStatus = isStatus && selectedStatus;
-                  const hasRecurring = isRecurring && recurringEnabled;
-                  return (
-                    <TouchableOpacity
-                      key={chip.id}
-                      style={[styles.chip, active && styles.chipActive]}
-                      onPress={() => {
-                        if (isApproval) { setApprovalOpen((v) => !v); setStatusOpen(false); setRecurringOpen(false); }
-                        if (isStatus) { setStatusOpen((v) => !v); setApprovalOpen(false); setRecurringOpen(false); }
-                        if (isRecurring) { setRecurringOpen((v) => !v); setApprovalOpen(false); setStatusOpen(false); }
-                      }}
-                    >
-                      <Ionicons name={chip.icon as any} size={16} color={active ? "#fff" : "#AAAAAA"} />
-                      <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
-                        {hasApproval ? selectedApproval! : hasStatus ? selectedStatus! : hasRecurring ? "Recurring" : chip.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+            <View style={styles.chipsRow}>
+              {/* Approval Required Chip */}
+              <TouchableOpacity
+                style={[styles.chip, approvalOpen && styles.chipActive]}
+                onPress={() => togglePanel("approval")}
+              >
+                <Ionicons name="checkmark-done-outline" size={16} color={approvalOpen ? "#fff" : "#AAAAAA"} />
+                <Text style={[styles.chipLabel, approvalOpen && styles.chipLabelActive]}>
+                  {selectedApproval ? selectedApproval : "Approval Required"}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Task Status Chip */}
+              <TouchableOpacity
+                style={[styles.chip, statusOpen && styles.chipActive]}
+                onPress={() => togglePanel("status")}
+              >
+                <Ionicons name="radio-button-off-outline" size={16} color={statusOpen ? "#fff" : "#AAAAAA"} />
+                <Text style={[styles.chipLabel, statusOpen && styles.chipLabelActive]}>
+                  {selectedStatus ? selectedStatus : "Task Status"}
+                </Text>
+              </TouchableOpacity>
 
               {/* Approval panel */}
               {approvalOpen && (
-                <View style={styles.approvalRow}>
-                  {[
-                    { label: "Yes", selected: selectedApproval === "Yes" },
-                    { label: "No", selected: selectedApproval === "No" },
-                  ].map((a) => (
-                    <TouchableOpacity
-                      key={a.label}
-                      style={[styles.approvalChip, a.selected && styles.approvalChipSelected]}
-                      onPress={() => { setSelectedApproval(a.label); setApprovalOpen(false); }}
-                    >
-                      <Ionicons name={a.label === "Yes" ? "checkmark" : "close"} size={14} color={a.selected ? "#fff" : "#AAAAAA"} />
-                      <Text style={[styles.approvalLabel, a.selected && styles.approvalLabelSelected]}>{a.label}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <View style={{ width: "100%" }}>
+                  <View style={styles.approvalRow}>
+                    {[
+                      { label: "Yes", selected: selectedApproval === "Yes" },
+                      { label: "No", selected: selectedApproval === "No" },
+                    ].map((a) => (
+                      <TouchableOpacity
+                        key={a.label}
+                        style={[styles.approvalChip, a.selected && styles.approvalChipSelected]}
+                        onPress={() => { setSelectedApproval(a.label); setApprovalOpen(false); }}
+                      >
+                        <Ionicons name={a.label === "Yes" ? "checkmark" : "close"} size={14} color={a.selected ? "#fff" : "#AAAAAA"} />
+                        <Text style={[styles.approvalLabel, a.selected && styles.approvalLabelSelected]}>{a.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               )}
 
               {/* Status panel */}
               {statusOpen && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusScroll}>
-                  {STATUSES.map((s) => {
-                    const selected = selectedStatus === s.label;
-                    return (
-                      <TouchableOpacity
-                        key={s.label}
-                        style={[styles.statusChip, selected && { backgroundColor: s.color, borderColor: s.color }]}
-                        onPress={() => { setSelectedStatus(s.label); setStatusOpen(false); }}
-                      >
-                        {selected
-                          ? <Ionicons name="checkmark" size={13} color="#fff" />
-                          : <View style={[styles.statusDot, { backgroundColor: s.color }]} />}
-                        <Text style={[styles.statusLabel, selected && { color: "#fff" }]}>{s.label}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
+                <View style={{ width: "100%" }}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusScroll}>
+                    {STATUSES.map((s) => {
+                      const selected = selectedStatus === s.label;
+                      return (
+                        <TouchableOpacity
+                          key={s.label}
+                          style={[styles.statusChip, selected && { backgroundColor: s.color, borderColor: s.color }]}
+                          onPress={() => { setSelectedStatus(s.label); setStatusOpen(false); }}
+                        >
+                          {selected
+                            ? <Ionicons name="checkmark" size={13} color="#fff" />
+                            : <View style={[styles.statusDot, { backgroundColor: s.color }]} />}
+                          <Text style={[styles.statusLabel, selected && { color: "#fff" }]}>{s.label}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
               )}
+
+              {/* Recurring Task Chip */}
+              <TouchableOpacity
+                style={[styles.chip, recurringOpen && styles.chipActive]}
+                onPress={() => togglePanel("recurring")}
+              >
+                <Ionicons name="camera-outline" size={16} color={recurringOpen ? "#fff" : "#AAAAAA"} />
+                <Text style={[styles.chipLabel, recurringOpen && styles.chipLabelActive]}>
+                  {recurringEnabled ? "Recurring" : "Recurring Task"}
+                </Text>
+              </TouchableOpacity>
 
               {/* Recurring panel */}
               {recurringOpen && (
-                <TouchableOpacity
-                  style={styles.recurringBtn}
-                  onPress={() => { setRecurringEnabled((v) => !v); setRecurringOpen(false); }}
-                >
-                  <Ionicons name="checkmark" size={14} color="#0DDFAB" />
-                  <Text style={styles.recurringLabel}>Enable Recurring</Text>
-                </TouchableOpacity>
+                <View style={{ width: "100%" }}>
+                  <TouchableOpacity
+                    style={styles.recurringBtn}
+                    onPress={() => { setRecurringEnabled((v) => !v); setRecurringOpen(false); }}
+                  >
+                    <Ionicons name="checkmark" size={14} color="#0DDFAB" />
+                    <Text style={styles.recurringLabel}>Enable Recurring</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
 
@@ -364,6 +434,10 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
     maxHeight: "90%",
   },
+  // userListContainer: {
+  //   minHeight: 220,   // jitni minimum height chahiye
+  //   maxHeight: 220,   // fixed height
+  // },
   scrollContent: { paddingBottom: 0, paddingTop: 10 },
   closeBtn: {
     alignSelf: "flex-end",
@@ -386,7 +460,7 @@ const styles = StyleSheet.create({
   descIdlePlaceholder: { fontSize: 15, color: "#E6E6E6", fontFamily: "SF_Pro_Regular" },
 
   // Chips
-  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginBottom: 14 },
+  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginBottom: 5 },
   chip: {
     flexDirection: "row", alignItems: "center", gap: 6,
     borderWidth: 1, borderColor: "#AAAAAA", borderRadius: 8,
@@ -397,7 +471,7 @@ const styles = StyleSheet.create({
   chipLabelActive: { color: "#fff" },
 
   // Priority
-  priorityRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
+  priorityRow: { flexDirection: "row", gap: 8, marginBottom: 5},
   priorityChip: {
     flexDirection: "row", alignItems: "center", gap: 6,
     borderWidth: 1, borderColor: "#AAAAAA", borderRadius: 8,
@@ -408,14 +482,23 @@ const styles = StyleSheet.create({
 
   // Assign panel
   assignPanel: {
-    marginBottom: 14,
+    marginTop:10,
+    marginBottom: 10,
   },
-  searchWrap: {
-    borderWidth: 1, borderColor: "#1D1D1D", borderRadius: 8,
-    marginBottom: 4, paddingHorizontal: 12,
-    position: "relative", height: 44,
-    justifyContent: "center",
-  },
+searchWrap: {
+  borderWidth: 1,
+  borderColor: "#E6E6E6", // Default Gray
+  borderRadius: 8,
+  marginBottom: 4,
+  paddingHorizontal: 12,
+  position: "relative",
+  height: 44,
+  justifyContent: "center",
+},
+
+searchWrapActive: {
+  borderColor: "#1D1D1D", // Active
+},
   searchLabel: {
     position: "absolute", top: 12, left: 12,
     fontSize: 14, color: "#AAAAAA", fontFamily: "SF_Pro_Regular",
@@ -443,7 +526,7 @@ const styles = StyleSheet.create({
   userName: { fontSize: 14, color: "#1D1D1D", fontFamily: "SF_Pro_Regular" },
 
   // Approval
-  approvalRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
+  approvalRow: { flexDirection: "row", gap: 8, marginBottom: 4 },
   approvalChip: {
     flexDirection: "row", alignItems: "center", gap: 6,
     borderWidth: 1, borderColor: "#AAAAAA", borderRadius: 8,
@@ -454,7 +537,7 @@ const styles = StyleSheet.create({
   approvalLabelSelected: { color: "#fff" },
 
   // Status
-  statusScroll: { marginBottom: 14 },
+  statusScroll: { marginBottom: 5 },
   statusChip: {
     flexDirection: "row", alignItems: "center", gap: 6,
     borderWidth: 1, borderColor: "#AAAAAA", borderRadius: 8,

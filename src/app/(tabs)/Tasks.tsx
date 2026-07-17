@@ -1,6 +1,3 @@
-import Icons from "@/constants/icons";
-
-const { AllTaskIcon: AllTasksIcon, AssignIcon, CompletedIcon, CreatedIcon, DelayIcon, DueTodayIcon, RecurringIcon, SevenDayIcon: SevendayIcon } = Icons;
 import CreateTaskModal from "@/components/CreateTaskModal";
 import FilterModal from "@/components/FilterModal";
 import AppHeader from "@/components/headerapp";
@@ -8,6 +5,7 @@ import StatCard from "@/components/StatCard";
 import TaskDetailModal, { TaskDetail } from "@/components/TaskDetailModal";
 import { StatusType, TaskRowProps } from "@/components/TaskRow";
 import TaskTable from "@/components/TaskTable";
+import Icons from "@/constants/icons";
 import { Fontisto } from "@expo/vector-icons";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -17,6 +15,8 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+
+const { AllTaskIcon: AllTasksIcon, AssignIcon, CompletedIcon, CreatedIcon, DelayIcon, DueTodayIcon, RecurringIcon, SevenDayIcon: SevendayIcon } = Icons;
 
 const TASKS: TaskRowProps[] = [
   { id: "task-1", title: "update current fund price and pdf file upload fund price", createdBy: "Muhamm...", createdByInitials: "MZ", assignedTo: "Muhammad...", assignedToInitials: "MH", dueDate: "6, July", status: "Completed", project: "Website" },
@@ -45,6 +45,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 export default function TasksScreen() {
   const [tasksState, setTasksState] = useState<TaskRowProps[]>(TASKS);
   const [dueTodayTasksState, setDueTodayTasksState] = useState<TaskRowProps[]>(DUE_TODAY_TASKS);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const [activeTab, setActiveTab] = useState("all");
   const [filterVisible, setFilterVisible] = useState(false);
@@ -145,6 +146,8 @@ export default function TasksScreen() {
           initials="JD"
           placeholder="Search Tasks..."
           showSearch
+          showFilter={false}
+          forceSearchOpen={!isScrolled}
           onFilterPress={() => setFilterVisible(true)}
         />
         <FilterModal visible={filterVisible} onClose={() => setFilterVisible(false)} statuses={statuses}
@@ -173,13 +176,18 @@ export default function TasksScreen() {
         </ScrollView>
 
         {/* Task Table */}
-       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>          <TaskTable
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          onScroll={(e) => setIsScrolled(e.nativeEvent.contentOffset.y > 10)}
+          scrollEventThrottle={16}
+        >
+          <TaskTable
             sectionTitle={statsList.find((s) => s.id === activeTab)?.label ?? "All Tasks"}
             tasks={tasksMap[activeTab] ?? tasksState}
             onTaskPress={handleTaskPress}
             onStatusChange={handleStatusChange}
           />
-
         </ScrollView>
 
 
@@ -207,7 +215,7 @@ const styles = StyleSheet.create({
   //   borderBottomColor: "#E6E6E6",
   // },
   statsScroll: { maxHeight: 50 },
-  statsContent: { paddingHorizontal: 16, paddingBottom: 6, gap: 6 },
+  statsContent: { paddingHorizontal: 16, paddingBottom: 15, gap: 6 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 },
   fab: {

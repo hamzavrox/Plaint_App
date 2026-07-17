@@ -11,11 +11,11 @@
  * Tasks.tsx requires NO changes.
  */
 
-import React, { memo, useCallback, useMemo, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { memo, useCallback, useMemo, useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import DynamicTable, { Column } from "./DynamicTable";
-import { COL_WIDTHS, TaskRowProps, STATUS_COLORS, StatusType } from "./TaskRow";
+import { COL_WIDTHS, STATUS_COLORS, StatusType, TaskRowProps } from "./TaskRow";
 
 // ─── Props (identical to the original TaskTable) ──────────────────────────────
 
@@ -29,13 +29,13 @@ type Props = {
 // ─── Static column keys (order = left to right) ───────────────────────────────
 
 const TASK_COLUMNS: Column<TaskRowProps>[] = [
-  { key: "title",      title: "Task Title",  width: COL_WIDTHS.title      },
-  { key: "createdBy",  title: "Created By",  width: COL_WIDTHS.createdBy  },
+  { key: "title", title: "Task Title", width: COL_WIDTHS.title },
+  { key: "createdBy", title: "Created By", width: COL_WIDTHS.createdBy },
   { key: "assignedTo", title: "Assigned to", width: COL_WIDTHS.assignedTo },
-  { key: "dueDate",    title: "Due Date",    width: COL_WIDTHS.dueDate    },
-  { key: "status",     title: "Status",      width: COL_WIDTHS.status     },
-  { key: "comment",    title: "Comment",     width: COL_WIDTHS.comment    },
-  { key: "project",    title: "Project",     width: COL_WIDTHS.project    },
+  { key: "dueDate", title: "Due Date", width: COL_WIDTHS.dueDate },
+  { key: "status", title: "Status", width: COL_WIDTHS.status },
+  { key: "comment", title: "Comment", width: COL_WIDTHS.comment },
+  { key: "project", title: "Project", width: COL_WIDTHS.project },
 ];
 
 const ALL_STATUSES: StatusType[] = [
@@ -178,7 +178,7 @@ function TaskTable({ sectionTitle, tasks, onTaskPress, onStatusChange }: Props) 
       keyExtractor={(_item, i) => String(i)}
       emptyText="No tasks found."
       collapsible={false}
-      maxHeight={550} 
+      maxHeight={550}
     />
   );
 }
