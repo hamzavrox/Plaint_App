@@ -102,7 +102,11 @@ export type TaskContextValue = {
     data: { notes: string; company_id: number; company_identifier: string },
     file?: { uri: string; name: string; type: string }
   ) => Promise<void>;
-  fetchNotes: (taskId: number) => Promise<TaskNote[]>;
+  fetchNotes: (
+    taskId: number,
+    companyId?: number,
+    companyIdentifier?: string
+  ) => Promise<TaskNote[]>;
   deleteNote: (
     noteId: number,
     companyId: number,
@@ -256,25 +260,42 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       data: { notes: string; company_id: number; company_identifier: string },
       file?: { uri: string; name: string; type: string }
     ) => {
-      await tasksService.addNote(taskId, data, file);
+      const res = await tasksService.addNote(taskId, data, file);
+      if (!res.Good) {
+        throw new Error(res.message ?? "Failed to add comment");
+      }
     },
     []
   );
 
-  const fetchNotes = useCallback(async (taskId: number): Promise<TaskNote[]> => {
-    const res = await tasksService.getTaskNotes(taskId);
-    if (res.Good && Array.isArray(res.data)) {
-      return res.data;
-    }
-    return [];
-  }, []);
+  const fetchNotes = useCallback(
+    async (
+      taskId: number,
+      companyId?: number,
+      companyIdentifier?: string
+    ): Promise<TaskNote[]> => {
+      const res = await tasksService.getTaskNotes(
+        taskId,
+        companyId,
+        companyIdentifier
+      );
+      if (res.Good && Array.isArray(res.data)) {
+        return res.data;
+      }
+      return [];
+    },
+    []
+  );
 
   const deleteNoteById = useCallback(
     async (noteId: number, companyId: number, companyIdentifier: string) => {
-      await tasksService.deleteNote(noteId, {
+      const res = await tasksService.deleteNote(noteId, {
         company_id: companyId,
         company_identifier: companyIdentifier,
       });
+      if (!res.Good) {
+        throw new Error(res.message ?? "Failed to delete comment");
+      }
     },
     []
   );
@@ -286,11 +307,14 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       companyId: number,
       companyIdentifier: string
     ) => {
-      await tasksService.pinNote(noteId, {
+      const res = await tasksService.pinNote(noteId, {
         pin_top: pinned ? 1 : 0,
         company_id: companyId,
         company_identifier: companyIdentifier,
       });
+      if (!res.Good) {
+        throw new Error(res.message ?? "Failed to pin comment");
+      }
     },
     []
   );

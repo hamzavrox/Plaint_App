@@ -157,24 +157,35 @@ export async function addNote(
   data: AddNoteRequest,
   file?: File | { uri: string; name: string; type: string }
 ): Promise<ApiResponse<string>> {
-  if (file) {
-    const formData = new FormData();
-    formData.append("notes", data.notes);
-    formData.append("company_id", String(data.company_id));
-    formData.append("company_identifier", data.company_identifier);
-    if (data.reply_to) {
-      formData.append("reply_to", JSON.stringify(data.reply_to));
-    }
-    formData.append("file", file as unknown as Blob);
-    return apiUpload<ApiResponse<string>>(`/tasks/addnote/${taskId}`, formData);
+  const formData = new FormData();
+  formData.append("notes", data.notes);
+  formData.append("company_id", String(data.company_id));
+  formData.append("company_identifier", data.company_identifier);
+  if (data.reply_to) {
+    formData.append("reply_to", JSON.stringify(data.reply_to));
   }
-  return apiPost<ApiResponse<string>>(`/tasks/addnote/${taskId}`, data);
+  if (file) {
+    formData.append("file", file as unknown as Blob);
+  }
+  return apiUpload<ApiResponse<string>>(`/tasks/addnote/${taskId}`, formData);
 }
 
 export async function getTaskNotes(
-  taskId: number
+  taskId: number,
+  companyId?: number,
+  companyIdentifier?: string
 ): Promise<ApiResponse<TaskNote[]>> {
-  return apiPost<ApiResponse<TaskNote[]>>(`/tasks/showtasknote/${taskId}`, {});
+  const body: Record<string, any> = {};
+  if (companyId !== undefined) {
+    body.company_id = companyId;
+  }
+  if (companyIdentifier !== undefined) {
+    body.company_identifier = companyIdentifier;
+  }
+  return apiPost<ApiResponse<TaskNote[]>>(
+    `/tasks/showtasknote/${taskId}`,
+    body
+  );
 }
 
 export async function updateNote(

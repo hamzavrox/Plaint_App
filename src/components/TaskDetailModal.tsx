@@ -106,8 +106,10 @@ function CommentBubble({
   const isOwn = comment.user_id === currentUserId;
   const isPinned = comment.pin_top === 1;
   const initials = (comment.user_name ?? "U")
-    .split(" ")
+    .trim()
+    .split(/\s+/)
     .map((w: string) => w[0])
+    .filter(Boolean)
     .join("")
     .toUpperCase()
     .slice(0, 2);
@@ -182,20 +184,26 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
     if (!task?.taskId) return;
     setNotesLoading(true);
     try {
-      const fetched = await fetchNotes(task.taskId);
+      const fetched = await fetchNotes(task.taskId, companyId, companyIdentifier);
       setNotes(fetched);
     } catch {
       // silently fail
     } finally {
       setNotesLoading(false);
     }
-  }, [task?.taskId, fetchNotes]);
+  }, [task?.taskId, companyId, companyIdentifier, fetchNotes]);
+
+  useEffect(() => {
+    if (visible) {
+      setActiveTab("details");
+    }
+  }, [visible]);
 
   useEffect(() => {
     if (visible && activeTab === "comments" && task?.taskId) {
       loadNotes();
     }
-  }, [visible, activeTab, task?.taskId]);
+  }, [visible, activeTab, task?.taskId, loadNotes]);
 
   const handleFocus = () => {
     setFocused(true);

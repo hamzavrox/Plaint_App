@@ -7,6 +7,7 @@ import { StatusType, TaskRowProps } from "@/components/TaskRow";
 import TaskTable from "@/components/TaskTable";
 import Icons from "@/constants/icons";
 import { Fontisto } from "@expo/vector-icons";
+import { getTaskDetail } from "@/services/api/tasks.service";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { uiStatusToApi } from "@/utils/statusMapper";
@@ -81,9 +82,18 @@ export default function TasksScreen() {
     [companyId, companyIdentifier, updateTaskStatusApi, fetchAllTasks]
   );
 
-  const handleTaskPress = useCallback((task: TaskRowProps) => {
+  const handleTaskPress = useCallback(async (task: TaskRowProps) => {
     const raw = (task as any)._raw;
     if (!raw) return;
+    let description = raw.description ?? "";
+    try {
+      const detailRes = await getTaskDetail(raw.id);
+      if (detailRes.Good && detailRes.data?.priority?.[0]) {
+        description = detailRes.data.priority[0].description ?? description;
+      }
+    } catch {
+      // fall back to list description
+    }
     setSelectedTask({
       title: raw.title,
       assignedTo: task.assignedTo,
@@ -96,7 +106,7 @@ export default function TasksScreen() {
       recurringTask: raw.is_recurring ? "Yes" : "No",
       subtasks: [],
       dependencies: [],
-      description: raw.description ?? "",
+      description,
       attachments: [],
       taskId: raw.id,
       companyId: companyId ?? 0,
