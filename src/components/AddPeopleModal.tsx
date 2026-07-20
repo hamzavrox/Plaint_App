@@ -35,8 +35,12 @@ export interface AddPeopleModalProps {
   onClose: () => void;
   /** Called whenever the search query changes */
   onSearch?: (query: string) => void;
-  /** Called when a user row is tapped */
+  /** Called when a single user is tapped (for normal chat mode) */
   onSelectUser?: (user: AddPeopleUser) => void;
+  /** Called when inviting multiple users (for channel mode) */
+  onInviteUsers?: (users: AddPeopleUser[]) => void;
+  /** True if we are in channel mode (showing checkboxes and Invite button) */
+  isChannelMode?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -177,26 +181,33 @@ const searchStyles = StyleSheet.create({
 interface UserRowProps {
   user: AddPeopleUser;
   onPress: () => void;
+  isChannelMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }
 
-function UserRow({ user, onPress }: UserRowProps) {
+function UserRow({ user, onPress, isChannelMode, isSelected, onToggleSelect }: UserRowProps) {
   const initials = getInitials(user.name, user.initials);
   const bgColor = avatarColor(user.name);
 
   return (
-    <TouchableOpacity style={rowStyles.row} activeOpacity={0.65} onPress={onPress}>
+    <TouchableOpacity style={rowStyles.row} activeOpacity={0.65} onPress={isChannelMode ? onToggleSelect : onPress}>
       {/* Avatar */}
-      <View style={[rowStyles.avatar]}>
+      <View style={[rowStyles.avatar, isChannelMode && isSelected && { backgroundColor: "#00DEAB" }]}>
         <Text style={rowStyles.initials}>{initials}</Text>
       </View>
 
       {/* Name + email */}
       <View style={rowStyles.info}>
         <Text style={rowStyles.name} numberOfLines={1}>{user.name}</Text>
-        {!!user.email && (
+        {!!user.email && !isChannelMode && (
           <Text style={rowStyles.email} numberOfLines={1}>{user.email}</Text>
         )}
       </View>
+
+      {isChannelMode && isSelected && (
+        <Ionicons name="checkmark" size={20} color="#00DEAB" style={{ marginLeft: "auto" }} />
+      )}
     </TouchableOpacity>
   );
 }
@@ -280,9 +291,12 @@ export default function AddPeopleModal({
   onClose,
   onSearch,
   onSelectUser,
+  onInviteUsers,
+  isChannelMode,
 }: AddPeopleModalProps) {
   const [query, setQuery] = useState("");
   const [keyboardShown, setKeyboardShown] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardShown(true));
@@ -315,11 +329,37 @@ export default function AddPeopleModal({
   const handleClose = () => {
     Keyboard.dismiss();
     setQuery("");
+    setSelectedUserIds(new Set());
     onClose();
   };
 
   const handleSelect = (user: AddPeopleUser) => {
-    onSelectUser?.(user);
+    if (isChannelMode) {
+      toggleSelect(user.id);
+    } else {
+      onSelectUser?.(user);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSet = new Set(selectedUserIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedUserIds(newSet);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedUserIds.size === filtered.length) {
+      setSelectedUserIds(new Set());
+    } else {
+      setSelectedUserIds(new Set(filtered.map(u => u.id)));
+    }
+  };
+
+  const handleInvite = () => {
+    const selectedUsers = users.filter(u => selectedUserIds.has(u.id));
+    onInviteUsers?.(selectedUsers);
+    handleClose();
   };
 
   return (
@@ -357,6 +397,30 @@ export default function AddPeopleModal({
           {/* ── Floating label search ── */}
           <FloatingSearchInput value={query} onChangeText={handleChangeText} />
 
+          {/* ── Channel Mode Buttons ── */}
+          {isChannelMode && (
+            <View style={modalStyles.channelControls}>
+              <TouchableOpacity
+                style={modalStyles.inviteBtn}
+                activeOpacity={0.8}
+                onPress={handleInvite}
+              >
+                <Text style={modalStyles.inviteBtnText}>Invite</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={modalStyles.selectAllRow} onPress={handleSelectAll} activeOpacity={0.7}>
+                <View style={[modalStyles.checkbox, selectedUserIds.size === filtered.length && filtered.length > 0 && modalStyles.checkboxActive]}>
+                  {selectedUserIds.size === filtered.length && filtered.length > 0 && (
+                    <Ionicons name="checkmark" size={14} color="#fff" />
+                  )}
+                </View>
+                <Text style={modalStyles.selectAllText}>Select All</Text>
+              </TouchableOpacity>
+              
+              <View style={modalStyles.divider} />
+            </View>
+          )}
+
           {/* ── Results / empty states ── */}
 
           {/* {!hasQuery ? null : filtered.length === 0 ? (
@@ -385,6 +449,9 @@ export default function AddPeopleModal({
                 <UserRow
                   user={item}
                   onPress={() => handleSelect(item)}
+                  isChannelMode={isChannelMode}
+                  isSelected={selectedUserIds.has(item.id)}
+                  onToggleSelect={() => toggleSelect(item.id)}
                 />
               )}
               keyboardShouldPersistTaps="handled"
@@ -447,4 +514,50 @@ const modalStyles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 22,
   },
+  channelControls: {
+    marginHorizontal: 20,
+    marginBottom: 10,
+  },
+  inviteBtn: {
+    backgroundColor: "#00DEAB",
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  inviteBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontFamily: "SF_Pro_Medium",
+  },
+  selectAllRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    marginRight: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxActive: {
+    backgroundColor: "#00DEAB",
+    borderColor: "#00DEAB",
+  },
+  selectAllText: {
+    fontSize: 15,
+    fontFamily: "SF_Pro_Regular",
+    color: "#1D1D1D",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#F3F4F6",
+    marginBottom: 8,
+  }
 });

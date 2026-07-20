@@ -11,10 +11,12 @@ import FilterIcon       from "@/assets/icons/filtericon";
 import FilterIconBlack  from "@/assets/icons/filtericonblack";
 import RecurringIcon    from "@/assets/icons/recurringicon";
 import SevenDayIcon     from "@/assets/icons/sevenday";
+import ChannelIcon from "@/assets/icons/tabicons/channeltabicon";
 
 // ─── Tab Icons ────────────────────────────────────────────────────────────────
 import ChatBlackIcon    from "@/assets/icons/tabicons/chatblack";
 import ChatWhiteIcon    from "@/assets/icons/tabicons/chatwhite";
+import ChannelTabIcon   from "@/assets/icons/tabicons/channeltabicon";
 import HomeBlackIcon    from "@/assets/icons/tabicons/homeblack";
 import HomeWhiteIcon    from "@/assets/icons/tabicons/homewhite";
 import LeaveBlackIcon   from "@/assets/icons/tabicons/leaveblack";
@@ -39,8 +41,10 @@ const Icons =   {
     FilterIconBlack,
     RecurringIcon,
     SevenDayIcon,
+    ChannelIcon,
 
     // Tab
+    ChannelTabIcon,
     ChatBlackIcon,
     ChatWhiteIcon,
     HomeBlackIcon,

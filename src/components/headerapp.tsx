@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   shadowRadius: 8,
   elevation: 8,
 
-  zIndex: 999,
+  zIndex: 9999,
 },
 
 menuItem: {

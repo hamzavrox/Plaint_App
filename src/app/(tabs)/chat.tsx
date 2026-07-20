@@ -1,8 +1,9 @@
 import Icons from "@/constants/icons";
-const { ChatIcon: MainChatIcon } = Icons;
+const { ChatIcon: MainChatIcon, ChannelTabIcon } = Icons;
 import AddPeopleModal, { AddPeopleUser } from "@/components/AddPeopleModal";
+import CreateChannelModal from "@/components/CreateChannelModal";
 import AppHeader from "@/components/headerapp";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -15,32 +16,60 @@ import {
 } from "react-native";
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
-// hasUnread: true  → dot is visible on the chip
-// hasUnread: false → no dot (no new messages)
 const CHIP_DATA = [
+    { id: "all", label: "All", hasUnread: true },
+    { id: "unread", label: "Unread", hasUnread: true },
+    { id: "read", label: "Read", hasUnread: false },
     { id: "channels", label: "Channels", hasUnread: true },
-    { id: "groups", label: "Groups", hasUnread: true },
+    { id: "Project", label: "Project", hasUnread: true },
 ];
 
-const ALL_USERS: AddPeopleUser[] = [
-    { id: "1", name: "Muhammad Salman", email: "salman@email.com" },
-    { id: "2", name: "Muhammad Haris", email: "haris@email.com" },
-    { id: "3", name: "Najam Ali", email: "najam@email.com" },
-    { id: "4", name: "Junaid", email: "junaid@email.com" },
-    { id: "5", name: "Awais", email: "awais@email.com" },
-    { id: "6", name: "Afzal Saleem", email: "afzal@email.com" },
-    { id: "7", name: "Nida Mumtaz", email: "nida@email.com" },
-    { id: "8", name: "Wahab Ahmad", email: "wahab@email.com" },
-    { id: "9", name: "Maryam", email: "maryam@email.com" },
-    { id: "10", name: "Afzal Saleem", email: "afzal@email.com" },
-    { id: "11", name: "Nida Mumtaz", email: "nida@email.com" },
-    { id: "12", name: "Wahab Ahmad", email: "wahab@email.com" },
-    { id: "13", name: "Maryam", email: "maryam@email.com" },
+type ChatUser = AddPeopleUser & {
+    message: string;
+    time: string;
+    unreadCount?: number;
+    status: "read" | "unread";
+};
+
+const ALL_USERS: ChatUser[] = [
+    { id: "1", name: "Muhammad Salman", email: "salman@email.com", message: "Hi, How are you?", time: "12:50pm", unreadCount: 5, status: "unread" },
+    { id: "2", name: "Muhammad Haris", email: "haris@email.com", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+    { id: "3", name: "Najam Ali", email: "najam@email.com", message: "Hi, How are you?", time: "12:50pm", status: "unread" },
+    { id: "4", name: "Junaid", email: "junaid@email.com", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+    { id: "5", name: "Awais", email: "awais@email.com", message: "Hi, How are you?", time: "12:50pm", status: "unread" },
+    { id: "6", name: "Nida Mumtaz", email: "nida@email.com", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+    { id: "7", name: "Wahab Ahmad", email: "wahab@email.com", message: "Hi, How are you?", time: "12:50pm", status: "unread" },
+    { id: "8", name: "Maryam", email: "maryam@email.com", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+    { id: "9", name: "Anum", email: "anum@email.com", message: "Hi, How are you?", time: "12:50pm", status: "unread" },
+    { id: "10", name: "Waqas", email: "waqas@email.com", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+    { id: "11", name: "Shahid", email: "shahid@email.com", message: "Hi, How are you?", time: "12:50pm", status: "unread" },
+    { id: "12", name: "Zahid", email: "zahid@email.com", message: "Hi, How are you?", time: "12:50pm", status: "read" },
 ];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function ChatScreen() {
     const [addPeopleOpen, setAddPeopleOpen] = useState(false);
+    const [createChannelOpen, setCreateChannelOpen] = useState(false);
+    const [isChannelMode, setIsChannelMode] = useState(false);
+    const [activeChip, setActiveChip] = useState("all");
+
+    const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+    const [chats, setChats] = useState<ChatUser[]>(ALL_USERS);
+
+    const filteredChats = chats.filter((chat) => {
+        if (activeChip === "all" || activeChip === "channels" || activeChip === "groups") return true;
+        if (activeChip === "unread") return chat.status === "unread";
+        if (activeChip === "read") return chat.status === "read";
+        return true;
+    });
+
+    const markAsRead = (id: string) => {
+        setChats((prev) =>
+            prev.map((chat) =>
+                chat.id === id ? { ...chat, status: "read", unreadCount: undefined } : chat
+            )
+        );
+    };
 
     return (
         <View style={styles.root}>
@@ -50,66 +79,174 @@ export default function ChatScreen() {
                     greeting="Good morning, Junaid!"
                     subGreeting="Let's make today productive!"
                     initials="JD"
-                    placeholder="Search chats..."
+                    placeholder="Search Task"
                     showSearch
                 />
 
-                {/* Scrollable content */}
                 <ScrollView
                     style={styles.scroll}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
                     {/* ── Category Chips ── */}
-                    <View style={styles.chipsContainer}>
-                        {CHIP_DATA.map((chip) => (
+                    <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false} 
+                        contentContainerStyle={styles.chipsContainer}
+                    >
+                        {CHIP_DATA.map((chip,index) => {
+                            const isActive = activeChip === chip.id;
+                            return (
+                                // <TouchableOpacity
+                                //     key={chip.id}
+                                //     style={[styles.chipButton, isActive && styles.chipButtonActive]}
+                                //     activeOpacity={0.8}
+                                //     onPress={() => setActiveChip(chip.id)}
+                                // >
+                                //     <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                                //         {chip.label}
+                                //     </Text>
+                                //     {chip.hasUnread && (
+                                //         <View style={[styles.unreadDot, isActive && styles.unreadDotActive]} />
+                                //     )}
+                                // </TouchableOpacity>
+    <View
+      key={chip.id}
+      style={{ flexDirection: "row", alignItems: "center" }}
+    >
+      <TouchableOpacity
+        style={[
+          styles.chipButton,
+          isActive && styles.chipButtonActive,
+        ]}
+        onPress={() => setActiveChip(chip.id)}
+      >
+        <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                                        {chip.label}
+                                    </Text>
+                                    {chip.hasUnread && (
+                                        <View style={[styles.unreadDot, isActive && styles.unreadDotActive]} />
+                                    )}
+      </TouchableOpacity>
+
+      {index === 2 && (
+        <View style={styles.verticalDivider} />
+      )}
+    </View>
+                            );
+                        })}
+                    </ScrollView>
+
+                    {activeChip === "channels" ? (
+                        <View style={styles.workspaceContainer}>
+                            <View style={styles.iconStack}>
+                                <ChannelTabIcon width={60} height={60} />
+                            </View>
+
+                            <Text style={styles.workspaceTitle}>Create a channel</Text>
+                            <Text style={styles.workspaceDescription}>
+                                Group keep your team's conversations{"\n"}organized by topic.
+                            </Text>
+
                             <TouchableOpacity
-                                key={chip.id}
-                                style={styles.chipButton}
-                                activeOpacity={0.8}
+                                style={styles.addPeopleButton}
+                                activeOpacity={0.85}
+                                onPress={() => setCreateChannelOpen(true)}
                             >
-                                <Text style={styles.chipText}>{chip.label}</Text>
-                                {/* Dot only when there are unread messages */}
-                                {chip.hasUnread && <View style={styles.unreadDot} />}
+                                <Text style={styles.addPeopleText}>+ Create Channel</Text>
                             </TouchableOpacity>
-                        ))}
-                    </View>
-
-                    {/* ── Empty / workspace state ── */}
-                    <View style={styles.workspaceContainer}>
-                        <View style={styles.iconStack}>
-                            <MainChatIcon />
                         </View>
+                    ) : filteredChats.length > 0 ? (
+                        <View style={styles.chatListContainer}>
+                            {filteredChats.map((chat, index) => (
+                                <TouchableOpacity
+                                    key={chat.id}
+                                    style={[styles.chatRow,  selectedChatId === chat.id && styles.chatRowSelected,]}
+                                    activeOpacity={0.7}
+                                    onPress={() => {
+                                        setSelectedChatId(chat.id);
+                                        if (chat.status === "unread") markAsRead(chat.id);
+                                        router.push({
+                                            pathname: "/conversation",
+                                            params: {
+                                                name: chat.name,
+                                                initials: chat.name.charAt(0).toUpperCase(),
+                                            },
+                                        });
+                                    }}
+                                >
+                                    <View style={styles.avatarContainer}>
+                                        <View style={styles.avatarBox}>
+                                            <Text style={styles.avatarText}>{chat.name.charAt(0).toUpperCase()}</Text>
+                                        </View>
+                                        {chat.status === "unread" && <View style={styles.onlineIndicator} />}
+                                    </View>
+                                    <View style={styles.chatInfo}>
+                                        <Text style={styles.chatName}>{chat.name}</Text>
+                                        <Text style={styles.chatSnippet} numberOfLines={1}>{chat.message}</Text>
+                                    </View>
+                                    <View style={styles.chatMeta}>
+                                        {chat.unreadCount && chat.status === "unread" && (
+                                            <View style={styles.unreadBubble}>
+                                                <Text style={styles.unreadBubbleText}>+{chat.unreadCount}</Text>
+                                            </View>
+                                        )}
+                                        <Text style={styles.chatTime}>{chat.time}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    ) : (
+                        <View style={styles.workspaceContainer}>
+                            <View style={styles.iconStack}>
+                                <MainChatIcon />
+                            </View>
 
-                        <Text style={styles.workspaceTitle}>Private workspace</Text>
-                        <Text style={styles.workspaceDescription}>
-                            A place just for you to capture ideas, draft messages,
-                            and keep everything organized for later.
-                        </Text>
+                            <Text style={styles.workspaceTitle}>Private workspace</Text>
+                            <Text style={styles.workspaceDescription}>
+                                A place just for you to capture ideas, draft messages,
+                                and keep everything organized for later.
+                            </Text>
 
-                        {/* Add People Button */}
-                        <TouchableOpacity
-                            style={styles.addPeopleButton}
-                            activeOpacity={0.85}
-                            onPress={() => setAddPeopleOpen(true)}
-                        >
-                            <Ionicons
-                                name="person-add"
-                                size={16}
-                                color="#fff"
-                                style={styles.buttonIcon}
-                            />
-                            <Text style={styles.addPeopleText}>Add People</Text>
-                        </TouchableOpacity>
-                    </View>
+                            <TouchableOpacity
+                                style={styles.addPeopleButton}
+                                activeOpacity={0.85}
+                                onPress={() => {
+                                    setIsChannelMode(false);
+                                    setAddPeopleOpen(true);
+                                }}
+                            >
+                                <Ionicons
+                                    name="person-add"
+                                    size={16}
+                                    color="#fff"
+                                    style={styles.buttonIcon}
+                                />
+                                <Text style={styles.addPeopleText}>Add People</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </ScrollView>
+                
+                {/* FAB */}
+                {chats.length > 0 && activeChip !== "channels" && (
+                    <TouchableOpacity style={styles.fab} activeOpacity={0.8}  onPress={() => {
+                        setIsChannelMode(false);
+                        setAddPeopleOpen(true);
+                    }}>
+                        <MaterialCommunityIcons name="message-plus" size={24} color="#000" />
+                    </TouchableOpacity>
+                )}
             </SafeAreaView>
 
-            {/* ── Reusable Add People Modal ── */}
             <AddPeopleModal
                 visible={addPeopleOpen}
                 users={ALL_USERS}
-                onClose={() => setAddPeopleOpen(false)}
+                isChannelMode={isChannelMode}
+                onClose={() => {
+                    setAddPeopleOpen(false);
+                    setIsChannelMode(false);
+                }}
                 onSearch={(query) => console.log("Search:", query)}
                 onSelectUser={(user) => {
                     setAddPeopleOpen(false);
@@ -120,6 +257,22 @@ export default function ChatScreen() {
                             initials: user.name.charAt(0).toUpperCase(),
                         },
                     });
+                }}
+                onInviteUsers={(users) => {
+                    setAddPeopleOpen(false);
+                    setIsChannelMode(false);
+                    console.log("Invited to channel:", users);
+                    // Add channel creation logic here
+                }}
+            />
+
+            <CreateChannelModal
+                visible={createChannelOpen}
+                onClose={() => setCreateChannelOpen(false)}
+                onNext={(name) => {
+                    setCreateChannelOpen(false);
+                    setIsChannelMode(true);
+                    setTimeout(() => setAddPeopleOpen(true), 300); // small delay for modal transition
                 }}
             />
         </View>
@@ -140,48 +293,150 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingTop: 8,
-        paddingBottom: 40,
+        paddingBottom: 80, // Extra padding for FAB
     },
 
-    // Chips
+    // ── Chips ──
     chipsContainer: {
-        flexDirection: "row",
         paddingHorizontal: 16,
-        gap: 8,
-        marginBottom: 32,
+        gap: 5,
+        marginBottom: 16,
     },
     chipButton: {
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: "#F2F2F2",
-        borderRadius: 8,
-        paddingHorizontal: 14,
+        backgroundColor: "#F4F4F4",
+        borderRadius: 6,
+        paddingHorizontal: 12,
         paddingVertical: 8,
         position: "relative",
     },
+    chipButtonActive: {
+        backgroundColor: "#1D1D1D",
+    },
     chipText: {
         fontSize: 12,
-        fontFamily: "SF_Pro_Medium",
+        fontFamily: "SF_Pro_Semibold",
         color: "#1D1D1D",
     },
+    chipTextActive: {
+        color: "#fff",
+    },
+verticalDivider: {
+  width: 1.5,
+  height: 33,
+  backgroundColor: "#F4F4F4",
+//   marginHorizontal: 12,
+ marginLeft: 7,
+ marginRight: 3,
+},
     unreadDot: {
+        position: "absolute",
+        top: -1,
+        right: -3,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: "#00DEAB",
+        borderWidth: 1.5,
+        borderColor: "#fff",
+    },
+    // unreadDotActive: {
+    //     borderColor: "#1D1D1D",
+    // },
+
+    // ── Chat List ──
+    chatListContainer: {
+        flex: 1,
+    },
+    chatRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    // chatRowFirst: {
+    //     backgroundColor: "#F4F4F4", // Light gray background for first item as shown in design
+    // },
+    chatRowSelected: {
+    backgroundColor: "#F4F4F4",
+    marginHorizontal: 3,
+},
+    avatarContainer: {
+        position: "relative",
+        marginRight: 12,
+    },
+    avatarBox: {
+        width: 36,
+        height: 36,
+        borderRadius: 5,
+        backgroundColor: "#00DEAB",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    avatarText: {
+        color: "#fff",
+        fontSize: 15,
+        fontFamily: "SF_Pro_Medium",
+    },
+    onlineIndicator: {
         position: "absolute",
         top: -2,
         right: -2,
-        width: 7,
-        height: 7,
-        borderRadius: 3.5,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
         backgroundColor: "#00DEAB",
-        borderWidth: 1,
+        borderWidth: 1.5,
         borderColor: "#fff",
     },
+    chatInfo: {
+        flex: 1,
+        justifyContent: "center",
+        gap: 2,
+    },
+    chatName: {
+        fontSize: 15,
+        fontFamily: "SF_Pro_Semibold",
+        color: "#1D1D1D",
+    },
+    chatSnippet: {
+        fontSize: 13,
+        fontFamily: "SF_Pro_Regular",
+        color: "#4B5563",
+    },
+    chatMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 10,
+    minWidth: 80,
+},
+    chatTime: {
+        fontSize: 11,
+        fontFamily: "SF_Pro_Medium",
+        color: "#9CA3AF",
+    },
+    unreadBubble: {
+        backgroundColor: "#1D1D1D",
+        borderRadius: 15,
+        paddingHorizontal: 6,
+        paddingVertical: 6,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    unreadBubbleText: {
+        color: "#0DDFAB",
+        fontSize: 10,
+        fontFamily: "SF_Pro_Semibold",
+    },
 
-    // Empty state
+    // ── Empty state ──
     workspaceContainer: {
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
-        marginTop: 64,
+        marginTop: 100,
         paddingHorizontal: 24,
     },
     iconStack: {
@@ -224,5 +479,23 @@ const styles = StyleSheet.create({
         color: "#fff",
         fontSize: 14,
         fontFamily: "SF_Pro_Semibold",
+    },
+
+    // ── FAB ──
+    fab: {
+        position: "absolute",
+        bottom: 100,
+        right: 24,  
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: "#00DEAB",
+        alignItems: "center",
+        justifyContent: "center",
+        // shadowColor: "#00DEAB",
+        // shadowOpacity: 0.3,
+        // shadowRadius: 8,
+        // shadowOffset: { width: 0, height: 4 },
+        // elevation: 6,
     },
 });

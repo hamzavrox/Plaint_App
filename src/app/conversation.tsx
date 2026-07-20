@@ -2,10 +2,14 @@ import Icons from "@/constants/icons";
 const { ChatIcon: MainChatIcon } = Icons;
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
+import CalendarPicker from "@/components/CalendarPicker";
 import React, { useRef, useState } from "react";
 import {
+    Animated,
+    Image,
     KeyboardAvoidingView,
     Platform,
+    Pressable,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -47,20 +51,230 @@ const STATIC_MESSAGES: Message[] = [
     },
 ];
 
-// ─── Avatar Component ─────────────────────────────────────────────────────────
+// ─── Date Panel ───────────────────────────────────────────────────────────────
 
-function Avatar({ initials, size = 1 }: { initials: string; size?: number }) {
+const DATE_RANGES = ["Today", "Last 7 days", "Last 30 days", "Last 90 days"];
+
+function DateFilterPanel() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [startDate, setStartDate] = useState<Date | null>(today);
+    const [endDate, setEndDate] = useState<Date | null>(today);
+    const [selectedRange, setSelectedRange] = useState<string | null>("Today");
+
+    const handleRangeSelect = (range: string) => {
+        setSelectedRange(range);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        let start: Date;
+        switch (range) {
+            case "Today":
+                start = new Date(now);
+                break;
+            case "Last 7 days":
+                start = new Date(now);
+                start.setDate(now.getDate() - 6);
+                break;
+            case "Last 30 days":
+                start = new Date(now);
+                start.setDate(now.getDate() - 29);
+                break;
+            case "Last 90 days":
+                start = new Date(now);
+                start.setDate(now.getDate() - 89);
+                break;
+            default:
+                start = new Date(now);
+        }
+        setStartDate(start);
+        setEndDate(new Date(now));
+    };
+
+    const handleSelectStart = (d: Date) => {
+        setStartDate(d);
+        setSelectedRange(null);
+    };
+
+    const handleSelectEnd = (d: Date) => {
+        setEndDate(d);
+        setSelectedRange(null);
+    };
+
     return (
-        <View
-            style={[
-                styles.avatar,
-                { width: size, height: size, borderRadius: size * 0.28 },
-            ]}
-        >
-            <Text style={styles.avatarText}>{initials}</Text>
+        <View style={dp.container}>
+            <View style={dp.sidebar}>
+                {DATE_RANGES.map((r) => (
+                    <TouchableOpacity
+                        key={r}
+                        style={[dp.rangeItem, selectedRange === r && dp.rangeItemActive]}
+                        onPress={() => handleRangeSelect(r)}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={[dp.rangeText, selectedRange === r && dp.rangeTextActive]}>{r}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+            <View style={dp.calWrap}>
+                <CalendarPicker
+                    startDate={startDate}
+                    endDate={endDate}
+                    onSelectStart={handleSelectStart}
+                    onSelectEnd={handleSelectEnd}
+                    onDone={() => {}}
+                    compact={true}
+                />
+            </View>
         </View>
     );
 }
+
+const dp = StyleSheet.create({
+    container: {
+        flexDirection: "row",
+        paddingHorizontal: 12,
+        paddingTop: 6,
+        paddingBottom: 10,
+        gap: 8,
+    },
+    sidebar: {
+        width: 82,
+        gap: 0,
+    },
+    rangeItem: {
+        paddingVertical: 7,
+        paddingHorizontal: 4,
+        borderRadius: 6,
+    },
+    rangeItemActive: {},
+    rangeText: {
+        fontSize: 11,
+        fontFamily: "SF_Pro_Regular",
+        color: "#6B7280",
+    },
+    rangeTextActive: {
+        fontFamily: "SF_Pro_Semibold",
+        color: "#1D1D1D",
+    },
+    calWrap: {
+        flex: 1,
+    },
+});
+
+// ─── Attachments Panel ────────────────────────────────────────────────────────
+
+const ATTACH_TABS = ["Images", "Videos", "Docs", "Links"];
+
+// Placeholder image squares
+const PLACEHOLDER_IMAGES = Array.from({ length: 8 });
+const IMAGES: string[] = [];
+
+function AttachmentsPanel() {
+    const [activeTab, setActiveTab] = useState("Images");
+    return (
+        <View style={ap.container}>
+            {/* Sub-tabs */}
+            <View style={ap.tabRow}>
+                {ATTACH_TABS.map((t) => (
+                    <TouchableOpacity
+                        key={t}
+                        style={[ap.tab, activeTab === t && ap.tabActive]}
+                        onPress={() => setActiveTab(t)}
+                        activeOpacity={0.75}
+                    >
+                        <Ionicons
+                            name={
+                                t === "Images" ? "image-outline" :
+                                t === "Videos" ? "videocam-outline" :
+                                t === "Docs" ? "document-text-outline" :
+                                "link-outline"
+                            }
+                            size={13}
+                            color={activeTab === t ? "#1D1D1D" : "#9CA3AF"}
+                            style={{ marginRight: 4 }}
+                        />
+                        <Text style={[ap.tabText, activeTab === t && ap.tabTextActive]}>{t}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+            {/* Image grid */}
+            {activeTab === "Images" && (
+  IMAGES.length > 0 ? (
+    <View style={ap.imageGrid}>
+      {IMAGES.map((item, index) => (
+        <Image
+          key={index}
+          source={{ uri: item }}
+          style={ap.imageThumb}
+        />
+      ))}
+    </View>
+  ) : (
+    <View style={ap.emptyTab}>
+      <Text style={ap.emptyTabText}>No images found</Text>
+    </View>
+  )
+)}
+            {activeTab !== "Images" && (
+                <View style={ap.emptyTab}>
+                    <Text style={ap.emptyTabText}>No {activeTab.toLowerCase()} found</Text>
+                </View>
+            )}
+        </View>
+    );
+}
+
+const ap = StyleSheet.create({
+    container: { paddingBottom: 4 },
+    tabRow: {
+        flexDirection: "row",
+        justifyContent:"space-between",
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: "#E5E7EB",
+    },
+    tab: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+        borderBottomWidth: 2,
+        borderBottomColor: "transparent",
+    },
+    tabActive: {
+        borderBottomColor: "#1D1D1D",
+    },
+    tabText: {
+        fontSize: 12,
+        fontFamily: "SF_Pro_Regular",
+        color: "#9CA3AF",
+    },
+    tabTextActive: {
+        fontFamily: "SF_Pro_Medium",
+        color: "#1D1D1D",
+    },
+    imageGrid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        paddingHorizontal: 1,
+        paddingTop: 2,
+    },
+    imageThumb: {
+        width: "25%",
+        aspectRatio: 1,
+        backgroundColor: "#1a1a2e",
+        // borderWidth: 1.5,
+        borderColor: "#fff",
+    },
+    emptyTab: {
+        padding: 24,
+        alignItems: "center",
+    },
+    emptyTabText: {
+        fontSize: 13,
+        color: "#9CA3AF",
+        fontFamily: "SF_Pro_Regular",
+    },
+});
 
 // ─── Message Action Icons ─────────────────────────────────────────────────────
 
@@ -83,8 +297,8 @@ function MessageActions({ isOwn }: { isOwn: boolean }) {
 // ─── Message Bubble ───────────────────────────────────────────────────────────
 
 function MessageBubble({ message }: { message: Message }) {
+    // Incoming: avatar on RIGHT, bubble right-aligned
     if (!message.isOwn) {
-        // Incoming: avatar on right, bubble left-aligned
         return (
             <View style={styles.messageWrapper}>
                 <View style={styles.incomingRow}>
@@ -98,17 +312,21 @@ function MessageBubble({ message }: { message: Message }) {
                         </View>
                         <MessageActions isOwn={false} />
                     </View>
-                    <Avatar initials={message.initials} size={38} />
+                    <View style={styles.avatar}>
+                        <Text style={styles.avatarText}>{message.initials}</Text>
+                    </View>
                 </View>
             </View>
         );
     }
 
-    // Outgoing: avatar on left, bubble right-aligned
+    // Outgoing: avatar on LEFT, bubble left-aligned
     return (
         <View style={styles.messageWrapper}>
             <View style={styles.outgoingRow}>
-                <Avatar initials={message.initials} size={38} />
+                <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{message.initials}</Text>
+                </View>
                 <View style={styles.outgoingContent}>
                     <Text style={styles.senderMetaOutgoing}>
                         {message.sender}{" "}
@@ -126,6 +344,8 @@ function MessageBubble({ message }: { message: Message }) {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
+type FilterTab = "date" | "attachments" | null;
+
 export default function ConversationScreen() {
     const params = useLocalSearchParams<{ name?: string; initials?: string }>();
     const name = params.name ?? "Muhammad Junaid";
@@ -134,50 +354,125 @@ export default function ConversationScreen() {
     const [message, setMessage] = useState("");
     const scrollRef = useRef<ScrollView>(null);
 
+    // Search
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const searchInputRef = useRef<TextInput>(null);
+
+    // Filter tabs
+    const [activeFilter, setActiveFilter] = useState<FilterTab>(null);
+
+    const toggleFilter = (tab: FilterTab) => {
+        setActiveFilter((prev) => (prev === tab ? null : tab));
+    };
+
     return (
         <View style={styles.root}>
             <SafeAreaView style={styles.safe}>
                 {/* ── Header ── */}
                 <View style={styles.header}>
-                    <View style={styles.headerLeft}>
-                        <TouchableOpacity
-                            onPress={() => router.back()}
-                            hitSlop={8}
-                            style={styles.backBtn}
-                        >
-                            <Ionicons name="chevron-back" size={22} color="#1D1D1D" />
-                        </TouchableOpacity>
+                    {!searchOpen ? (
+                        <>
+                            <View style={styles.headerLeft}>
+                                <TouchableOpacity
+                                    onPress={() => router.back()}
+                                    hitSlop={8}
+                                    style={styles.backBtn}
+                                >
+                                    <Ionicons name="chevron-back" size={22} color="#1D1D1D" />
+                                </TouchableOpacity>
 
-                        {/* Avatar */}
-                        <View style={styles.headerAvatar}>
-                            <Text style={styles.headerAvatarText}>{initials}</Text>
-                        </View>
+                                <View style={styles.headerAvatar}>
+                                    <Text style={styles.headerAvatarText}>{initials}</Text>
+                                </View>
 
-                        {/* Name + status */}
-                        <View style={styles.headerInfo}>
-                            <Text style={styles.headerName} numberOfLines={1}>
-                                {name}
-                            </Text>
-                            <Text style={styles.headerStatus}>Active 10h ago</Text>
-                        </View>
-                    </View>
+                                <View style={styles.headerInfo}>
+                                    <Text style={styles.headerName} numberOfLines={1}>{name}</Text>
+                                    <Text style={styles.headerStatus}>Active 10h ago</Text>
+                                </View>
+                            </View>
 
-                    <TouchableOpacity hitSlop={8}>
-                        <Ionicons name="search-outline" size={20} color="#E6E6E6" />
-                    </TouchableOpacity>
+                            <TouchableOpacity
+                                hitSlop={8}
+                                onPress={() => {
+                                    setSearchOpen(true);
+                                    setTimeout(() => searchInputRef.current?.focus(), 100);
+                                }}
+                            >
+                                <Ionicons name="search-outline" size={20} color="#1D1D1D" />
+                            </TouchableOpacity>
+                        </>
+                    ) : (
+                        /* ── Search bar (same style as headerapp) ── */
+                        <Pressable style={styles.searchRow} onPress={(e) => e.stopPropagation()}>
+                            <View style={styles.searchBox}>
+                                <Ionicons name="search-outline" size={18} color="#9CA3AF" />
+                                <TextInput
+                                    ref={searchInputRef}
+                                    style={styles.searchInput}
+                                    placeholder="Search messages..."
+                                    placeholderTextColor="#9CA3AF"
+                                    value={search}
+                                    onChangeText={setSearch}
+                                    autoFocus
+                                />
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => { setSearchOpen(false); setSearch(""); }}
+                                style={styles.cancelBtn}
+                            >
+                                <Text style={styles.cancelText}>Cancel</Text>
+                            </TouchableOpacity>
+                        </Pressable>
+                    )}
                 </View>
 
                 {/* ── Filter Chips ── */}
-                <View style={styles.filterRow}>
-                    <TouchableOpacity style={styles.filterChip} activeOpacity={0.75}>
-                        <Ionicons name="calendar-outline" size={13} color="#6B7280" />
-                        <Text style={styles.filterChipText}>Date</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.filterChip} activeOpacity={0.75}>
-                        <Ionicons name="attach-outline" size={13} color="#6B7280" />
-                        <Text style={styles.filterChipText}>Attachments</Text>
-                    </TouchableOpacity>
-                </View>
+                {!searchOpen && (
+                    <View style={styles.filterRow}>
+                        <TouchableOpacity
+                            style={[styles.filterChip, activeFilter === "date" && styles.filterChipActive]}
+                            activeOpacity={0.75}
+                            onPress={() => toggleFilter("date")}
+                        >
+                            <Ionicons
+                                name="calendar-outline"
+                                size={11}
+                                color={activeFilter === "date" ? "#fff" : "#6B7280"}
+                            />
+                            <Text style={[styles.filterChipText, activeFilter === "date" && styles.filterChipTextActive]}>
+                                Date
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.filterChip, activeFilter === "attachments" && styles.filterChipActive]}
+                            activeOpacity={0.75}
+                            onPress={() => toggleFilter("attachments")}
+                        >
+                            <Ionicons
+                                name="attach-outline"
+                                size={11}
+                                color={activeFilter === "attachments" ? "#fff" : "#6B7280"}
+                            />
+                            <Text style={[styles.filterChipText, activeFilter === "attachments" && styles.filterChipTextActive]}>
+                                Attachments
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {/* ── Date / Attachments panel ── */}
+                {!searchOpen && activeFilter === "date" && (
+                    <View style={styles.panelWrapper}>
+                        <DateFilterPanel />
+                    </View>
+                )}
+                {!searchOpen && activeFilter === "attachments" && (
+                    <View style={styles.panelWrapper}>
+                        <AttachmentsPanel />
+                    </View>
+                )}
 
                 {/* ── Scrollable content ── */}
                 <KeyboardAvoidingView
@@ -252,14 +547,9 @@ export default function ConversationScreen() {
                                 </View>
 
                                 <TouchableOpacity
-                                    style={[
-                                        styles.sendBtn,
-                                        message.trim().length > 0 && styles.sendBtnActive,
-                                    ]}
+                                    style={[styles.sendBtn, message.trim().length > 0 && styles.sendBtnActive]}
                                     activeOpacity={0.85}
-                                    onPress={() => {
-                                        if (message.trim()) setMessage("");
-                                    }}
+                                    onPress={() => { if (message.trim()) setMessage(""); }}
                                 >
                                     <Ionicons name="paper-plane" size={16} color="#fff" />
                                 </TouchableOpacity>
@@ -279,16 +569,9 @@ const TEXT_PRIMARY = "#1D1D1D";
 const TEXT_SECONDARY = "#6B7280";
 
 const styles = StyleSheet.create({
-    root: {
-        flex: 1,
-        backgroundColor: "#fff",
-    },
-    safe: {
-        flex: 1,
-    },
-    flex: {
-        flex: 1,
-    },
+    root: { flex: 1, backgroundColor: "#fff" },
+    safe: { flex: 1 },
+    flex: { flex: 1 },
 
     // ── Header ──
     header: {
@@ -296,9 +579,10 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "space-between",
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 10,
         borderBottomWidth: 1,
         borderBottomColor: "#F3F4F6",
+        minHeight: 54,
     },
     headerLeft: {
         flexDirection: "row",
@@ -306,13 +590,11 @@ const styles = StyleSheet.create({
         flex: 1,
         gap: 10,
     },
-    backBtn: {
-        marginRight: 2,
-    },
+    backBtn: { marginRight: 2 },
     headerAvatar: {
-        width: 30,
-        height: 30,
-        borderRadius: 5,
+        width: 32,
+        height: 32,
+        borderRadius: 6,
         backgroundColor: TEAL,
         justifyContent: "center",
         alignItems: "center",
@@ -322,9 +604,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: "SF_Pro_Semibold",
     },
-    headerInfo: {
-        flex: 1,
-    },
+    headerInfo: { flex: 1 },
     headerName: {
         fontSize: 15,
         fontFamily: "SF_Pro_Medium",
@@ -332,9 +612,42 @@ const styles = StyleSheet.create({
     },
     headerStatus: {
         fontSize: 10,
-        fontFamily: "SF_Pro_Medium",
+        fontFamily: "SF_Pro_Regular",
         color: "#8A8A8A",
         marginTop: 1,
+    },
+
+    // ── Search (matches headerapp.tsx exactly) ──
+    searchRow: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    searchBox: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: "#E6E6E6",
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        height: 40,
+        gap: 8,
+        backgroundColor: "#fff",
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 14,
+        color: "#111827",
+        fontFamily: "SF_Pro_Regular",
+        padding: 0,
+    },
+    cancelBtn: { paddingHorizontal: 4 },
+    cancelText: {
+        fontSize: 14,
+        fontFamily: "SF_Pro_Medium",
+        color: TEAL,
     },
 
     // ── Filter Chips ──
@@ -349,27 +662,38 @@ const styles = StyleSheet.create({
     filterChip: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 5,
+        gap: 4,
         borderWidth: 1,
         borderColor: "#D1D5DB",
         borderRadius: 8,
-        paddingHorizontal: 12,
+        paddingHorizontal: 10,
         paddingVertical: 5,
         backgroundColor: "#fff",
     },
+    filterChipActive: {
+        backgroundColor: "#1D1D1D",
+        borderColor: "#1D1D1D",
+    },
     filterChipText: {
-        fontSize: 12,
+        fontSize: 11,
         fontFamily: "SF_Pro_Regular",
-        color:"#8A8A8A",
+        color: "#8A8A8A",
+    },
+    filterChipTextActive: {
+        color: "#fff",
+        fontFamily: "SF_Pro_Medium",
+    },
+
+    // ── Panel ──
+    panelWrapper: {
+        // borderBottomWidth: 1,
+        // borderBottomColor: "#E5E7EB",
+        paddingTop: 4,
     },
 
     // ── Scroll ──
-    scroll: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingBottom: 12,
-    },
+    scroll: { flex: 1 },
+    scrollContent: { paddingBottom: 12 },
 
     // ── Date Separator ──
     dateSeparator: {
@@ -408,11 +732,9 @@ const styles = StyleSheet.create({
     workspaceContainer: {
         alignItems: "center",
         paddingHorizontal: 24,
-        paddingVertical: 24,
+        paddingVertical: 20,
     },
-    iconStack: {
-        marginBottom: 14,
-    },
+    iconStack: { marginBottom: 14 },
     workspaceTitle: {
         fontSize: 20,
         fontFamily: "SF_Pro_Regular",
@@ -434,11 +756,9 @@ const styles = StyleSheet.create({
         gap: 20,
         paddingTop: 8,
     },
-    messageWrapper: {
-        width: "100%",
-    },
+    messageWrapper: { width: "100%" },
 
-    // Incoming (avatar right)
+    // Incoming (received): content right-aligned, avatar on far right
     incomingRow: {
         flexDirection: "row",
         justifyContent: "flex-end",
@@ -465,7 +785,7 @@ const styles = StyleSheet.create({
         maxWidth: "90%",
     },
 
-    // Outgoing (avatar left)
+    // Outgoing (sent): avatar on far left, bubble left-aligned, white bg
     outgoingRow: {
         flexDirection: "row",
         justifyContent: "flex-start",
@@ -484,7 +804,7 @@ const styles = StyleSheet.create({
         textAlign: "left",
     },
     outgoingBubble: {
-        backgroundColor: "#E6FAF5",
+        backgroundColor: "#F3F4F6",
         borderRadius: 14,
         borderTopLeftRadius: 4,
         paddingHorizontal: 14,
@@ -499,7 +819,6 @@ const styles = StyleSheet.create({
         color: TEXT_PRIMARY,
         lineHeight: 20,
     },
-
     timeMeta: {
         fontSize: 11,
         fontFamily: "SF_Pro_Regular",
@@ -514,19 +833,21 @@ const styles = StyleSheet.create({
         marginTop: 6,
         paddingHorizontal: 2,
     },
-    actionBtn: {
-        padding: 2,
-    },
+    actionBtn: { padding: 2 },
 
-    // ── Avatar ──
+    // ── Avatar (in message) ──
     avatar: {
+        width: 38,
+        height: 38,
+        borderRadius: 8,
         backgroundColor: TEAL,
         justifyContent: "center",
         alignItems: "center",
+        flexShrink: 0,
     },
     avatarText: {
         color: "#fff",
-        fontSize: 13,
+        fontSize: 12,
         fontFamily: "SF_Pro_Semibold",
         letterSpacing: 0.3,
     },
@@ -537,17 +858,20 @@ const styles = StyleSheet.create({
         paddingTop: 8,
         paddingBottom: Platform.OS === "ios" ? 24 : 16,
         paddingHorizontal: 16,
+        borderTopWidth: 1,
+        borderTopColor: "#F3F4F6",
     },
     inputContainer: {
         borderWidth: 1,
         borderColor: "#E6E6E6",
         borderRadius: 8,
         paddingHorizontal: 14,
-        paddingVertical: 12,
+        paddingTop: 10,
+        paddingBottom: 6,
         backgroundColor: "#fff",
     },
     inputRow: {
-        minHeight: 40,
+        minHeight: 36,
         justifyContent: "flex-start",
     },
     textInput: {
@@ -594,7 +918,5 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
     },
-    sendBtnActive: {
-        backgroundColor: TEAL,
-    },
+    sendBtnActive: { backgroundColor: TEAL },
 });

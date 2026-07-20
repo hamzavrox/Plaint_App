@@ -11,6 +11,8 @@ type Props = {
   onSelectStart: (d: Date) => void;
   onSelectEnd: (d: Date) => void;
   onDone?: () => void;
+  /** When true, renders a smaller calendar suitable for inline panels */
+  compact?: boolean;
 };
 
 function getDaysInMonth(year: number, month: number) {
@@ -26,7 +28,7 @@ function isBetween(date: Date, start: Date, end: Date) {
   return date > start && date < end;
 }
 
-export default function CalendarPicker({ startDate, endDate, onSelectStart, onSelectEnd, onDone }: Props) {
+export default function CalendarPicker({ startDate, endDate, onSelectStart, onSelectEnd, onDone, compact = false }: Props) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -81,8 +83,8 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
     <View style={styles.container}>
       {/* Nav row */}
       <View style={styles.navRow}>
-        <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
-          <Ionicons name="chevron-back" size={18} color="#1D1D1D" />
+        <TouchableOpacity onPress={prevMonth} style={[styles.navBtn, compact && styles.navBtnCompact]}>
+          <Ionicons name="chevron-back" size={compact ? 12 : 18} color="#1D1D1D" />
         </TouchableOpacity>
 
         {/* <View style={styles.navCenter}>
@@ -104,13 +106,13 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
               setShowYearDropdown(false);
             }}
           >
-            <Text style={styles.monthLabel}>
+            <Text style={[styles.monthLabel, compact && styles.monthLabelCompact]}>
               {MONTHS[viewMonth].slice(0, 3)}
             </Text>
 
             <Ionicons
               name={showMonthDropdown ? "chevron-up" : "chevron-down"}
-              size={14}
+              size={compact ? 10 : 14}
               color="#00DEAB"
             />
           </TouchableOpacity>
@@ -121,18 +123,18 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
               setShowMonthDropdown(false);
             }}
           >
-            <Text style={styles.monthLabel}>{viewYear}</Text>
+            <Text style={[styles.monthLabel, compact && styles.monthLabelCompact]}>{viewYear}</Text>
 
             <Ionicons
               name={showYearDropdown ? "chevron-up" : "chevron-down"}
-              size={14}
+              size={compact ? 10 : 14}
               color="#00DEAB"
             />
           </TouchableOpacity>
         </View>
 
         {showMonthDropdown && (
-          <View style={styles.dropdown}>
+          <View style={[styles.dropdown, compact && styles.dropdownCompact]}>
             <ScrollView
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled
@@ -142,6 +144,7 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
                   key={month}
                   style={[
                     styles.dropdownItem,
+                    compact && styles.dropdownItemCompact,
                     index === viewMonth && styles.selectedItem,
                   ]}
                   onPress={() => {
@@ -152,6 +155,7 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
                   <Text
                     style={[
                       styles.dropdownText,
+                      compact && styles.dropdownTextCompact,
                       index === viewMonth && styles.selectedText,
                     ]}
                   >
@@ -165,7 +169,7 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
 
 
         {showYearDropdown && (
-          <View style={styles.dropdown}>
+          <View style={[styles.dropdown, compact && styles.dropdownCompact]}>
             <ScrollView
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled
@@ -175,6 +179,7 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
                   key={year}
                   style={[
                     styles.dropdownItem,
+                    compact && styles.dropdownItemCompact,
                     year === viewYear && styles.selectedItem,
                   ]}
                   onPress={() => {
@@ -185,6 +190,7 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
                   <Text
                     style={[
                       styles.dropdownText,
+                      compact && styles.dropdownTextCompact,
                       year === viewYear && styles.selectedText,
                     ]}
                   >
@@ -195,14 +201,14 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
             </ScrollView>
           </View>
         )}
-        <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
-          <Ionicons name="chevron-forward" size={18} color="#1D1D1D" />
+        <TouchableOpacity onPress={nextMonth} style={[styles.navBtn, compact && styles.navBtnCompact]}>
+          <Ionicons name="chevron-forward" size={compact ? 12 : 18} color="#1D1D1D" />
         </TouchableOpacity>
       </View>
 
       {/* Day headers */}
       <View style={styles.weekRow}>
-        {DAYS.map(d => <Text key={d} style={styles.dayHeader}>{d}</Text>)}
+        {DAYS.map(d => <Text key={d} style={[styles.dayHeader, compact && styles.dayHeaderCompact]}>{d}</Text>)}
       </View>
 
       {/* Grid */}
@@ -219,7 +225,6 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
           return (
             <View key={i} style={styles.cellWrap}>
               <TouchableOpacity
-                // style={[styles.cell, inRange && styles.cellInRange, isSelected && styles.cellSelected]}
                style={[
   styles.cell,
   isToday && !isSelected && styles.cellToday,
@@ -231,6 +236,7 @@ export default function CalendarPicker({ startDate, endDate, onSelectStart, onSe
               >
                 <Text style={[
                   styles.dayText,
+                  compact && styles.dayTextCompact,
                   !isCurr && styles.dayTextGrey,
                   isToday && !isSelected && styles.dayTextToday,
                   isSelected && styles.dayTextSelected,
@@ -271,6 +277,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     alignItems: "center", justifyContent: "center",
   },
+  navBtnCompact: {
+    width: 26, height: 26, borderRadius: 13,
+  },
   navCenter: {
     flexDirection: "row",
     alignItems: "center",
@@ -289,6 +298,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "SF_Pro_Semibold",
     color: "#1D1D1D",
+  },
+  monthLabelCompact: {
+    fontSize: 12,
   },
   triangle: {
     width: 0, height: 0,
@@ -309,6 +321,10 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     fontFamily: "SF_Pro_Medium",
     paddingVertical: 4,
+  },
+  dayHeaderCompact: {
+    fontSize: 11,
+    paddingVertical: 2,
   },
   grid: {
     flexDirection: "row",
@@ -339,6 +355,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#1D1D1D",
     fontFamily: "SF_Pro_Medium",
+  },
+  dayTextCompact: {
+    fontSize: 11,
   },
   cellToday: {
   borderWidth: 1.5,
@@ -382,17 +401,27 @@ const styles = StyleSheet.create({
     zIndex: 999,
     elevation: 10,
   },
+  dropdownCompact: {
+    width: 110,
+    maxHeight: 160,
+  },
 
   dropdownItem: {
     paddingVertical: 12,
     paddingHorizontal: 12,
   },
-
+  dropdownItemCompact: {
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
   dropdownText: {
     fontSize: 15,
     textAlign: "center",
     color: "#1D1D1D",
     fontFamily: "SF_Pro_Medium",
+  },
+  dropdownTextCompact: {
+    fontSize: 12,
   },
   selectedItem: {},
   selectedText: {},

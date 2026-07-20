@@ -1,0 +1,237 @@
+import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from "react-native";
+
+interface FloatingInputProps {
+  value: string;
+  onChangeText: (t: string) => void;
+  label: string;
+}
+
+function FloatingInput({ value, onChangeText, label }: FloatingInputProps) {
+  const anim = useRef(new Animated.Value(value ? 1 : 0)).current;
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+
+  const animate = (to: number) =>
+    Animated.timing(anim, { toValue: to, duration: 180, useNativeDriver: false }).start();
+
+  const handleFocus = () => { animate(1); setFocused(true); };
+  const handleBlur = () => { if (!value) animate(0); setFocused(false); };
+
+  const labelTop = anim.interpolate({ inputRange: [0, 1], outputRange: [13, -10] });
+  const labelSize = anim.interpolate({ inputRange: [0, 1], outputRange: [14, 11] });
+  const activeColor = "#1D1D1D";
+  const labelColor = focused || value ? activeColor : "#A0A0A0";
+  const borderColor = focused ? "#1D1D1D" : "#D1D5DB";
+
+  return (
+    <TouchableWithoutFeedback onPress={() => inputRef.current?.focus()}>
+      <View style={[inputStyles.wrapper, { borderColor }]}>
+        <Animated.Text
+          style={[
+            inputStyles.label,
+            {
+              top: labelTop,
+              fontSize: labelSize,
+              color: labelColor,
+            },
+          ]}
+        >
+          {label}
+        </Animated.Text>
+        <TextInput
+          ref={inputRef}
+          style={inputStyles.input}
+          value={value}
+          onChangeText={onChangeText}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          autoCorrect={false}
+          autoCapitalize="words"
+        />
+      </View>
+    </TouchableWithoutFeedback>
+  );
+}
+
+const inputStyles = StyleSheet.create({
+  wrapper: {
+    borderWidth: 1.3,
+    borderRadius: 8,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    paddingHorizontal: 14,
+    backgroundColor: "#fff",
+    flexDirection: "row",
+    alignItems: "center",
+    height: 45,
+    position: "relative",
+  },
+  label: {
+    position: "absolute",
+    left: 12,
+    backgroundColor: "#fff",
+    paddingHorizontal: 3,
+    fontFamily: "SF_Pro_Regular",
+    zIndex: 1,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: "SF_Pro_Medium",
+    color: "#1D1D1D",
+    paddingVertical: 0,
+    height: "100%",
+  },
+});
+
+interface CreateChannelModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onNext: (channelName: string) => void;
+}
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+export default function CreateChannelModal({
+  visible,
+  onClose,
+  onNext,
+}: CreateChannelModalProps) {
+  const [channelName, setChannelName] = useState("");
+
+  const handleClose = () => {
+    Keyboard.dismiss();
+    setChannelName("");
+    onClose();
+  };
+
+  const handleNext = () => {
+    Keyboard.dismiss();
+    onNext(channelName);
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={handleClose}
+      statusBarTranslucent
+    >
+      <TouchableWithoutFeedback onPress={handleClose}>
+        <View style={modalStyles.backdrop} />
+      </TouchableWithoutFeedback>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="box-none"
+      >
+        <View style={modalStyles.kavWrapper}>
+          <View style={modalStyles.sheet}>
+          <TouchableOpacity
+            style={modalStyles.closeBtn}
+            onPress={handleClose}
+            activeOpacity={0.8}
+            hitSlop={8}
+          >
+            <Ionicons name="close" size={17} color="#fff" />
+          </TouchableOpacity>
+
+          <Text style={modalStyles.title}>Create Channel</Text>
+
+          <FloatingInput
+            label="Write your channel name"
+            value={channelName}
+            onChangeText={setChannelName}
+          />
+
+          <TouchableOpacity
+            style={modalStyles.nextBtn}
+            activeOpacity={0.8}
+            onPress={handleNext}
+          >
+            <Text style={modalStyles.nextBtnText}>Next</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+const modalStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.38)",
+  },
+  kavWrapper: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sheet: {
+    backgroundColor: "#fff",
+    borderRadius: 28,
+    width: "90%",
+    paddingTop: 32,
+    paddingBottom: 40,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 12,
+  },
+  closeBtn: {
+    position: "absolute",
+    top: 18,
+    right: 20,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#1D1D1D",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 5,
+  },
+  title: {
+    fontSize: 26,
+    fontFamily: "SF_Pro_Regular",
+    color: "#1D1D1D",
+    marginHorizontal: 20,
+    marginBottom: 26,
+  },
+  nextBtn: {
+    backgroundColor: "#00DEAB",
+    borderRadius: 8,
+    marginHorizontal: 20,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  nextBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontFamily: "SF_Pro_Medium",
+  },
+});
