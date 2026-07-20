@@ -3,29 +3,22 @@ import RichTextEditor, { RichTextEditorRef } from "@/components/texteditor";
 import { Ionicons } from "@expo/vector-icons";
 import { useRef, useState } from "react";
 import {
+  Alert,
   Modal,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
+import { useAuth } from "@/hooks/useAuth";
+import { useTasks } from "@/hooks/useTasks";
+import { extractErrorMessage } from "@/utils/errorHandler";
+import { uiStatusToApi } from "@/utils/statusMapper";
+import type { UiTaskStatus, RecurringPeriod } from "@/types/task.types";
 
 type Props = { visible: boolean; onClose: () => void };
-
-const MOCK_USERS = [
-  { id: "1", name: "Muhammad Salman", initials: "S", color: "#0DDFAB" },
-  { id: "2", name: "Muhammad Haris", initials: "H", color: "#607EF9" },
-  { id: "3", name: "Muhammad Najam Ali", initials: "N", color: "#F97316" },
-  { id: "4", name: "Muhammad Junaid", initials: "J", color: "#DFA70D" },
-  { id: "5", name: "Muhammad Awais", initials: "A", color: "#DF0D0D" },
-  { id: "6", name: "Muhammad Salman", initials: "S", color: "#0DDFAB" },
-  { id: "7", name: "Muhammad Haris", initials: "H", color: "#607EF9" },
-  { id: "8", name: "Muhammad Najam Ali", initials: "N", color: "#F97316" },
-  { id: "9", name: "Muhammad Junaid", initials: "J", color: "#DFA70D" },
-  { id: "10", name: "Muhammad Awais", initials: "A", color: "#DF0D0D" },
-];
 
 const TOP_CHIPS = [
   { id: "assigned", icon: "people-outline", label: "Assigned to" },
@@ -33,13 +26,10 @@ const TOP_CHIPS = [
   { id: "priority", icon: "star-outline", label: "Priority" },
 ];
 
-const BOTTOM_CHIPS = [
-  { id: "approval", icon: "checkmark-done-outline", label: "Approval Required" },
-  { id: "status", icon: "radio-button-off-outline", label: "Task Status" },
-  { id: "recurring", icon: "camera-outline", label: "Recurring Task" },
-];
-
 export default function CreateTaskModal({ visible, onClose }: Props) {
+  const { state: authState } = useAuth();
+  const { state: taskState, createTask } = useTasks();
+
   const [title, setTitle] = useState("");
   const [titleFocused, setTitleFocused] = useState(false);
   const [description, setDescription] = useState("");
@@ -48,35 +38,47 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignSearch, setAssignSearch] = useState("");
   const [assignFocused, setAssignFocused] = useState(false);
-  const [assignedUser, setAssignedUser] = useState<typeof MOCK_USERS[0] | null>(null);
+  const [assignedUserId, setAssignedUserId] = useState<number | null>(null);
+  const [assignedUserName, setAssignedUserName] = useState<string>("");
   const [dueDateOpen, setDueDateOpen] = useState(false);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [selectedPriority, setSelectedPriority] = useState<string | null>(null);
+  const [selectedPriorityId, setSelectedPriorityId] = useState<number | null>(null);
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [selectedApproval, setSelectedApproval] = useState<string | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-  const [recurringOpen, setRecurringOpen] = useState(false);
-  const [recurringEnabled, setRecurringEnabled] = useState(false);
+  const [recurringPeriod, setRecurringPeriod] = useState<RecurringPeriod | null>(null);
+  const [recurringTime, setRecurringTime] = useState<string>("");
+  const [recurringTotalCount, setRecurringTotalCount] = useState<number>(1);
+  const [loading, setLoading] = useState(false);
 
-  const togglePanel = (panel: "assign" | "duedate" | "priority" | "approval" | "status" | "recurring") => {
+  const togglePanel = (panel: "assign" | "duedate" | "priority" | "approval" | "status") => {
     setAssignOpen(panel === "assign" ? !assignOpen : false);
     setDueDateOpen(panel === "duedate" ? !dueDateOpen : false);
     setPriorityOpen(panel === "priority" ? !priorityOpen : false);
     setApprovalOpen(panel === "approval" ? !approvalOpen : false);
     setStatusOpen(panel === "status" ? !statusOpen : false);
-    setRecurringOpen(panel === "recurring" ? !recurringOpen : false);
   };
 
   const STATUSES = [
     { label: "Pending", color: "#F97316" },
-    { label: "In Progress", color: "#607EF9" },
-    { label: "On Hold", color: "#0DDFAB" },
+    { label: "In-Progress", color: "#607EF9" },
     { label: "Completed", color: "#1CB333" },
     { label: "Rejected", color: "#FF0000" },
-    { label: "Pending Approval", color: "#1D1D1D" },
+    { label: "Pending-Approval", color: "#1D1D1D" },
+    { label: "Recurring", color: "#16A34A" },
+  ];
+
+  const RECURRING_PERIODS: { value: RecurringPeriod; label: string }[] = [
+    { value: "daily", label: "Daily" },
+    { value: "weekly", label: "Weekly" },
+    { value: "monthly", label: "Monthly" },
+    { value: "annually", label: "Annually" },
+    { value: "quarterly", label: "Quarterly" },
+    { value: "semi-annually", label: "Semi-Annually" },
   ];
 
   const descriptionEditorRef = useRef<RichTextEditorRef>(null);
@@ -84,9 +86,10 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
   const titleFloated = titleFocused || title.length > 0;
   const descExpanded = descFocused || description.replace(/<[^>]*>/g, "").trim().length > 0;
 
-  const filteredUsers = MOCK_USERS.filter((u) =>
-    u.name.toLowerCase().includes(assignSearch.toLowerCase())
-  );
+  const filteredUsers = taskState.taskOwners.filter((u) => {
+    const fullName = `${u.first_name} ${u.last_name}`.toLowerCase();
+    return fullName.includes(assignSearch.toLowerCase());
+  });
 
   const handleAttach = () => {
     const fakeFile = `Attached File ${attachments.length + 1}.pdf`;
@@ -98,21 +101,94 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
   };
 
   const handleCreateTask = async () => {
-    const descriptionHtml = await descriptionEditorRef.current?.getContentHtml();
-    console.log({ title, description: descriptionHtml ?? description, attachments, assignedUser });
+    if (!title.trim()) {
+      Alert.alert("Validation", "Task title is required.");
+      return;
+    }
+    if (!assignedUserId) {
+      Alert.alert("Validation", "Please assign a user.");
+      return;
+    }
+    if (!startDate) {
+      Alert.alert("Validation", "Due date is required.");
+      return;
+    }
+    if (!selectedPriorityId) {
+      Alert.alert("Validation", "Priority is required.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const descriptionHtml = await descriptionEditorRef.current?.getContentHtml();
+      const companyId = authState.company?.company_id ?? 0;
+      const companyIdentifier = authState.company?.company_identifier ?? "";
+
+      const isRecurring = selectedStatus === "Recurring";
+
+      await createTask({
+        title: title.trim(),
+        company_identifier: companyIdentifier,
+        company_id: companyId,
+        assign_to: assignedUserId,
+        due_date: startDate.toISOString(),
+        priority: selectedPriorityId,
+        approval_required: selectedApproval === "Yes" ? 1 : 0,
+        status: uiStatusToApi((selectedStatus as UiTaskStatus) ?? "Pending"),
+        description: descriptionHtml ?? description,
+        project_id: 0,
+        is_recurring: isRecurring,
+        recurring_period: isRecurring ? recurringPeriod : null,
+        recurring_time: isRecurring && recurringTime ? recurringTime : null,
+        recurring_total_count: isRecurring ? recurringTotalCount : 0,
+        recurring_exclude_days: [],
+        recurring_week_day: null,
+        recurring_month_date: null,
+        recurring_annual_month: null,
+        recurring_annual_date: null,
+      });
+
+      Alert.alert("Success", "Task created successfully.");
+      setTitle("");
+      setDescription("");
+      setAssignedUserId(null);
+      setAssignedUserName("");
+      setStartDate(null);
+      setEndDate(null);
+      setSelectedPriority(null);
+      setSelectedPriorityId(null);
+      setSelectedApproval(null);
+      setSelectedStatus(null);
+      setRecurringPeriod(null);
+      setRecurringTime("");
+      setRecurringTotalCount(1);
+      setAttachments([]);
+      onClose();
+    } catch (error) {
+      const msg = extractErrorMessage(error);
+      Alert.alert("Error", msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelectPriority = (label: string) => {
+    setSelectedPriority(label);
+    const priority = taskState.priorities.find(
+      (p) => p.name.toLowerCase() === label.toLowerCase()
+    );
+    setSelectedPriorityId(priority?.id ?? null);
   };
 
   return (
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
-          {/* Close */}
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Ionicons name="close" size={18} color="#fff" />
           </TouchableOpacity>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="always">
-            {/* Title */}
             <View style={[styles.titleInputWrap, titleFloated && styles.titleInputWrapActive]}>
               <Text style={[styles.floatLabel, titleFloated && styles.floatLabelActive]}>
                 Enter a task title
@@ -127,7 +203,6 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
               />
             </View>
 
-            {/* Description */}
             {descExpanded ? (
               <RichTextEditor
                 ref={descriptionEditorRef}
@@ -147,14 +222,13 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
               </TouchableOpacity>
             )}
 
-            {/* Top chips row */}
             <View style={styles.chipsRow}>
               {TOP_CHIPS.map((chip) => {
                 const isAssign = chip.id === "assigned";
                 const isDueDate = chip.id === "duedate";
                 const isPriority = chip.id === "priority";
                 const active = (isAssign && assignOpen) || (isDueDate && dueDateOpen) || (isPriority && priorityOpen);
-                const hasUser = isAssign && assignedUser;
+                const hasUser = isAssign && assignedUserName;
                 const hasDate = isDueDate && startDate;
                 const hasPriority = isPriority && selectedPriority;
                 return (
@@ -169,7 +243,7 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                   >
                     <Ionicons name={chip.icon as any} size={16} color={active ? "#fff" : "#AAAAAA"} />
                     <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
-                      {hasUser ? assignedUser!.name.split(" ")[0] + " " + assignedUser!.name.split(" ")[1]
+                      {hasUser ? assignedUserName
                         : hasDate ? `${startDate!.getDate()}, ${startDate!.toLocaleString("default", { month: "short" })}`
                           : hasPriority ? selectedPriority!
                             : chip.label}
@@ -179,7 +253,6 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
               })}
             </View>
 
-            {/* Priority panel */}
             {priorityOpen && (
               <View style={styles.priorityRow}>
                 {[
@@ -190,7 +263,7 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                   <TouchableOpacity
                     key={p.label}
                     style={[styles.priorityChip, p.selected && { backgroundColor: "#0DDFAB", borderColor: "#0DDFAB" }]}
-                    onPress={() => { setSelectedPriority(p.label); setPriorityOpen(false); }}
+                    onPress={() => { handleSelectPriority(p.label); setPriorityOpen(false); }}
                   >
                     {p.selected
                       ? <Ionicons name="checkmark" size={14} color="#fff" />
@@ -201,27 +274,24 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
               </View>
             )}
 
-            {/* Due Date calendar */}
-            <View style={{marginBottom:dueDateOpen?10:0}}>
-            {dueDateOpen && (
-              <CalendarPicker
-                startDate={startDate}
-                endDate={endDate}
-                onSelectStart={setStartDate}
-                onSelectEnd={setEndDate}
-                onDone={() => setDueDateOpen(false)}
-              />
-            )}
+            <View style={{ marginBottom: dueDateOpen ? 10 : 0 }}>
+              {dueDateOpen && (
+                <CalendarPicker
+                  startDate={startDate}
+                  endDate={endDate}
+                  onSelectStart={setStartDate}
+                  onSelectEnd={setEndDate}
+                  onDone={() => setDueDateOpen(false)}
+                />
+              )}
             </View>
 
-            {/* Assign to search panel */}
             {assignOpen && (
               <View style={styles.assignPanel}>
-                {/* Floating label search input */}
                 <View style={[
-    styles.searchWrap,
-    (assignFocused || assignSearch.length > 0) && styles.searchWrapActive,
-  ]}>
+                  styles.searchWrap,
+                  (assignFocused || assignSearch.length > 0) && styles.searchWrapActive,
+                ]}>
                   <Text style={[styles.searchLabel, (assignFocused || assignSearch.length > 0) && styles.searchLabelFloated]}>
                     Search people
                   </Text>
@@ -233,68 +303,39 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                     onBlur={() => setAssignFocused(false)}
                     autoFocus
                   />
-                  <Ionicons name="search-outline" size={18}  color={
-    assignFocused || assignSearch.length > 0
-      ? "#1D1D1D"
-      : "#AAAAAA"
-  } style={styles.searchIcon} />
+                  <Ionicons name="search-outline" size={18}
+                    color={assignFocused || assignSearch.length > 0 ? "#1D1D1D" : "#AAAAAA"}
+                    style={styles.searchIcon}
+                  />
                 </View>
 
-                {/* User list */}
-                {/* {filteredUsers.map((user) => (
-                  <TouchableOpacity
-                    key={user.id}
-                    style={styles.userRow}
-                    onPress={() => { setAssignedUser(user); setAssignOpen(false); setAssignSearch(""); }}
-                  >
-                    <View style={styles.userAvatar}>
-                      <Text style={styles.userAvatarText}>{user.initials}</Text>
-                    </View>
-                    <Text style={styles.userName}>{user.name}</Text>
-                  </TouchableOpacity>
-                ))} */}
-
-                {/* <View style={styles.userListContainer}>
-                  <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    nestedScrollEnabled
-                  > */}
                 {assignSearch.trim().length > 0 &&
-                  filteredUsers.map((user) => (
-                    <TouchableOpacity
-                      key={user.id}
-                      style={styles.userRow}
-                      onPress={() => {
-                        setAssignedUser(user);
-                        setAssignOpen(false);
-                        setAssignSearch("");
-                      }}
-                    >
-                      <View
-                        style={[
-                          styles.userAvatar,
-                          { backgroundColor: "#0DDFAB" },
-                        ]}
+                  filteredUsers.map((user) => {
+                    const fullName = `${user.first_name} ${user.last_name}`;
+                    const initials = ((user.first_name?.[0] ?? "") + (user.last_name?.[0] ?? "")).toUpperCase();
+                    return (
+                      <TouchableOpacity
+                        key={user.id}
+                        style={styles.userRow}
+                        onPress={() => {
+                          setAssignedUserId(user.id);
+                          setAssignedUserName(fullName);
+                          setAssignOpen(false);
+                          setAssignSearch("");
+                        }}
                       >
-                        <Text style={styles.userAvatarText}>
-                          {user.initials}
-                        </Text>
-                      </View>
-
-                      <Text style={styles.userName}>
-                        {user.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))
+                        <View style={[styles.userAvatar, { backgroundColor: "#0DDFAB" }]}>
+                          <Text style={styles.userAvatarText}>{initials}</Text>
+                        </View>
+                        <Text style={styles.userName}>{fullName}</Text>
+                      </TouchableOpacity>
+                    );
+                  })
                 }
-                {/* </ScrollView>
-                </View> */}
               </View>
             )}
 
-            {/* Bottom chips + approval + status panels */}
             <View style={styles.chipsRow}>
-              {/* Approval Required Chip */}
               <TouchableOpacity
                 style={[styles.chip, approvalOpen && styles.chipActive]}
                 onPress={() => togglePanel("approval")}
@@ -305,7 +346,6 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                 </Text>
               </TouchableOpacity>
 
-              {/* Task Status Chip */}
               <TouchableOpacity
                 style={[styles.chip, statusOpen && styles.chipActive]}
                 onPress={() => togglePanel("status")}
@@ -316,7 +356,6 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                 </Text>
               </TouchableOpacity>
 
-              {/* Approval panel */}
               {approvalOpen && (
                 <View style={{ width: "100%" }}>
                   <View style={styles.approvalRow}>
@@ -337,7 +376,6 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                 </View>
               )}
 
-              {/* Status panel */}
               {statusOpen && (
                 <View style={{ width: "100%" }}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusScroll}>
@@ -360,32 +398,54 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                 </View>
               )}
 
-              {/* Recurring Task Chip */}
-              <TouchableOpacity
-                style={[styles.chip, recurringOpen && styles.chipActive]}
-                onPress={() => togglePanel("recurring")}
-              >
-                <Ionicons name="camera-outline" size={16} color={recurringOpen ? "#fff" : "#AAAAAA"} />
-                <Text style={[styles.chipLabel, recurringOpen && styles.chipLabelActive]}>
-                  {recurringEnabled ? "Recurring" : "Recurring Task"}
-                </Text>
-              </TouchableOpacity>
+              {selectedStatus === "Recurring" && !statusOpen && (
+                <View style={{ width: "100%", marginTop: 8 }}>
+                  <Text style={styles.recurringLabel}>Recurring Period</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusScroll}>
+                    {RECURRING_PERIODS.map((p) => {
+                      const selected = recurringPeriod === p.value;
+                      return (
+                        <TouchableOpacity
+                          key={p.value}
+                          style={[styles.statusChip, selected && { backgroundColor: "#16A34A", borderColor: "#16A34A" }]}
+                          onPress={() => setRecurringPeriod(selected ? null : p.value)}
+                        >
+                          {selected
+                            ? <Ionicons name="checkmark" size={13} color="#fff" />
+                            : <View style={[styles.statusDot, { backgroundColor: "#16A34A" }]} />}
+                          <Text style={[styles.statusLabel, selected && { color: "#fff" }]}>{p.label}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
 
-              {/* Recurring panel */}
-              {recurringOpen && (
-                <View style={{ width: "100%" }}>
-                  <TouchableOpacity
-                    style={styles.recurringBtn}
-                    onPress={() => { setRecurringEnabled((v) => !v); setRecurringOpen(false); }}
-                  >
-                    <Ionicons name="checkmark" size={14} color="#0DDFAB" />
-                    <Text style={styles.recurringLabel}>Enable Recurring</Text>
-                  </TouchableOpacity>
+                  <View style={styles.recurringRow}>
+                    <View style={styles.recurringInputWrap}>
+                      <Text style={styles.recurringLabel}>Time (optional)</Text>
+                      <TextInput
+                        style={styles.recurringInput}
+                        placeholder="e.g. 09:00"
+                        placeholderTextColor="#AAAAAA"
+                        value={recurringTime}
+                        onChangeText={setRecurringTime}
+                      />
+                    </View>
+                    <View style={styles.recurringInputWrap}>
+                      <Text style={styles.recurringLabel}>Total Count</Text>
+                      <TextInput
+                        style={styles.recurringInput}
+                        placeholder="1"
+                        placeholderTextColor="#AAAAAA"
+                        keyboardType="numeric"
+                        value={String(recurringTotalCount)}
+                        onChangeText={(t) => setRecurringTotalCount(Number(t) || 1)}
+                      />
+                    </View>
+                  </View>
                 </View>
               )}
             </View>
 
-            {/* Attachment icons */}
             <View style={styles.attachRow}>
               <TouchableOpacity style={styles.attachBtn} onPress={handleAttach}>
                 <Ionicons name="link-outline" size={20} color="#1D1D1D" />
@@ -397,7 +457,6 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
               )}
             </View>
 
-            {/* Attachment tags */}
             {attachments.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsScroll}>
                 {attachments.map((a, i) => (
@@ -413,9 +472,13 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
             )}
           </ScrollView>
 
-          {/* Create Task Button */}
-          <TouchableOpacity style={styles.createBtn} activeOpacity={0.85} onPress={handleCreateTask}>
-            <Text style={styles.createBtnText}>+   Create Task</Text>
+          <TouchableOpacity
+            style={[styles.createBtn, loading && { opacity: 0.7 }]}
+            activeOpacity={0.85}
+            onPress={handleCreateTask}
+            disabled={loading}
+          >
+            <Text style={styles.createBtnText}>{loading ? "Creating..." : "+   Create Task"}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -434,10 +497,6 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
     maxHeight: "90%",
   },
-  // userListContainer: {
-  //   minHeight: 220,   // jitni minimum height chahiye
-  //   maxHeight: 220,   // fixed height
-  // },
   scrollContent: { paddingBottom: 0, paddingTop: 10 },
   closeBtn: {
     alignSelf: "flex-end",
@@ -458,8 +517,6 @@ const styles = StyleSheet.create({
   descEditor: { marginBottom: 20 },
   descIdle: { flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 4, marginBottom: 20 },
   descIdlePlaceholder: { fontSize: 15, color: "#E6E6E6", fontFamily: "SF_Pro_Regular" },
-
-  // Chips
   chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginBottom: 5 },
   chip: {
     flexDirection: "row", alignItems: "center", gap: 6,
@@ -469,9 +526,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: "#1D1D1D", borderColor: "#1D1D1D" },
   chipLabel: { fontSize: 13, color: "#AAAAAA", fontFamily: "SF_Pro_Regular" },
   chipLabelActive: { color: "#fff" },
-
-  // Priority
-  priorityRow: { flexDirection: "row", gap: 8, marginBottom: 5},
+  priorityRow: { flexDirection: "row", gap: 8, marginBottom: 5 },
   priorityChip: {
     flexDirection: "row", alignItems: "center", gap: 6,
     borderWidth: 1, borderColor: "#AAAAAA", borderRadius: 8,
@@ -479,26 +534,18 @@ const styles = StyleSheet.create({
   },
   priorityDot: { width: 8, height: 8, borderRadius: 4 },
   priorityLabel: { fontSize: 13, color: "#1D1D1D", fontFamily: "SF_Pro_Regular" },
-
-  // Assign panel
-  assignPanel: {
-    marginTop:10,
-    marginBottom: 10,
+  assignPanel: { marginTop: 10, marginBottom: 10 },
+  searchWrap: {
+    borderWidth: 1,
+    borderColor: "#E6E6E6",
+    borderRadius: 8,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    position: "relative",
+    height: 44,
+    justifyContent: "center",
   },
-searchWrap: {
-  borderWidth: 1,
-  borderColor: "#E6E6E6", // Default Gray
-  borderRadius: 8,
-  marginBottom: 4,
-  paddingHorizontal: 12,
-  position: "relative",
-  height: 44,
-  justifyContent: "center",
-},
-
-searchWrapActive: {
-  borderColor: "#1D1D1D", // Active
-},
+  searchWrapActive: { borderColor: "#1D1D1D" },
   searchLabel: {
     position: "absolute", top: 12, left: 12,
     fontSize: 14, color: "#AAAAAA", fontFamily: "SF_Pro_Regular",
@@ -524,8 +571,6 @@ searchWrapActive: {
   },
   userAvatarText: { color: "#fff", fontSize: 14, fontFamily: "SF_Pro_Semibold" },
   userName: { fontSize: 14, color: "#1D1D1D", fontFamily: "SF_Pro_Regular" },
-
-  // Approval
   approvalRow: { flexDirection: "row", gap: 8, marginBottom: 4 },
   approvalChip: {
     flexDirection: "row", alignItems: "center", gap: 6,
@@ -535,8 +580,6 @@ searchWrapActive: {
   approvalChipSelected: { backgroundColor: "#0DDFAB", borderColor: "#0DDFAB" },
   approvalLabel: { fontSize: 13, color: "#1D1D1D", fontFamily: "SF_Pro_Regular" },
   approvalLabelSelected: { color: "#fff" },
-
-  // Status
   statusScroll: { marginBottom: 5 },
   statusChip: {
     flexDirection: "row", alignItems: "center", gap: 6,
@@ -545,17 +588,6 @@ searchWrapActive: {
   },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusLabel: { fontSize: 13, color: "#1D1D1D", fontFamily: "SF_Pro_Regular" },
-
-  // Recurring
-  recurringBtn: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "#E6FFF9", borderRadius: 8,
-    paddingHorizontal: 16, paddingVertical: 12,
-    marginBottom: 14, alignSelf: "flex-start",
-  },
-  recurringLabel: { fontSize: 13, color: "#0DDFAB", fontFamily: "SF_Pro_Regular" },
-
-  // Attachments
   attachRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
   attachBtn: {
     width: 35, height: 35, borderWidth: 1,
@@ -575,4 +607,12 @@ searchWrapActive: {
     marginTop: 12, marginBottom: 30,
   },
   createBtnText: { fontSize: 16, color: "#1D1D1D", fontFamily: "SF_Pro_Semibold" },
+  recurringLabel: { fontSize: 13, color: "#1D1D1D", fontFamily: "SF_Pro_Regular", marginBottom: 6 },
+  recurringRow: { flexDirection: "row", gap: 10, marginTop: 8 },
+  recurringInputWrap: { flex: 1 },
+  recurringInput: {
+    borderWidth: 1, borderColor: "#E6E6E6", borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 10,
+    fontSize: 14, color: "#1D1D1D", fontFamily: "SF_Pro_Regular",
+  },
 });

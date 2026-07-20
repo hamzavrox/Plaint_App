@@ -40,7 +40,7 @@ const TASK_COLUMNS: Column<TaskRowProps>[] = [
 ];
 
 const ALL_STATUSES: StatusType[] = [
-  "Pending", "In-Progress", "On-Hold", "Rejected", "Completed", "Pending-Approval",
+  "Pending", "In-Progress", "Rejected", "Completed", "Pending-Approval",
 ];
 
 // ─── Leading cell (accent bar + checkbox) ─────────────────────────────────────

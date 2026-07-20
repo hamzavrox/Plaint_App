@@ -1,0 +1,84 @@
+import * as SecureStore from "expo-secure-store";
+
+const TOKEN_KEY = "auth_token";
+const USER_KEY = "auth_user";
+const COMPANY_KEY = "auth_company";
+
+export async function getStoredToken(): Promise<string | null> {
+  return SecureStore.getItemAsync(TOKEN_KEY);
+}
+
+export async function setStoredToken(token: string): Promise<void> {
+  await SecureStore.setItemAsync(TOKEN_KEY, token);
+}
+
+export async function removeStoredToken(): Promise<void> {
+  await SecureStore.deleteItemAsync(TOKEN_KEY);
+}
+
+export async function getStoredUser<T>(): Promise<T | null> {
+  const raw = await SecureStore.getItemAsync(USER_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+export async function setStoredUser<T>(user: T): Promise<void> {
+  await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+}
+
+export async function removeStoredUser(): Promise<void> {
+  await SecureStore.deleteItemAsync(USER_KEY);
+}
+
+export async function getStoredCompany<T>(): Promise<T | null> {
+  const raw = await SecureStore.getItemAsync(COMPANY_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+export async function setStoredCompany<T>(company: T): Promise<void> {
+  await SecureStore.setItemAsync(COMPANY_KEY, JSON.stringify(company));
+}
+
+export async function removeStoredCompany(): Promise<void> {
+  await SecureStore.deleteItemAsync(COMPANY_KEY);
+}
+
+export async function clearAllAuth(): Promise<void> {
+  await Promise.all([
+    removeStoredToken(),
+    removeStoredUser(),
+    removeStoredCompany(),
+  ]);
+}
+
+export function parseJwtExp(token: string): number | null {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    const payload = JSON.parse(jsonPayload);
+    return payload.exp ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function isTokenExpired(token: string): boolean {
+  const exp = parseJwtExp(token);
+  if (!exp) return true;
+  return Date.now() >= exp * 1000;
+}
