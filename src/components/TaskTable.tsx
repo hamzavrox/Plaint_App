@@ -45,12 +45,18 @@ const ALL_STATUSES: StatusType[] = [
 
 // ─── Leading cell (accent bar + checkbox) ─────────────────────────────────────
 
-const LeadingCell = memo(function LeadingCell({ item }: { item: TaskRowProps }) {
+const LeadingCell = memo(function LeadingCell({ 
+  item, 
+  onToggle 
+}: { 
+  item: TaskRowProps; 
+  onToggle: () => void 
+}) {
   const isCompleted = item.status === "Completed";
   return (
     <View style={styles.leadingCell}>
       <View style={styles.accent} />
-      <View style={styles.checkboxWrap}>
+      <TouchableOpacity style={styles.checkboxWrap} onPress={onToggle} activeOpacity={0.7}>
         {isCompleted ? (
           <View style={styles.checkCircle}>
             <Ionicons name="checkmark" size={12} color="#fff" />
@@ -58,7 +64,7 @@ const LeadingCell = memo(function LeadingCell({ item }: { item: TaskRowProps }) 
         ) : (
           <View style={styles.checkbox} />
         )}
-      </View>
+      </TouchableOpacity>
     </View>
   );
 });
@@ -162,8 +168,17 @@ function TaskTable({ sectionTitle, tasks, onTaskPress, onStatusChange, onFilterP
 
   // ── Leading cell (accent + checkbox) ───────────────────────────────────────
   const renderLeadingCell = useCallback(
-    (item: TaskRowProps) => <LeadingCell item={item} />,
-    []
+    (item: TaskRowProps, rowIndex: number) => (
+      <LeadingCell
+        item={item}
+        onToggle={() => {
+          const newStatus = item.status === "Completed" ? "Pending" : "Completed";
+          updateStatus(rowIndex, newStatus);
+          onStatusChange?.(item, newStatus);
+        }}
+      />
+    ),
+    [updateStatus, onStatusChange]
   );
 
   return (

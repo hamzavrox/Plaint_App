@@ -153,6 +153,7 @@ export default function AppHeader({
 
 const styles = StyleSheet.create({
   headerContainer: {
+    zIndex: 99999,
   },
   searchRow: {
     flexDirection: "row",
@@ -236,8 +237,8 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   avatar: {
-    width: 35,
-    height: 35,
+    width: 30,
+    height: 30,
     borderRadius: 5,
     backgroundColor: "#1D1D1D",
     justifyContent: "center",
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
   avatarText: {
     color: "#fff",
     fontFamily: "SF_Pro_Bold",
-    fontSize: 14,
+    fontSize: 12,
   },
   profileMenu: {
     position: "absolute",
@@ -261,7 +262,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 8,
-    zIndex: 999,
+    zIndex: 9999999,
   },
   menuItem: {
     flexDirection: "row",

@@ -1,10 +1,10 @@
-import { Stack, useRouter, useSegments } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
-import React, { useContext, useEffect } from "react";
-import { ActivityIndicator, View } from "react-native";
-import { AuthProvider, AuthContext } from "@/context/AuthContext";
+import { AuthContext, AuthProvider } from "@/context/AuthContext";
 import { TaskProvider } from "@/context/TaskContext";
 import useAppFonts from "@/theme/useAppFonts";
+import { Stack, useRouter, useSegments } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { useContext, useEffect } from "react";
+import { ActivityIndicator, View } from "react-native";
 
 SplashScreen.preventAutoHideAsync();
 

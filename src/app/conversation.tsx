@@ -1,5 +1,6 @@
 import Icons from "@/constants/icons";
 const { ChatIcon: MainChatIcon } = Icons;
+import AddPeopleModal, { AddPeopleUser } from "@/components/AddPeopleModal";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import CalendarPicker from "@/components/CalendarPicker";
@@ -49,6 +50,26 @@ const STATIC_MESSAGES: Message[] = [
         text: "Hello Salman! I am good.",
         isOwn: true,
     },
+];
+
+const CHANNEL_MEMBERS = [
+    { id: "1", name: "Muhammad Zanaen Ull...", initials: "M", isYou: false },
+    { id: "2", name: "Mohammad Areeb Akr...", initials: "M", isYou: false },
+    { id: "3", name: "Shanawar Butt", initials: "S", isYou: false },
+    { id: "4", name: "Muhammad H...", initials: "M", isYou: true },
+];
+
+const MOCK_USERS: AddPeopleUser[] = [
+    { id: "1", name: "Muhammad Salman", email: "salman@email.com" },
+    { id: "2", name: "Muhammad Haris", email: "haris@email.com" },
+    { id: "3", name: "Najam Ali", email: "najam@email.com" },
+    { id: "4", name: "Junaid", email: "junaid@email.com" },
+    { id: "5", name: "Awais", email: "awais@email.com" },
+    { id: "6", name: "Nida Mumtaz", email: "nida@email.com" },
+    { id: "7", name: "Wahab Ahmad", email: "wahab@email.com" },
+    { id: "8", name: "Maryam", email: "maryam@email.com" },
+    { id: "9", name: "Anum", email: "anum@email.com" },
+    { id: "10", name: "Waqas", email: "waqas@email.com" },
 ];
 
 // ─── Date Panel ───────────────────────────────────────────────────────────────
@@ -344,15 +365,25 @@ function MessageBubble({ message }: { message: Message }) {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-type FilterTab = "date" | "attachments" | null;
+type FilterTab = "date" | "attachments" | "chat_member" | "post_type" | null;
 
 export default function ConversationScreen() {
-    const params = useLocalSearchParams<{ name?: string; initials?: string }>();
+    const params = useLocalSearchParams<{ name?: string; initials?: string; isChannel?: string }>();
     const name = params.name ?? "Muhammad Junaid";
     const initials = params.initials ?? "J";
+    const isChannel = params.isChannel === "true";
 
     const [message, setMessage] = useState("");
     const scrollRef = useRef<ScrollView>(null);
+    const [postTypeOpen, setPostTypeOpen] = useState(false);
+    const [addPeopleOpen, setAddPeopleOpen] = useState(false);
+
+    const POST_TYPES = [
+        { id: "announcement", label: "Announcement", icon: "megaphone", color: "#00DEAB", bg: "#E6FAF5", count: 1 },
+        { id: "discussion", label: "Discussion", icon: "chatbubbles", color: "#3B82F6", bg: "#EFF6FF", count: 0 },
+        { id: "idea", label: "Idea", icon: "bulb", color: "#EAB308", bg: "#FEF9C3", count: 0 },
+        { id: "updates", label: "Update", icon: "notifications", color: "#8B5CF6", bg: "#F5F3FF", count: 0 },
+    ];
 
     // Search
     const [searchOpen, setSearchOpen] = useState(false);
@@ -429,7 +460,12 @@ export default function ConversationScreen() {
 
                 {/* ── Filter Chips ── */}
                 {!searchOpen && (
-                    <View style={styles.filterRow}>
+                    <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.filterRow}
+                        style={{ flexGrow: 0 }}
+                    >
                         <TouchableOpacity
                             style={[styles.filterChip, activeFilter === "date" && styles.filterChipActive]}
                             activeOpacity={0.75}
@@ -459,10 +495,43 @@ export default function ConversationScreen() {
                                 Attachments
                             </Text>
                         </TouchableOpacity>
-                    </View>
+
+                        {isChannel && (
+                            <TouchableOpacity
+                                style={[styles.filterChip, activeFilter === "chat_member" && styles.filterChipActive]}
+                                activeOpacity={0.75}
+                                onPress={() => toggleFilter("chat_member")}
+                            >
+                                <Ionicons
+                                    name="people-outline"
+                                    size={11}
+                                    color={activeFilter === "chat_member" ? "#fff" : "#6B7280"}
+                                />
+                                <Text style={[styles.filterChipText, activeFilter === "chat_member" && styles.filterChipTextActive]}>
+                                    Chat Member
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                        {isChannel && (
+                            <TouchableOpacity
+                                style={[styles.filterChip, activeFilter === "post_type" && styles.filterChipActive]}
+                                activeOpacity={0.75}
+                                onPress={() => toggleFilter("post_type")}
+                            >
+                                <Ionicons
+                                    name="apps-outline"
+                                    size={11}
+                                    color={activeFilter === "post_type" ? "#fff" : "#6B7280"}
+                                />
+                                <Text style={[styles.filterChipText, activeFilter === "post_type" && styles.filterChipTextActive]}>
+                                    Post Type
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    </ScrollView>
                 )}
 
-                {/* ── Date / Attachments panel ── */}
+                {/* ── Date / Attachments / Post Type panel ── */}
                 {!searchOpen && activeFilter === "date" && (
                     <View style={styles.panelWrapper}>
                         <DateFilterPanel />
@@ -471,6 +540,51 @@ export default function ConversationScreen() {
                 {!searchOpen && activeFilter === "attachments" && (
                     <View style={styles.panelWrapper}>
                         <AttachmentsPanel />
+                    </View>
+                )}
+                {!searchOpen && activeFilter === "post_type" && isChannel && (
+                    <View style={styles.panelWrapper}>
+                        <View style={styles.postTypeListPanel}>
+                            {POST_TYPES.map((pt) => (
+                                <TouchableOpacity
+                                    key={pt.id}
+                                    style={[styles.postTypeListRow, { backgroundColor: pt.bg }]}
+                                    activeOpacity={0.75}
+                                >
+                                    <Ionicons name={pt.icon as any} size={16} color={pt.color} />
+                                    <Text style={[styles.postTypeListLabel, { color: pt.color }]}>{pt.label}</Text>
+                                    <View style={styles.postTypeListBadge}>
+                                        <Text style={[styles.postTypeListBadgeText, { color: pt.color }]}>
+                                            {String(pt.count).padStart(2, "0")}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+                )}
+                {!searchOpen && activeFilter === "chat_member" && isChannel && (
+                    <View style={styles.panelWrapper}>
+                        <View style={styles.memberListPanel}>
+                            {CHANNEL_MEMBERS.map((member) => (
+                                <View key={member.id} style={styles.memberRow}>
+                                    <View style={styles.memberAvatar}>
+                                        <Text style={styles.memberAvatarText}>{member.initials}</Text>
+                                    </View>
+                                    <Text style={styles.memberName} numberOfLines={1}>{member.name}</Text>
+                                    {member.isYou && (
+                                        <View style={styles.youBadge}>
+                                            <Text style={styles.youBadgeText}>You</Text>
+                                        </View>
+                                    )}
+                                    {member.isYou && (
+                                        <TouchableOpacity activeOpacity={0.7} style={styles.leaveBtn}>
+                                            <Ionicons name="exit-outline" size={18} color="#6B7280" />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            ))}
+                        </View>
                     </View>
                 )}
 
@@ -487,25 +601,41 @@ export default function ConversationScreen() {
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
                     >
+                        {/* ── Empty state / Header ── */}
+                        {isChannel ? (
+                            <View style={styles.workspaceContainer}>
+                                <View style={styles.iconStack}>
+                                    <Icons.ChannelTabIcon width={54} height={54} />
+                                </View>
+                                <Text style={styles.workspaceTitle}>Team Chat in #{name}</Text>
+                                <Text style={styles.workspaceDescription}>
+                                    Group keep your team's conversations{"\n"}
+                                    organized by topic.
+                                </Text>
+                                <TouchableOpacity style={styles.addPeopleChannelBtn} activeOpacity={0.8} onPress={() => setAddPeopleOpen(true)}>
+                                    <Text style={styles.addPeopleChannelText}>+ Add people</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <View style={styles.workspaceContainer}>
+                                <View style={styles.iconStack}>
+                                    <MainChatIcon />
+                                </View>
+                                <Text style={styles.workspaceTitle}>Private workspace</Text>
+                                <Text style={styles.workspaceDescription}>
+                                    A place just for you to capture ideas, draft messages,{"\n"}
+                                    and keep everything organized for later.
+                                </Text>
+                            </View>
+                        )}
+
                         {/* ── Date separator ── */}
                         <View style={styles.dateSeparator}>
                             <View style={styles.dateLine} />
                             <View style={styles.datePill}>
-                                <Text style={styles.datePillText}>Today's Chat</Text>
+                                <Text style={styles.datePillText}>Today's Discussion</Text>
                                 <Ionicons name="chevron-down" size={12} color="#6B7280" style={{ marginLeft: 4 }} />
                             </View>
-                        </View>
-
-                        {/* ── Private workspace empty state ── */}
-                        <View style={styles.workspaceContainer}>
-                            <View style={styles.iconStack}>
-                                <MainChatIcon />
-                            </View>
-                            <Text style={styles.workspaceTitle}>Private workspace</Text>
-                            <Text style={styles.workspaceDescription}>
-                                A place just for you to capture ideas, draft messages,{"\n"}
-                                and keep everything organized for later.
-                            </Text>
                         </View>
 
                         {/* ── Messages ── */}
@@ -544,6 +674,19 @@ export default function ConversationScreen() {
                                     <TouchableOpacity activeOpacity={0.75} style={styles.inputActionBtn}>
                                         <Ionicons name="mic" size={18} color="#1D1D1D" />
                                     </TouchableOpacity>
+                                    {isChannel && (
+                                        <TouchableOpacity 
+                                            activeOpacity={0.75} 
+                                            style={[
+                                                styles.inputActionBtn,
+                                                styles.postTypeToggle,
+                                                postTypeOpen && styles.postTypeToggleActive,
+                                            ]}
+                                            onPress={() => setPostTypeOpen(!postTypeOpen)}
+                                        >
+                                            <Text style={[styles.postTypeToggleText, postTypeOpen && styles.postTypeToggleTextActive]}>Post Type</Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
 
                                 <TouchableOpacity
@@ -554,10 +697,39 @@ export default function ConversationScreen() {
                                     <Ionicons name="paper-plane" size={16} color="#fff" />
                                 </TouchableOpacity>
                             </View>
+
+                            {/* ── Post Type (horizontal chips, inside input box) ── */}
+                            {postTypeOpen && (
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    style={styles.postTypeScroll}
+                                    contentContainerStyle={styles.postTypeScrollContent}
+                                    keyboardShouldPersistTaps="handled"
+                                >
+                                    {POST_TYPES.map((pt) => (
+                                        <TouchableOpacity key={pt.id} style={[styles.postTypeChip, { backgroundColor: pt.bg }]} activeOpacity={0.7}>
+                                            <Ionicons name={pt.icon as any} size={14} color={pt.color} style={{ marginRight: 4 }} />
+                                            <Text style={[styles.postTypeChipText, { color: pt.color }]}>{pt.label}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            )}
                         </View>
                     </View>
                 </KeyboardAvoidingView>
             </SafeAreaView>
+
+            <AddPeopleModal
+                visible={addPeopleOpen}
+                users={MOCK_USERS}
+                isChannelMode={true}
+                onClose={() => setAddPeopleOpen(false)}
+                onSearch={(query) => console.log("Search:", query)}
+                onInviteUsers={(users) => {
+                    setAddPeopleOpen(false);
+                }}
+            />
         </View>
     );
 }
@@ -919,4 +1091,132 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     sendBtnActive: { backgroundColor: TEAL },
+
+    // Channel specific empty state button
+    addPeopleChannelBtn: {
+        backgroundColor: TEAL,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 8,
+        marginTop: 10,
+    },
+    addPeopleChannelText: {
+        color: "#fff",
+        fontFamily: "SF_Pro_Medium",
+        fontSize: 13,
+    },
+
+    // Post Type Popover & Toggle
+    postTypeToggle: {
+        width: "auto",
+        paddingHorizontal: 12,
+        backgroundColor: "#F2F2F2",
+    },
+    postTypeToggleActive: {
+        backgroundColor: "#1D1D1D",
+    },
+    postTypeToggleText: {
+        color: "#1D1D1D",
+        fontSize: 12,
+        fontFamily: "SF_Pro_Medium",
+    },
+    postTypeToggleTextActive: {
+        color: "#fff",
+    },
+    // Post Type horizontal chips (inside input)
+    postTypeScroll: {
+        marginTop: 10,
+    },
+    postTypeScrollContent: {
+        gap: 8,
+        paddingHorizontal: 2,
+    },
+    postTypeChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderRadius: 20,
+    },
+    postTypeChipText: {
+        fontSize: 12,
+        fontFamily: "SF_Pro_Medium",
+    },
+
+    // Post Type panel (shown when top tab is clicked)
+    postTypeListPanel: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        gap: 8,
+    },
+    postTypeListRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 12,
+        gap: 12,
+    },
+    postTypeListLabel: {
+        flex: 1,
+        fontSize: 14,
+        fontFamily: "SF_Pro_Medium",
+    },
+    postTypeListBadge: {
+        minWidth: 28,
+        alignItems: "center",
+    },
+    postTypeListBadgeText: {
+        fontSize: 13,
+        fontFamily: "SF_Pro_Semibold",
+    },
+
+    // Chat Member panel
+    memberListPanel: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        gap: 2,
+    },
+    memberRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 7,
+        gap: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: "#F3F4F6",
+    },
+    memberAvatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: "#00DEAB",
+        justifyContent: "center",
+        alignItems: "center",
+        flexShrink: 0,
+    },
+    memberAvatarText: {
+        color: "#fff",
+        fontSize: 12,
+        fontFamily: "SF_Pro_Semibold",
+    },
+    memberName: {
+        flex: 1,
+        fontSize: 13,
+        fontFamily: "SF_Pro_Regular",
+        color: "#1D1D1D",
+    },
+    youBadge: {
+        backgroundColor: "#E5E7EB",
+        borderRadius: 4,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+    },
+    youBadgeText: {
+        fontSize: 11,
+        fontFamily: "SF_Pro_Medium",
+        color: "#6B7280",
+    },
+    leaveBtn: {
+        padding: 4,
+    },
 });

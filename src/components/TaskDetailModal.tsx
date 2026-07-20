@@ -363,7 +363,7 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
 
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Description</Text>
-                  <Text style={styles.descText}>{task.description}</Text>
+                  <Text style={styles.descText}>{task.description.replace(/<[^>]*>/g, "")}</Text>
                   <View style={styles.descBadgesRow}>
                     {task.subtasks.length > 0 && (
                       <View style={styles.descBadge}>

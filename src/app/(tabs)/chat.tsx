@@ -46,6 +46,21 @@ const ALL_USERS: ChatUser[] = [
     { id: "12", name: "Zahid", email: "zahid@email.com", message: "Hi, How are you?", time: "12:50pm", status: "read" },
 ];
 
+const CHANNELS_DATA: ChatUser[] = [
+    { id: "c1", name: "SEO Channel", email: "", message: "Hi, How are you?", time: "12:50pm", unreadCount: 5, status: "unread" },
+    { id: "c2", name: "Design Channel", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+    { id: "c3", name: "Dev Channel", email: "", message: "Hi, How are you?", time: "12:50pm", unreadCount: 5, status: "unread" },
+    { id: "c4", name: "Sales Channel", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+    { id: "c5", name: "Technical Channel", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+    { id: "c6", name: "Websouls Wins Board", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+    { id: "c7", name: "Planit Internal", email: "", message: "Hi, How are you?", time: "12:50pm", unreadCount: 5, status: "unread" },
+    { id: "c8", name: "Planit Dev", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+    { id: "c9", name: "Planit Design", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+    { id: "c10", name: "Websouls Web Design and Dev", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+    { id: "c11", name: "Websouls Internal Discussion", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+    { id: "c12", name: "IGI Insurance", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
+];
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function ChatScreen() {
     const [addPeopleOpen, setAddPeopleOpen] = useState(false);
@@ -55,6 +70,8 @@ export default function ChatScreen() {
 
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
     const [chats, setChats] = useState<ChatUser[]>(ALL_USERS);
+    const [channels, setChannels] = useState<ChatUser[]>(CHANNELS_DATA);
+    const [newChannelName, setNewChannelName] = useState("");
 
     const filteredChats = chats.filter((chat) => {
         if (activeChip === "all" || activeChip === "channels" || activeChip === "groups") return true;
@@ -63,12 +80,22 @@ export default function ChatScreen() {
         return true;
     });
 
+    const displayList = activeChip === "channels" ? channels : filteredChats;
+
     const markAsRead = (id: string) => {
-        setChats((prev) =>
-            prev.map((chat) =>
-                chat.id === id ? { ...chat, status: "read", unreadCount: undefined } : chat
-            )
-        );
+        if (activeChip === "channels") {
+            setChannels((prev) =>
+                prev.map((chat) =>
+                    chat.id === id ? { ...chat, status: "read", unreadCount: undefined } : chat
+                )
+            );
+        } else {
+            setChats((prev) =>
+                prev.map((chat) =>
+                    chat.id === id ? { ...chat, status: "read", unreadCount: undefined } : chat
+                )
+            );
+        }
     };
 
     return (
@@ -137,31 +164,12 @@ export default function ChatScreen() {
                         })}
                     </ScrollView>
 
-                    {activeChip === "channels" ? (
-                        <View style={styles.workspaceContainer}>
-                            <View style={styles.iconStack}>
-                                <ChannelTabIcon width={60} height={60} />
-                            </View>
-
-                            <Text style={styles.workspaceTitle}>Create a channel</Text>
-                            <Text style={styles.workspaceDescription}>
-                                Group keep your team's conversations{"\n"}organized by topic.
-                            </Text>
-
-                            <TouchableOpacity
-                                style={styles.addPeopleButton}
-                                activeOpacity={0.85}
-                                onPress={() => setCreateChannelOpen(true)}
-                            >
-                                <Text style={styles.addPeopleText}>+ Create Channel</Text>
-                            </TouchableOpacity>
-                        </View>
-                    ) : filteredChats.length > 0 ? (
+                    {displayList.length > 0 ? (
                         <View style={styles.chatListContainer}>
-                            {filteredChats.map((chat, index) => (
+                            {displayList.map((chat, index) => (
                                 <TouchableOpacity
                                     key={chat.id}
-                                    style={[styles.chatRow,  selectedChatId === chat.id && styles.chatRowSelected,]}
+                                    style={[styles.chatRow, selectedChatId === chat.id && styles.chatRowSelected]}
                                     activeOpacity={0.7}
                                     onPress={() => {
                                         setSelectedChatId(chat.id);
@@ -171,6 +179,7 @@ export default function ChatScreen() {
                                             params: {
                                                 name: chat.name,
                                                 initials: chat.name.charAt(0).toUpperCase(),
+                                                isChannel: String(activeChip === "channels"),
                                             },
                                         });
                                     }}
@@ -179,7 +188,9 @@ export default function ChatScreen() {
                                         <View style={styles.avatarBox}>
                                             <Text style={styles.avatarText}>{chat.name.charAt(0).toUpperCase()}</Text>
                                         </View>
-                                        {chat.status === "unread" && <View style={styles.onlineIndicator} />}
+                                        {activeChip !== "channels" && chat.status === "unread" && (
+                                            <View style={styles.onlineIndicator} />
+                                        )}
                                     </View>
                                     <View style={styles.chatInfo}>
                                         <Text style={styles.chatName}>{chat.name}</Text>
@@ -196,18 +207,33 @@ export default function ChatScreen() {
                                 </TouchableOpacity>
                             ))}
                         </View>
+                    ) : activeChip === "channels" ? (
+                        <View style={styles.workspaceContainer}>
+                            <View style={styles.iconStack}>
+                                <ChannelTabIcon width={60} height={60} />
+                            </View>
+                            <Text style={styles.workspaceTitle}>Create a channel</Text>
+                            <Text style={styles.workspaceDescription}>
+                                Group keep your team's conversations{"\n"}organized by topic.
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.addPeopleButton}
+                                activeOpacity={0.85}
+                                onPress={() => setCreateChannelOpen(true)}
+                            >
+                                <Text style={styles.addPeopleText}>+ Create Channel</Text>
+                            </TouchableOpacity>
+                        </View>
                     ) : (
                         <View style={styles.workspaceContainer}>
                             <View style={styles.iconStack}>
                                 <MainChatIcon />
                             </View>
-
                             <Text style={styles.workspaceTitle}>Private workspace</Text>
                             <Text style={styles.workspaceDescription}>
                                 A place just for you to capture ideas, draft messages,
                                 and keep everything organized for later.
                             </Text>
-
                             <TouchableOpacity
                                 style={styles.addPeopleButton}
                                 activeOpacity={0.85}
@@ -229,12 +255,24 @@ export default function ChatScreen() {
                 </ScrollView>
                 
                 {/* FAB */}
-                {chats.length > 0 && activeChip !== "channels" && (
-                    <TouchableOpacity style={styles.fab} activeOpacity={0.8}  onPress={() => {
-                        setIsChannelMode(false);
-                        setAddPeopleOpen(true);
-                    }}>
-                        <MaterialCommunityIcons name="message-plus" size={24} color="#000" />
+                {displayList.length > 0 && (
+                    <TouchableOpacity 
+                        style={styles.fab} 
+                        activeOpacity={0.8}  
+                        onPress={() => {
+                            if (activeChip === "channels") {
+                                setCreateChannelOpen(true);
+                            } else {
+                                setIsChannelMode(false);
+                                setAddPeopleOpen(true);
+                            }
+                        }}
+                    >
+                        <MaterialCommunityIcons 
+                            name={activeChip === "channels" ? "account-multiple-plus" : "message-plus"} 
+                            size={24} 
+                            color="#000" 
+                        />
                     </TouchableOpacity>
                 )}
             </SafeAreaView>
@@ -261,8 +299,18 @@ export default function ChatScreen() {
                 onInviteUsers={(users) => {
                     setAddPeopleOpen(false);
                     setIsChannelMode(false);
-                    console.log("Invited to channel:", users);
-                    // Add channel creation logic here
+                    if (newChannelName) {
+                        setChannels(prev => [{
+                            id: "c" + Date.now(),
+                            name: newChannelName,
+                            email: "",
+                            message: "Just created",
+                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toLowerCase(),
+                            status: "read",
+                        }, ...prev]);
+                        setNewChannelName("");
+                        setActiveChip("channels"); // switch to channels tab if not already
+                    }
                 }}
             />
 
@@ -270,6 +318,7 @@ export default function ChatScreen() {
                 visible={createChannelOpen}
                 onClose={() => setCreateChannelOpen(false)}
                 onNext={(name) => {
+                    setNewChannelName(name);
                     setCreateChannelOpen(false);
                     setIsChannelMode(true);
                     setTimeout(() => setAddPeopleOpen(true), 300); // small delay for modal transition

@@ -50,17 +50,19 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
   const [selectedApproval, setSelectedApproval] = useState<string | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [recurringOpen, setRecurringOpen] = useState(false);
   const [recurringPeriod, setRecurringPeriod] = useState<RecurringPeriod | null>(null);
   const [recurringTime, setRecurringTime] = useState<string>("");
   const [recurringTotalCount, setRecurringTotalCount] = useState<number>(1);
   const [loading, setLoading] = useState(false);
 
-  const togglePanel = (panel: "assign" | "duedate" | "priority" | "approval" | "status") => {
+  const togglePanel = (panel: "assign" | "duedate" | "priority" | "approval" | "status" | "recurring") => {
     setAssignOpen(panel === "assign" ? !assignOpen : false);
     setDueDateOpen(panel === "duedate" ? !dueDateOpen : false);
     setPriorityOpen(panel === "priority" ? !priorityOpen : false);
     setApprovalOpen(panel === "approval" ? !approvalOpen : false);
     setStatusOpen(panel === "status" ? !statusOpen : false);
+    setRecurringOpen(panel === "recurring" ? !recurringOpen : false);
   };
 
   const STATUSES = [
@@ -69,7 +71,6 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
     { label: "Completed", color: "#1CB333" },
     { label: "Rejected", color: "#FF0000" },
     { label: "Pending-Approval", color: "#1D1D1D" },
-    { label: "Recurring", color: "#16A34A" },
   ];
 
   const RECURRING_PERIODS: { value: RecurringPeriod; label: string }[] = [
@@ -124,7 +125,7 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
       const companyId = authState.company?.company_id ?? 0;
       const companyIdentifier = authState.company?.company_identifier ?? "";
 
-      const isRecurring = selectedStatus === "Recurring";
+      const isRecurring = recurringPeriod !== null;
 
       await createTask({
         title: title.trim(),
@@ -159,6 +160,7 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
       setSelectedPriorityId(null);
       setSelectedApproval(null);
       setSelectedStatus(null);
+      setRecurringOpen(false);
       setRecurringPeriod(null);
       setRecurringTime("");
       setRecurringTotalCount(1);
@@ -346,16 +348,6 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.chip, statusOpen && styles.chipActive]}
-                onPress={() => togglePanel("status")}
-              >
-                <Ionicons name="radio-button-off-outline" size={16} color={statusOpen ? "#fff" : "#AAAAAA"} />
-                <Text style={[styles.chipLabel, statusOpen && styles.chipLabelActive]}>
-                  {selectedStatus ? selectedStatus : "Task Status"}
-                </Text>
-              </TouchableOpacity>
-
               {approvalOpen && (
                 <View style={{ width: "100%" }}>
                   <View style={styles.approvalRow}>
@@ -375,6 +367,16 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                   </View>
                 </View>
               )}
+
+              <TouchableOpacity
+                style={[styles.chip, statusOpen && styles.chipActive]}
+                onPress={() => togglePanel("status")}
+              >
+                <Ionicons name="radio-button-off-outline" size={16} color={statusOpen ? "#fff" : "#AAAAAA"} />
+                <Text style={[styles.chipLabel, statusOpen && styles.chipLabelActive]}>
+                  {selectedStatus ? selectedStatus : "Task Status"}
+                </Text>
+              </TouchableOpacity>
 
               {statusOpen && (
                 <View style={{ width: "100%" }}>
@@ -398,7 +400,17 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                 </View>
               )}
 
-              {selectedStatus === "Recurring" && !statusOpen && (
+              <TouchableOpacity
+                style={[styles.chip, recurringOpen && styles.chipActive]}
+                onPress={() => togglePanel("recurring")}
+              >
+                <Ionicons name="calendar-outline" size={16} color={recurringOpen ? "#fff" : "#AAAAAA"} />
+                <Text style={[styles.chipLabel, recurringOpen && styles.chipLabelActive]}>
+                  Recurring Task
+                </Text>
+              </TouchableOpacity>
+
+              {recurringOpen && (
                 <View style={{ width: "100%", marginTop: 8 }}>
                   <Text style={styles.recurringLabel}>Recurring Period</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statusScroll}>
