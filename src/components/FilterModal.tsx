@@ -63,6 +63,9 @@ type Props = {
 showReasonInput?: boolean;
 reasonValue?: string;
 onChangeReason?: (text: string) => void;
+
+ // Apply callback with selected filters
+onApply?: (filters: { status: string | null; priority: string | null }) => void;
 };
 
 export default function FilterModal({ 
@@ -88,6 +91,7 @@ export default function FilterModal({
  showReasonInput = false,
 reasonValue = "",
 onChangeReason = () => {},
+onApply,
 }: Props) {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedPriority, setSelectedPriority] = useState<string | null>(null);
@@ -398,7 +402,10 @@ onChangeReason = () => {},
           </ScrollView>
 
           {/* Apply */}
-          <TouchableOpacity style={styles.applyBtn} activeOpacity={0.85} onPress={onClose}>
+          <TouchableOpacity style={styles.applyBtn} activeOpacity={0.85} onPress={() => {
+            onApply?.({ status: selectedStatus, priority: selectedPriority });
+            onClose();
+          }}>
             <Text style={styles.applyText}>Apply</Text>
           </TouchableOpacity>
         </View>

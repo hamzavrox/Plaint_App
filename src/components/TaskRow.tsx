@@ -5,10 +5,10 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 export type StatusType =
   | "Pending"
   | "In-Progress"
-  | "On-Hold"
   | "Rejected"
   | "Completed"
-  | "Pending-Approval";
+  | "Pending-Approval"
+  | "Recurring";
 
 export type TaskRowProps = {
   id?: string;
@@ -31,14 +31,14 @@ export type TaskRowProps = {
 export const STATUS_COLORS: Record<StatusType, { bg: string; text: string }> = {
   Pending: { bg: "#FEF3C7", text: "#D97706" },
   "In-Progress": { bg: "#DBEAFE", text: "#2563EB" },
-  "On-Hold": { bg: "#F3F4F6", text: "#6B7280" },
   Rejected: { bg: "#FEE2E2", text: "#DC2626" },
   Completed: { bg: "#D1FAE5", text: "#059669" },
   "Pending-Approval": { bg: "#EDE9FE", text: "#7C3AED" },
+  Recurring: { bg: "#F0FDF4", text: "#16A34A" },
 };
 
 const ALL_STATUSES: StatusType[] = [
-  "Pending", "In-Progress", "On-Hold", "Rejected", "Completed", "Pending-Approval",
+  "Pending", "In-Progress", "Rejected", "Completed", "Pending-Approval", "Recurring",
 ];
 
 export const COL_WIDTHS = {

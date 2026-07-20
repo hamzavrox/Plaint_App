@@ -1,6 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
+  ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
   Modal,
@@ -13,6 +14,10 @@ import {
   View,
 } from "react-native";
 import { StatusType, STATUS_COLORS } from "./TaskRow";
+import { useAuth } from "@/hooks/useAuth";
+import { useTasks } from "@/hooks/useTasks";
+import { TaskNote } from "@/types/task.types";
+import { extractErrorMessage } from "@/utils/errorHandler";
 
 export type SubTask = { title: string; createdBy: string; dueDate: string };
 
@@ -31,16 +36,9 @@ export type TaskDetail = {
   description: string;
   attachments: string[];
   subtaskCount?: number;
-};
-
-type Comment = {
-  id: number;
-  initials: string;
-  name: string;
-  time: string;
-  text: string;
-  pinned?: boolean;
-  isOwn?: boolean;
+  taskId?: number;
+  companyId?: number;
+  canEditStatus?: boolean;
 };
 
 type Props = { visible: boolean; onClose: () => void; task: TaskDetail | null };
@@ -52,13 +50,6 @@ const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
   Low:    { bg: "#10B981", text: "#fff" },
 };
 
-const MOCK_COMMENTS: Comment[] = [
-  { id: 1, initials: "MJ", name: "Muhammad Junaid", time: "25, April, 2026 | 10:00AM", text: "Lorem Ipsum is simply dummy text of the printing and typesetting...", pinned: true },
-  { id: 2, initials: "MH", name: "Muhammad Haris",  time: "25, April, 2026 | 10:00AM", text: "Lorem Ipsum is simply dummy text of the printing and typesetting..." },
-  { id: 3, initials: "MJ", name: "Muhammad Junaid", time: "25, April, 2026 | 10:00AM", text: "Lorem Ipsum is simply dummy text of the printing and typesetting...", isOwn: true },
-];
-
-// ── Subtask / Dependencies table — same style as TaskTable ──────────────────
 const COL = { title: 160, createdBy: 130, dueDate: 110 };
 
 function SectionTable({ title, rows, showAdd }: { title: string; rows: SubTask[]; showAdd?: boolean }) {
@@ -67,14 +58,12 @@ function SectionTable({ title, rows, showAdd }: { title: string; rows: SubTask[]
       <Text style={styles.sectionTitle}>{title}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always">
         <View>
-          {/* Header */}
           <View style={styles.tblHeader}>
             <View style={{ width: 14 }} />
             <Text style={[styles.tblHeadCell, { width: COL.title }]}>Task Title</Text>
             <Text style={[styles.tblHeadCell, { width: COL.createdBy }]}>Created By</Text>
             <Text style={[styles.tblHeadCell, { width: COL.dueDate }]}>Due Date</Text>
           </View>
-          {/* Rows */}
           {rows.map((row, i) => (
             <View key={i} style={styles.tblRow}>
               <View style={styles.tblAccent} />
@@ -103,50 +92,66 @@ function SectionTable({ title, rows, showAdd }: { title: string; rows: SubTask[]
   );
 }
 
-// ── Comment bubble ───────────────────────────────────────────────────────────
-function CommentBubble({ comment }: { comment: Comment }) {
+function CommentBubble({
+  comment,
+  currentUserId,
+  onPin,
+  onDelete,
+}: {
+  comment: TaskNote;
+  currentUserId: number;
+  onPin?: (note: TaskNote) => void;
+  onDelete?: (note: TaskNote) => void;
+}) {
+  const isOwn = comment.user_id === currentUserId;
+  const isPinned = comment.pin_top === 1;
+  const initials = (comment.user_name ?? "U")
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" }) +
+        " | " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    } catch {
+      return dateStr;
+    }
+  };
+
   return (
     <View style={[
       styles.bubble,
-      comment.pinned && styles.bubblePinned,
-      comment.isOwn  && styles.bubbleOwn,
+      isPinned && styles.bubblePinned,
+      isOwn && styles.bubbleOwn,
     ]}>
       <View style={styles.bubbleHeader}>
         <View style={styles.bubbleAvatar}>
-          <Text style={styles.bubbleAvatarText}>{comment.initials}</Text>
+          <Text style={styles.bubbleAvatarText}>{initials}</Text>
         </View>
         <View style={styles.bubbleNameRow}>
           <Text numberOfLines={1} ellipsizeMode="tail" style={{ flex: 1 }}>
-            <Text style={styles.bubbleName}>{comment.name}</Text>
-            <Text style={styles.bubbleTime}>  {comment.time}</Text>
+            <Text style={styles.bubbleName}>{comment.user_name}</Text>
+            <Text style={styles.bubbleTime}>  {formatDate(comment.created_at)}</Text>
           </Text>
         </View>
-        {comment.pinned && (
+        {isPinned && (
           <MaterialCommunityIcons name="pin" size={16} color="#00DEAB" style={styles.pinIcon} />
         )}
       </View>
-      <Text style={styles.bubbleText}>{comment.text}</Text>
-      {(!comment.pinned || comment.isOwn) && (
+      <Text style={styles.bubbleText}>{comment.notes}</Text>
+      {(!isPinned || isOwn) && (
         <View style={styles.bubbleActions}>
-          <TouchableOpacity style={styles.actionBtn}>
-            <Ionicons name="thumbs-up-outline" size={16} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn}>
-            <MaterialCommunityIcons name="emoticon-outline" size={16} color="#9CA3AF" />
-          </TouchableOpacity>
-          {comment.isOwn && (
+          {isOwn && (
             <>
-              <TouchableOpacity style={styles.actionBtn}>
-                <MaterialCommunityIcons name="pin-outline" size={16} color="#9CA3AF" />
+              <TouchableOpacity style={styles.actionBtn} onPress={() => onPin?.(comment)}>
+                <MaterialCommunityIcons name={isPinned ? "pin" : "pin-outline"} size={16} color="#9CA3AF" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionBtn}>
-                <MaterialCommunityIcons name="pencil-outline" size={16} color="#9CA3AF" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionBtn}>
-                <MaterialCommunityIcons name="reply-outline" size={16} color="#9CA3AF" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionBtn}>
-                <Ionicons name="ellipsis-vertical" size={16} color="#9CA3AF" />
+              <TouchableOpacity style={styles.actionBtn} onPress={() => onDelete?.(comment)}>
+                <Ionicons name="trash-outline" size={16} color="#9CA3AF" />
               </TouchableOpacity>
             </>
           )}
@@ -156,14 +161,41 @@ function CommentBubble({ comment }: { comment: Comment }) {
   );
 }
 
-// ── Main modal ───────────────────────────────────────────────────────────────
 export default function TaskDetailModal({ visible, onClose, task }: Props) {
+  const { state: authState } = useAuth();
+  const { addNote, fetchNotes, deleteNote, pinNote } = useTasks();
+
   const [activeTab, setActiveTab] = useState<"details" | "comments">("details");
   const [commentText, setCommentText] = useState("");
   const [focused, setFocused] = useState(false);
+  const [notes, setNotes] = useState<TaskNote[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [sendingNote, setSendingNote] = useState(false);
 
   const floated = focused || !!commentText;
   const labelAnim = useRef(new Animated.Value(floated ? 1 : 0)).current;
+
+  const companyId = task?.companyId ?? authState.company?.company_id ?? 0;
+  const companyIdentifier = authState.company?.company_identifier ?? "";
+
+  const loadNotes = useCallback(async () => {
+    if (!task?.taskId) return;
+    setNotesLoading(true);
+    try {
+      const fetched = await fetchNotes(task.taskId);
+      setNotes(fetched);
+    } catch {
+      // silently fail
+    } finally {
+      setNotesLoading(false);
+    }
+  }, [task?.taskId, fetchNotes]);
+
+  useEffect(() => {
+    if (visible && activeTab === "comments" && task?.taskId) {
+      loadNotes();
+    }
+  }, [visible, activeTab, task?.taskId]);
 
   const handleFocus = () => {
     setFocused(true);
@@ -190,10 +222,47 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
     outputRange: ["#C0C0C0", "#1D1D1D"],
   });
 
+  const handleSendComment = async () => {
+    if (!commentText.trim() || !task?.taskId) return;
+    setSendingNote(true);
+    try {
+      await addNote(task.taskId, {
+        notes: commentText.trim(),
+        company_id: companyId,
+        company_identifier: companyIdentifier,
+      });
+      setCommentText("");
+      await loadNotes();
+    } catch (error) {
+      // silently fail
+    } finally {
+      setSendingNote(false);
+    }
+  };
+
+  const handleDeleteNote = async (note: TaskNote) => {
+    try {
+      await deleteNote(note.id, companyId, companyIdentifier);
+      await loadNotes();
+    } catch (error) {
+      // silently fail
+    }
+  };
+
+  const handlePinNote = async (note: TaskNote) => {
+    try {
+      await pinNote(note.id, note.pin_top !== 1, companyId, companyIdentifier);
+      await loadNotes();
+    } catch (error) {
+      // silently fail
+    }
+  };
+
   if (!task) return null;
 
-  const statusStyle   = STATUS_COLORS[task.status];
+  const statusStyle = STATUS_COLORS[task.status];
   const priorityStyle = PRIORITY_COLORS[task.priority] ?? { bg: "#E5E7EB", text: "#374151" };
+  const currentUserId = authState.user?.id ?? 0;
 
   const INFO_ROWS = [
     {
@@ -220,13 +289,13 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
       icon: "git-branch-outline", label: "Subtask:",
       value: task.subtasks.length > 0
         ? <View style={styles.cntBadgeGray}><MaterialCommunityIcons name="file-tree-outline" size={14} color="#fff" /><Text style={styles.cntBadgeText}>+{task.subtasks.length}</Text></View>
-        : <Text style={styles.infoValue}>—</Text>,
+        : <Text style={styles.infoValue}>-</Text>,
     },
     {
       icon: "git-compare-outline", label: "Dependencies:",
       value: task.dependencies.length > 0
         ? <Text style={styles.depLink}>{task.dependencies[0].title}</Text>
-        : <Text style={styles.infoValue}>—</Text>,
+        : <Text style={styles.infoValue}>-</Text>,
     },
   ];
 
@@ -235,13 +304,10 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <View style={styles.overlay}>
           <View style={styles.sheet}>
-
-            {/* Close */}
             <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
               <Ionicons name="close" size={18} color="#fff" />
             </TouchableOpacity>
 
-            {/* Tabs */}
             <View style={styles.tabs}>
               <TouchableOpacity
                 style={[styles.tab, activeTab === "details" && styles.tabActive]}
@@ -262,7 +328,6 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
               </TouchableOpacity>
             </View>
 
-            {/* ── DETAILS TAB ── */}
             {activeTab === "details" && (
               <View style={styles.tabContent}>
                 <ScrollView
@@ -288,7 +353,6 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
                   </View>
                 ))}
 
-                {/* Description */}
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Description</Text>
                   <Text style={styles.descText}>{task.description}</Text>
@@ -296,7 +360,7 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
                     {task.subtasks.length > 0 && (
                       <View style={styles.descBadge}>
                         <MaterialCommunityIcons name="file-tree-outline" size={13} color="#00DFAB" />
-                        <Text style={[styles.descBadgeText, {color:"#00DFAB"}]}>+{task.subtasks.length}</Text>
+                        <Text style={[styles.descBadgeText, { color: "#00DFAB" }]}>+{task.subtasks.length}</Text>
                       </View>
                     )}
                     {task.attachments.length > 0 && (
@@ -308,17 +372,14 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
                   </View>
                 </View>
 
-                {/* Subtask table */}
                 {task.subtasks.length > 0 && (
                   <SectionTable title="Subtask" rows={task.subtasks} showAdd />
                 )}
 
-                {/* Dependencies table */}
                 {task.dependencies.length > 0 && (
                   <SectionTable title="Dependencies" rows={task.dependencies} />
                 )}
 
-                {/* Attachments */}
                 {task.attachments.length > 0 && (
                   <View style={styles.section}>
                     <View style={styles.attachHeader}>
@@ -343,7 +404,6 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
               </View>
             )}
 
-            {/* ── COMMENTS TAB ── */}
             {activeTab === "comments" && (
               <View style={[styles.commentsContainer, styles.tabComment]}>
                 <ScrollView
@@ -352,12 +412,25 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                 >
-                  {MOCK_COMMENTS.map((c) => (
-                    <CommentBubble key={c.id} comment={c} />
-                  ))}
+                  {notesLoading ? (
+                    <ActivityIndicator size="small" color="#00DEAB" style={{ marginTop: 20 }} />
+                  ) : notes.length === 0 ? (
+                    <Text style={{ textAlign: "center", color: "#9CA3AF", marginTop: 20, fontFamily: "SF_Pro_Regular" }}>
+                      No comments yet.
+                    </Text>
+                  ) : (
+                    notes.map((c) => (
+                      <CommentBubble
+                        key={c.id}
+                        comment={c}
+                        currentUserId={currentUserId}
+                        onPin={handlePinNote}
+                        onDelete={handleDeleteNote}
+                      />
+                    ))
+                  )}
                 </ScrollView>
 
-                {/* Input box */}
                 <View style={styles.inputBox}>
                   <Animated.Text
                     style={[
@@ -383,23 +456,19 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
                   <View style={styles.inputToolbar}>
                     <View style={styles.toolbarLeft}>
                       <TouchableOpacity style={styles.toolBtn}>
-                        <Ionicons name="add" size={16} color="#1D1D1D" />
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.toolBtn}>
                         <Ionicons name="at" size={16} color="#1D1D1D" />
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.toolBtn}>
-                        <MaterialCommunityIcons name="emoticon-plus-outline" size={16} color="#1D1D1D" />
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.toolBtn}>
-                        <Ionicons name="mic-outline" size={16} color="#1D1D1D" />
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.toolBtn}>
-                        <Ionicons name="videocam-outline" size={16} color="#1D1D1D" />
-                      </TouchableOpacity>
                     </View>
-                    <TouchableOpacity style={styles.sendBtn}>
-                      <Ionicons name="send" size={14} color="#fff" />
+                    <TouchableOpacity
+                      style={[styles.sendBtn, sendingNote && { opacity: 0.5 }]}
+                      onPress={handleSendComment}
+                      disabled={sendingNote || !commentText.trim()}
+                    >
+                      {sendingNote ? (
+                        <ActivityIndicator size={12} color="#fff" />
+                      ) : (
+                        <Ionicons name="send" size={14} color="#fff" />
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -435,8 +504,6 @@ const styles = StyleSheet.create({
     justifyContent: "center", alignItems: "center",
     marginBottom: 12,
   },
-
-  // Tabs — active = white card, inactive = transparent
   tabs: {
     flexDirection: "row",
     marginBottom: 0,
@@ -452,19 +519,14 @@ const styles = StyleSheet.create({
   tabActiveText: { fontSize: 14, color: "#1D1D1D", fontFamily: "SF_Pro_Semibold" },
   tabInactiveText: { fontSize: 14, color: "#E6E6E6", fontFamily: "SF_Pro_Semibold" },
   tabDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#00DEAB" },
-
-  // Content area below tabs
   detailsScroll: { paddingBottom: 40, paddingTop: 16 },
-
-  // Info rows
-  
   cntBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
     backgroundColor: "#00DFAB", borderRadius: 4,
     paddingHorizontal: 8, paddingVertical: 5,
     alignSelf: "flex-start", marginBottom: 10,
   },
-   cntBadgeGray: {
+  cntBadgeGray: {
     flexDirection: "row", alignItems: "center", gap: 4,
     backgroundColor: "#AAAAAA", borderRadius: 4,
     paddingHorizontal: 8, paddingVertical: 5,
@@ -488,9 +550,7 @@ const styles = StyleSheet.create({
   initialsText: { fontSize: 10, fontWeight: "700", color: "#fff" },
   badge: { borderRadius: 5, paddingHorizontal: 12, paddingVertical: 4, alignSelf: "flex-start" },
   badgeText: { fontSize: 12, fontFamily: "SF_Pro_Medium" },
-  depLink: { fontSize: 13, backgroundColor:"#F0FFF8", maxWidth: 100, padding:5, borderRadius: 5, textAlign:"center", color: "#00DEAB", fontFamily: "SF_Pro_Regular" },
-
-  // Description
+  depLink: { fontSize: 13, backgroundColor: "#F0FFF8", maxWidth: 100, padding: 5, borderRadius: 5, textAlign: "center", color: "#00DEAB", fontFamily: "SF_Pro_Regular" },
   section: { marginTop: 24 },
   sectionTitle: { fontSize: 18, fontFamily: "SF_Pro_Medium", color: "#1D1D1D", marginBottom: 12 },
   descText: { fontSize: 12, color: "#1D1D1D", lineHeight: 22, fontFamily: "SF_Pro_Regular" },
@@ -501,8 +561,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 5,
   },
   descBadgeText: { fontSize: 12, color: "#fff" },
-
-  // Section table (Subtask / Dependencies)
   tblHeader: {
     flexDirection: "row",
     backgroundColor: "#E6E6E6",
@@ -530,8 +588,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#00DEAB", alignItems: "center", justifyContent: "center",
   },
   addRowText: { fontSize: 13, color: "#C0C0C0", fontFamily: "SF_Pro_Regular" },
-
-  // Attachments
   attachHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
   attachTag: {
     flexDirection: "row", alignItems: "center", gap: 6,
@@ -539,8 +595,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 7, marginRight: 8,
   },
   attachTagText: { fontSize: 12, color: "#00DEAB", fontFamily: "SF_Pro_Regular" },
-
-  // Comments tab
   tabContent: {
     flex: 1,
     backgroundColor: "#F9F9F9",
@@ -548,15 +602,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
   },
-  tabComment: {  flex: 1,
+  tabComment: {
+    flex: 1,
     backgroundColor: "#F9F9F9",
     borderTopLeftRadius: 12,
     paddingHorizontal: 16,
-    paddingTop: 16, },
+    paddingTop: 16,
+  },
   commentsContainer: { flex: 1, flexDirection: "column" },
   commentsList: { flex: 1 },
   commentsListContent: { gap: 12, paddingBottom: 16 },
-
   bubble: {
     borderWidth: 1, borderColor: "#E5E7EB",
     borderRadius: 14, padding: 14,
@@ -588,8 +643,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   actionBtn: { padding: 4 },
-
-  // Comment input
   inputBox: {
     borderWidth: 1, borderColor: "#1D1D1D",
     borderRadius: 8,

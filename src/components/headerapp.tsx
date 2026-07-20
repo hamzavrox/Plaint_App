@@ -13,14 +13,15 @@ import {
   View,
 } from "react-native";
 import InboxModal from "./InboxModal";
+import { useAuth } from "@/hooks/useAuth";
 
 type AppHeaderProps = {
   greeting: string;
   subGreeting: string;
-  initials: string;
+  initials?: string;
+  placeholder?: string;
   showSearch?: boolean;
   showFilter?: boolean;
-  placeholder: string;
   forceSearchOpen?: boolean;
   onNotificationPress?: () => void;
   onFilterPress?: () => void;
@@ -32,18 +33,31 @@ export default function AppHeader({
   initials,
   showSearch = false,
   showFilter = false,
-  placeholder,
+  placeholder = "Search...",
   forceSearchOpen = false,
   onFilterPress,
 }: AppHeaderProps) {
+  const { state: authState, logout } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const isSearchVisible = forceSearchOpen || searchOpen;
-  // Reset manual open state when forceSearchOpen takes over
   const prevForce = useState(forceSearchOpen);
   if (forceSearchOpen && searchOpen) setSearchOpen(false);
   const [search, setSearch] = useState("");
   const [inboxOpen, setInboxOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  const userInitials = (() => {
+    if (initials) return initials;
+    const user = authState.user;
+    if (!user) return "U";
+    return ((user.first_name?.[0] ?? "") + (user.last_name?.[0] ?? "")).toUpperCase();
+  })();
+
+  const handleLogout = async () => {
+    setShowProfileMenu(false);
+    await logout();
+    router.replace("/(auth)/login");
+  };
 
   return (
     <Pressable style={styles.headerContainer} onPress={() => searchOpen && setSearchOpen(false)}>
@@ -71,7 +85,7 @@ export default function AppHeader({
 
           <TouchableOpacity onPress={() => setShowProfileMenu(true)}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials}</Text>
+              <Text style={styles.avatarText}>{userInitials}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -79,22 +93,15 @@ export default function AppHeader({
 
       {showProfileMenu && (
   <>
-    {/* Background Overlay */}
     <Pressable
       style={StyleSheet.absoluteFill}
       onPress={() => setShowProfileMenu(false)}
     />
 
-    {/* Dropdown */}
     <View style={styles.profileMenu}>
       <TouchableOpacity
         style={styles.menuItem}
-        onPress={() => {
-          setShowProfileMenu(false);
-
-          // Sign out logic
-          router.replace("/login");
-        }}
+        onPress={handleLogout}
       >
         <MaterialCommunityIcons
           name="logout"
@@ -145,18 +152,14 @@ export default function AppHeader({
 }
 
 const styles = StyleSheet.create({
-  // headerContainer: {
-  //   borderBottomWidth: 1,
-  //   borderBottomColor: "#E6E6E6",
-  //   paddingBottom: 0,
-  // },
+  headerContainer: {
+  },
   searchRow: {
     flexDirection: "row",
     borderWidth: 1,
     borderColor: "#E6E6E6",
     borderRadius: 10,
     marginHorizontal: 16,
-    // paddingHorizontal: 12,
     paddingRight: 2,
     paddingVertical: 12,
     height: 40,
@@ -169,13 +172,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    // borderWidth: 1,
-    // borderColor: "#E6E6E6",
     borderRadius: 10,
     paddingHorizontal: 12,
     height: 40,
     gap: 8,
-
   },
   searchInput: {
     flex: 1,
@@ -188,16 +188,13 @@ const styles = StyleSheet.create({
     width: 35,
     height: 35,
     borderRadius: 8,
-    // borderWidth: 1,
     backgroundColor: "#E6E6E6",
     alignItems: "center",
     justifyContent: "center",
   },
-
   filterBtnPressed: {
     backgroundColor: "#00DEAB",
   },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -206,32 +203,27 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 15,
   },
-
   greeting: {
     fontSize: 18,
     fontFamily: "SF_Pro_Semibold",
     color: "#111827",
   },
-
   subGreeting: {
     fontSize: 12,
     color: "#6B7280",
     fontFamily: "SF_Pro_Regular",
     marginTop: 2,
   },
-
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
-
   bellWrap: {
     position: "relative",
     justifyContent: "center",
     alignItems: "center",
   },
-
   bellDot: {
     position: "absolute",
     top: 0,
@@ -243,7 +235,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#fff",
   },
-
   avatar: {
     width: 35,
     height: 35,
@@ -252,42 +243,36 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   avatarText: {
     color: "#fff",
     fontFamily: "SF_Pro_Bold",
     fontSize: 14,
   },
   profileMenu: {
-  position: "absolute",
-  top: 70,
-  right: 16,
-  width: 120,
-  backgroundColor: "#fff",
-  borderRadius: 4,
-  paddingVertical: 6,
-
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 3 },
-  shadowOpacity: 0.15,
-  shadowRadius: 8,
-  elevation: 8,
-
-  zIndex: 9999,
-},
-
-menuItem: {
-  flexDirection: "row",
-  alignItems: "center",
-  paddingHorizontal: 16,
-  paddingVertical: 6,
-},
-
-menuText: {
-  marginLeft: 5,
-  fontSize: 12,
-  color: "#212529",
-  fontFamily: "SF_Pro_Medium",
-},
-
+    position: "absolute",
+    top: 70,
+    right: 16,
+    width: 120,
+    backgroundColor: "#fff",
+    borderRadius: 4,
+    paddingVertical: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 999,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  menuText: {
+    marginLeft: 5,
+    fontSize: 12,
+    color: "#212529",
+    fontFamily: "SF_Pro_Medium",
+  },
 });

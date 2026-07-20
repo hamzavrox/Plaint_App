@@ -1,4 +1,7 @@
 import FloatingInput from "@/components/FloatingInput";
+import TopMintGlow from "@/components/gradientheader";
+import { Colors } from "@/theme/root";
+import { router } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -8,35 +11,44 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
-import TopMintGlow from "@/components/gradientheader";
-import { Colors } from "@/theme/root";
-import { router } from "expo-router";
 import Images from "@/constants/images";
 import { useAuth } from "@/hooks/useAuth";
 import { extractErrorMessage } from "@/utils/errorHandler";
 
-export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+export default function InitialPasswordReset() {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { state, setInitialPassword } = useAuth();
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("Validation", "Email and password are required.");
+  const email = state.defaultPasswordEmail;
+
+  const handleReset = async () => {
+    if (!newPassword.trim() || !confirmPassword.trim()) {
+      Alert.alert("Validation", "All fields are required.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert("Validation", "Passwords do not match.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert("Validation", "Password must be at least 6 characters.");
       return;
     }
 
     setLoading(true);
     try {
-      await login(email.trim(), password);
+      await setInitialPassword(email, newPassword, confirmPassword);
+      Alert.alert("Success", "Password updated. Please login with your new password.", [
+        { text: "OK", onPress: () => router.replace("/(auth)/login") },
+      ]);
     } catch (error) {
       const msg = extractErrorMessage(error);
-      Alert.alert("Login Failed", msg);
+      Alert.alert("Error", msg);
     } finally {
       setLoading(false);
     }
@@ -46,7 +58,6 @@ export default function Login() {
     <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
       <View style={styles.root}>
         <TopMintGlow />
-
         <View style={styles.content}>
           <Image
             source={Images.PlaintLogo}
@@ -54,40 +65,44 @@ export default function Login() {
             resizeMode="contain"
           />
 
-          <Text style={styles.title}>Welcome back!</Text>
+          <Text style={styles.title}>Set New Password</Text>
 
           <View>
+            <Text style={styles.emailText}>
+              Your account uses a default password. Please set a new password to
+              continue.
+            </Text>
+
             <FloatingInput
-              label="Enter your work email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
+              label="New Password"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureToggle
             />
 
             <FloatingInput
-              label="Enter your password"
-              value={password}
-              onChangeText={setPassword}
+              label="Confirm Password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
               secureToggle
             />
           </View>
 
           <Pressable
-            style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
-            onPress={handleLogin}
+            style={[styles.loginBtn, loading && { opacity: 0.7 }]}
+            onPress={handleReset}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator size="small" color={Colors.buttonText} />
             ) : (
-              <Text style={styles.loginBtnText}>Log In</Text>
+              <Text style={styles.loginBtnText}>Update Password</Text>
             )}
           </Pressable>
 
-          <TouchableOpacity onPress={() => router.replace("/(auth)/forgetpassword")}>
-            <Text style={styles.forgotText}>Forgot Password?</Text>
-          </TouchableOpacity>
+          <Pressable onPress={() => router.replace("/(auth)/login")}>
+            <Text style={styles.backText}>Back to Sign In</Text>
+          </Pressable>
         </View>
       </View>
     </TouchableWithoutFeedback>
@@ -118,6 +133,16 @@ const styles = StyleSheet.create({
     color: "#111",
     marginBottom: 16,
   },
+  emailText: {
+    fontFamily: "SF_Pro_Regular",
+    color: "#1f7556",
+    marginBottom: 8,
+    backgroundColor: "#d6f3e9",
+    borderRadius: 8,
+    padding: 10,
+    textAlign: "center",
+    fontSize: 12,
+  },
   loginBtn: {
     backgroundColor: Colors.bgButtonColor,
     borderRadius: 8,
@@ -125,15 +150,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 4,
   },
-  loginBtnDisabled: {
-    opacity: 0.7,
-  },
   loginBtnText: {
     fontSize: 16,
     fontFamily: "SF_Pro_Semibold",
     color: Colors.buttonText,
   },
-  forgotText: {
+  backText: {
     textAlign: "center",
     fontSize: 14,
     color: Colors.buttonText,
