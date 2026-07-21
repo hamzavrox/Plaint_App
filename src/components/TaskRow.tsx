@@ -52,10 +52,6 @@ export const COL_WIDTHS = {
   project: 90,
 };
 
-// Height of one dropdown item
-const ITEM_H = 40;
-const DROPDOWN_H = ALL_STATUSES.length * ITEM_H;
-
 export default function TaskRow({
   title, createdBy, createdByInitials, assignedTo, assignedToInitials,
   dueDate, status: initialStatus, project, extraCount,
@@ -128,7 +124,14 @@ export default function TaskRow({
         {/* Status pill */}
         <TouchableOpacity
           style={[styles.statusCell, { width: COL_WIDTHS.status, backgroundColor: bg }]}
-          onPress={(e) => { e.stopPropagation(); isOpen ? onClose?.() : onOpenRequest?.(); }}
+          onPress={(e) => {
+            e.stopPropagation();
+            if (isOpen) {
+              onClose?.();
+            } else {
+              onOpenRequest?.();
+            }
+          }}
           activeOpacity={0.8}
         >
           <Text style={[styles.statusText, { color: text }]}>{status}</Text>
@@ -172,23 +175,23 @@ const styles = StyleSheet.create({
   wrap: { position: "relative" },
   row: {
     flexDirection: "row",
-    // alignItems: "center",
+    alignItems: "center",
     minHeight: 52,
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
     backgroundColor: "#fff",
   },
-  accent: { width: 3, height: 40, borderRadius: 10, backgroundColor: "#CB5F00" },
+  accent: { width: 3.5, height: 28, borderRadius: 4, backgroundColor: "#CB5F00" },
   checkCircle: {
-    width: 16, height: 16, borderRadius: 4,
+    width: 17, height: 17, borderRadius: 4,
     backgroundColor: "#00DEAB", alignItems: "center", justifyContent: "center",
   },
   checkbox: {
-    width: 16, height: 16, borderRadius: 4,
+    width: 17, height: 17, borderRadius: 4,
     borderWidth: 1.5, borderColor: "#D1D5DB", backgroundColor: "#fff",
   },
   titleCell: { flexDirection: "row", alignItems: "center", paddingRight: 8 },
-  titleText: { fontSize: 12, color: "#1D1D1D", flexShrink: 1, fontFamily: "SF_Pro_Medium" },
+  titleText: { fontSize: 12.5, color: "#1F2937", flexShrink: 1, fontFamily: "SF_Pro_Medium" },
   strikethrough: { textDecorationLine: "line-through", color: "#9CA3AF" },
   extraBadge: {
     flexDirection: "row", alignItems: "center",
@@ -198,12 +201,12 @@ const styles = StyleSheet.create({
   extraText: { fontSize: 11, color: "#6B7280", marginLeft: 2 },
   userCell: { flexDirection: "row", alignItems: "center", paddingRight: 8 },
   initials: {
-    width: 24, height: 24, borderRadius: 5,
+    width: 24, height: 24, borderRadius: 12,
     backgroundColor: "#00DEAB", alignItems: "center", justifyContent: "center", marginRight: 6,
   },
-  initialsAssigned: { backgroundColor: "#3B82F6" },
+  initialsAssigned: { backgroundColor: "#00DEAB" },
   initialsText: { fontSize: 10, fontWeight: "700", color: "#fff" },
-  cellText: { fontSize: 12, color: "#1D1D1D", flexShrink: 1, fontFamily: "SF_Pro_Medium", },
+  cellText: { fontSize: 12.5, color: "#1F2937", flexShrink: 1, fontFamily: "SF_Pro_Medium" },
   dateCell: { flexDirection: "row", alignItems: "center", paddingRight: 8 },
   statusCell: {
     flexDirection: "row",
@@ -211,7 +214,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 5,
+    borderRadius: 6,
     marginRight: 8,
   },
   statusText: { fontSize: 11.5, fontWeight: "600" },

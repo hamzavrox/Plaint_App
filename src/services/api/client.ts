@@ -1,7 +1,9 @@
-import { getStoredToken } from "@/utils/token";
 import { ApiErrorEnvelope } from "@/types/api.types";
+import { getStoredToken } from "@/utils/token";
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
+const BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ??
+  "https://backend-planit.soulservices.com/api/v1";
 
 type AuthFailureCallback = () => void;
 
@@ -41,7 +43,8 @@ async function handleResponse<T>(res: Response): Promise<T> {
     const errBody = body as ApiErrorEnvelope;
     const msg =
       (typeof errBody === "object" && errBody !== null
-        ? errBody.message ?? (typeof errBody.data === "string" ? errBody.data : null)
+        ? (errBody.message ??
+          (typeof errBody.data === "string" ? errBody.data : null))
         : null) ?? `Request failed (${res.status})`;
     throw new Error(msg);
   }
@@ -51,12 +54,14 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 export async function apiGet<T>(
   path: string,
-  params?: Record<string, string | number>
+  params?: Record<string, string | number>,
 ): Promise<T> {
   const token = await getStoredToken();
   const url = new URL(`${BASE_URL}${path}`);
   if (params) {
-    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, String(v)));
+    Object.entries(params).forEach(([k, v]) =>
+      url.searchParams.set(k, String(v)),
+    );
   }
 
   const res = await fetch(url.toString(), {
@@ -69,7 +74,7 @@ export async function apiGet<T>(
 export async function apiPost<T>(
   path: string,
   body?: unknown,
-  isFormData = false
+  isFormData = false,
 ): Promise<T> {
   const token = await getStoredToken();
   const url = `${BASE_URL}${path}`;
@@ -77,7 +82,11 @@ export async function apiPost<T>(
   const res = await fetch(url, {
     method: "POST",
     headers: buildHeaders(token, isFormData),
-    body: isFormData ? (body as FormData) : body ? JSON.stringify(body) : undefined,
+    body: isFormData
+      ? (body as FormData)
+      : body
+        ? JSON.stringify(body)
+        : undefined,
   });
   return handleResponse<T>(res);
 }
@@ -95,7 +104,7 @@ export async function apiDelete<T>(path: string): Promise<T> {
 
 export async function apiUpload<T>(
   path: string,
-  formData: FormData
+  formData: FormData,
 ): Promise<T> {
   const token = await getStoredToken();
   const url = `${BASE_URL}${path}`;
