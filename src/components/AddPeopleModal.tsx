@@ -59,16 +59,11 @@ function getInitials(name: string, override?: string): string {
 }
 
 /** Deterministic avatar background color from name */
-const AVATAR_COLORS = [
-  "#00DEAB",
-  "#1ED9A5",
-  "#12C298",
-  "#0BC5A8",
-  "#05B89B",
-];
+const AVATAR_COLORS = ["#00DEAB", "#1ED9A5", "#12C298", "#0BC5A8", "#05B89B"];
 function avatarColor(name: string): string {
   let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < name.length; i++)
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
@@ -85,18 +80,32 @@ function FloatingSearchInput({ value, onChangeText }: FloatingSearchProps) {
   const inputRef = useRef<TextInput>(null);
 
   const animate = (to: number) =>
-    Animated.timing(anim, { toValue: to, duration: 180, useNativeDriver: false }).start();
+    Animated.timing(anim, {
+      toValue: to,
+      duration: 180,
+      useNativeDriver: false,
+    }).start();
 
-  const handleFocus = () => { animate(1); setFocused(true); };
-  const handleBlur = () => { if (!value) animate(0); setFocused(false); };
+  const handleFocus = () => {
+    animate(1);
+    setFocused(true);
+  };
+  const handleBlur = () => {
+    if (!value) animate(0);
+    setFocused(false);
+  };
 
-  const labelTop = anim.interpolate({ inputRange: [0, 1], outputRange: [13, -10] });
-  const labelSize = anim.interpolate({ inputRange: [0, 1], outputRange: [14, 11] });
+  const labelTop = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [13, -10],
+  });
+  const labelSize = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [14, 11],
+  });
   // const labelColor = anim.interpolate({ inputRange: [0, 1], outputRange: ["#A0A0A0", "#6B6B6B"] });
   const activeColor = "#1D1D1D";
-  const labelColor = focused || value
-    ? activeColor
-    : "#A0A0A0";
+  const labelColor = focused || value ? activeColor : "#A0A0A0";
   const borderColor = focused ? "#1D1D1D" : "#D1D5DB";
 
   return (
@@ -115,7 +124,6 @@ function FloatingSearchInput({ value, onChangeText }: FloatingSearchProps) {
         >
           Search people
         </Animated.Text>
-
         {/* Text input */}
         <TextInput
           ref={inputRef}
@@ -128,14 +136,14 @@ function FloatingSearchInput({ value, onChangeText }: FloatingSearchProps) {
           autoCapitalize="none"
           returnKeyType="search"
         />
-
         {/* Search icon */}
         <Ionicons
           name="search-outline"
           size={19}
           color={focused || value ? "#1D1D1D" : "#9CA3AF"}
           style={searchStyles.icon}
-        />      </View>
+        />
+      </View>
     </TouchableWithoutFeedback>
   );
 }
@@ -186,27 +194,51 @@ interface UserRowProps {
   onToggleSelect?: () => void;
 }
 
-function UserRow({ user, onPress, isChannelMode, isSelected, onToggleSelect }: UserRowProps) {
+function UserRow({
+  user,
+  onPress,
+  isChannelMode,
+  isSelected,
+  onToggleSelect,
+}: UserRowProps) {
   const initials = getInitials(user.name, user.initials);
   const bgColor = avatarColor(user.name);
 
   return (
-    <TouchableOpacity style={rowStyles.row} activeOpacity={0.65} onPress={isChannelMode ? onToggleSelect : onPress}>
+    <TouchableOpacity
+      style={rowStyles.row}
+      activeOpacity={0.65}
+      onPress={isChannelMode ? onToggleSelect : onPress}
+    >
       {/* Avatar */}
-      <View style={[rowStyles.avatar, isChannelMode && isSelected && { backgroundColor: "#00DEAB" }]}>
+      <View
+        style={[
+          rowStyles.avatar,
+          isChannelMode && isSelected && { backgroundColor: "#00DEAB" },
+        ]}
+      >
         <Text style={rowStyles.initials}>{initials}</Text>
       </View>
 
       {/* Name + email */}
       <View style={rowStyles.info}>
-        <Text style={rowStyles.name} numberOfLines={1}>{user.name}</Text>
+        <Text style={rowStyles.name} numberOfLines={1}>
+          {user.name}
+        </Text>
         {!!user.email && !isChannelMode && (
-          <Text style={rowStyles.email} numberOfLines={1}>{user.email}</Text>
+          <Text style={rowStyles.email} numberOfLines={1}>
+            {user.email}
+          </Text>
         )}
       </View>
 
       {isChannelMode && isSelected && (
-        <Ionicons name="checkmark" size={20} color="#00DEAB" style={{ marginLeft: "auto" }} />
+        <Ionicons
+          name="checkmark"
+          size={20}
+          color="#00DEAB"
+          style={{ marginLeft: "auto" }}
+        />
       )}
     </TouchableOpacity>
   );
@@ -296,12 +328,21 @@ export default function AddPeopleModal({
 }: AddPeopleModalProps) {
   const [query, setQuery] = useState("");
   const [keyboardShown, setKeyboardShown] = useState(false);
-  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardShown(true));
-    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardShown(false));
-    return () => { show.remove(); hide.remove(); };
+    const show = Keyboard.addListener("keyboardDidShow", () =>
+      setKeyboardShown(true),
+    );
+    const hide = Keyboard.addListener("keyboardDidHide", () =>
+      setKeyboardShown(false),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
   }, []);
 
   // Filter only when the user has typed something
@@ -318,7 +359,7 @@ export default function AddPeopleModal({
   const filtered = users.filter(
     (u) =>
       u.name.toLowerCase().includes(query.toLowerCase()) ||
-      (u.email ?? "").toLowerCase().includes(query.toLowerCase())
+      (u.email ?? "").toLowerCase().includes(query.toLowerCase()),
   );
 
   const handleChangeText = (text: string) => {
@@ -352,12 +393,12 @@ export default function AddPeopleModal({
     if (selectedUserIds.size === filtered.length) {
       setSelectedUserIds(new Set());
     } else {
-      setSelectedUserIds(new Set(filtered.map(u => u.id)));
+      setSelectedUserIds(new Set(filtered.map((u) => u.id)));
     }
   };
 
   const handleInvite = () => {
-    const selectedUsers = users.filter(u => selectedUserIds.has(u.id));
+    const selectedUsers = users.filter((u) => selectedUserIds.has(u.id));
     onInviteUsers?.(selectedUsers);
     handleClose();
   };
@@ -380,7 +421,12 @@ export default function AddPeopleModal({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={modalStyles.kavWrapper}
       >
-        <View style={[modalStyles.sheet, { minHeight: SCREEN_HEIGHT * 0.50, maxHeight: SCREEN_HEIGHT * 0.88 }]}>
+        <View
+          style={[
+            modalStyles.sheet,
+            { minHeight: SCREEN_HEIGHT * 0.5, maxHeight: SCREEN_HEIGHT * 0.88 },
+          ]}
+        >
           {/* ── Close button ── */}
           <TouchableOpacity
             style={modalStyles.closeBtn}
@@ -408,15 +454,27 @@ export default function AddPeopleModal({
                 <Text style={modalStyles.inviteBtnText}>Invite</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={modalStyles.selectAllRow} onPress={handleSelectAll} activeOpacity={0.7}>
-                <View style={[modalStyles.checkbox, selectedUserIds.size === filtered.length && filtered.length > 0 && modalStyles.checkboxActive]}>
-                  {selectedUserIds.size === filtered.length && filtered.length > 0 && (
-                    <Ionicons name="checkmark" size={14} color="#fff" />
-                  )}
+              <TouchableOpacity
+                style={modalStyles.selectAllRow}
+                onPress={handleSelectAll}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    modalStyles.checkbox,
+                    selectedUserIds.size === filtered.length &&
+                      filtered.length > 0 &&
+                      modalStyles.checkboxActive,
+                  ]}
+                >
+                  {selectedUserIds.size === filtered.length &&
+                    filtered.length > 0 && (
+                      <Ionicons name="checkmark" size={14} color="#fff" />
+                    )}
                 </View>
                 <Text style={modalStyles.selectAllText}>Select All</Text>
               </TouchableOpacity>
-              
+
               <View style={modalStyles.divider} />
             </View>
           )}
@@ -456,7 +514,9 @@ export default function AddPeopleModal({
               )}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
-              style={keyboardShown ? { maxHeight: SCREEN_HEIGHT * 0.40 } : undefined}
+              style={
+                keyboardShown ? { maxHeight: SCREEN_HEIGHT * 0.4 } : undefined
+              }
               contentContainerStyle={{ paddingBottom: 32 }}
             />
           )}
@@ -559,5 +619,5 @@ const modalStyles = StyleSheet.create({
     height: 1,
     backgroundColor: "#F3F4F6",
     marginBottom: 8,
-  }
+  },
 });

@@ -17,6 +17,7 @@
  * Design tokens are preserved identically from the original TaskTable/TaskRow.
  */
 
+import Icons from "@/constants/icons";
 import { Ionicons } from "@expo/vector-icons";
 import React, {
   memo,
@@ -28,8 +29,13 @@ import React, {
 } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  GestureResponderEvent,
+  LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  PanResponder,
+  PanResponderGestureState,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -37,9 +43,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Icons from "@/constants/icons";
 
 const { FilterIconBlack } = Icons;
+
+export type SwipeStage = "actions" | "details";
 
 // ─── Column definition ────────────────────────────────────────────────────────
 
@@ -81,7 +88,7 @@ export interface DynamicTableProps<T = any> {
     item: T,
     column: Column<T>,
     rowIndex: number,
-    isOpen: boolean
+    isOpen: boolean,
   ) => ReactNode;
 
   /**
@@ -89,7 +96,11 @@ export interface DynamicTableProps<T = any> {
    * Called once per row when `actionColumnKey` is supplied.
    * Must return the full list of dropdown option nodes.
    */
-  renderDropdown?: (item: T, rowIndex: number, onClose: () => void) => ReactNode;
+  renderDropdown?: (
+    item: T,
+    rowIndex: number,
+    onClose: () => void,
+  ) => ReactNode;
 
   /**
    * The column `key` whose cell acts as the toggle for the dropdown.
@@ -136,6 +147,25 @@ export interface DynamicTableProps<T = any> {
   maxHeight?: number;
   /** Optional callback when the filter button is pressed — renders a filter button instead of the collapse chevron */
   onFilterPress?: () => void;
+
+  /**
+   * Optional row content revealed when the row is swiped left.
+   * Useful on narrow tables where secondary columns/actions should stay hidden
+   * until the user asks for them.
+   */
+  renderSwipeContent?: (
+    item: T,
+    rowIndex: number,
+    onClose: () => void,
+    stage: SwipeStage,
+    setStage: (stage: SwipeStage) => void,
+  ) => ReactNode;
+  /** Width of the revealed swipe panel — defaults to 330 */
+  swipeContentWidth?: number;
+  /** Width of the short first-stage action reveal — defaults to 190 */
+  swipeActionWidth?: number;
+  /** Disable table-level horizontal scrolling when row swipe owns horizontal dragging */
+  disableHorizontalScroll?: boolean;
 }
 
 // ─── DynamicRow (memoised) ────────────────────────────────────────────────────
@@ -153,6 +183,14 @@ interface DynamicRowProps<T> {
   isOpen: boolean;
   onOpenRequest: () => void;
   onClose: () => void;
+  renderSwipeContent?: DynamicTableProps<T>["renderSwipeContent"];
+  swipeContentWidth: number;
+  swipeActionWidth: number;
+  isSwipeOpen: boolean;
+  swipeStage: SwipeStage | null;
+  onSwipeOpenRequest: (stage: SwipeStage) => void;
+  onSwipeClose: () => void;
+  onSwipeDragStateChange: (dragging: boolean) => void;
   rowZIndex: number;
   openRowZIndex: number;
 }
@@ -170,10 +208,129 @@ const DynamicRow = memo(function DynamicRow<T>({
   isOpen,
   onOpenRequest,
   onClose,
+  renderSwipeContent,
+  swipeContentWidth,
+  swipeActionWidth,
+  isSwipeOpen,
+  swipeStage,
+  onSwipeOpenRequest,
+  onSwipeClose,
+  onSwipeDragStateChange,
   rowZIndex,
   openRowZIndex,
 }: DynamicRowProps<T>) {
-  const zIndex = isOpen ? openRowZIndex : rowZIndex;
+  const canSwipe = typeof renderSwipeContent === "function";
+  const zIndex = isOpen || isSwipeOpen ? openRowZIndex : rowZIndex;
+  const translateX = useMemo(() => new Animated.Value(0), []);
+  const rowHeight = swipeStage === "details" ? 104 : 52;
+  const currentRevealWidth =
+    swipeStage === "details"
+      ? swipeContentWidth
+      : swipeStage === "actions"
+        ? swipeActionWidth
+        : 0;
+
+  React.useEffect(() => {
+    if (!canSwipe) return;
+    Animated.spring(translateX, {
+      toValue: -currentRevealWidth,
+      useNativeDriver: true,
+      speed: 22,
+      bounciness: 0,
+    }).start();
+  }, [canSwipe, currentRevealWidth, translateX]);
+
+  const settleSwipe = useCallback(
+    (stage: SwipeStage | null) => {
+      if (stage) {
+        onClose();
+        onSwipeOpenRequest(stage);
+      } else {
+        onSwipeClose();
+      }
+    },
+    [onClose, onSwipeClose, onSwipeOpenRequest],
+  );
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (
+          _evt: GestureResponderEvent,
+          gesture: PanResponderGestureState,
+        ) =>
+          canSwipe &&
+          Math.abs(gesture.dx) > 10 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.4,
+        onMoveShouldSetPanResponderCapture: (
+          _evt: GestureResponderEvent,
+          gesture: PanResponderGestureState,
+        ) =>
+          canSwipe &&
+          Math.abs(gesture.dx) > 8 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.2,
+        onPanResponderGrant: () => {
+          onSwipeDragStateChange(true);
+          translateX.stopAnimation();
+        },
+        onPanResponderMove: (
+          _evt: GestureResponderEvent,
+          gesture: PanResponderGestureState,
+        ) => {
+          const start = -currentRevealWidth;
+          const next = Math.min(
+            0,
+            Math.max(-swipeContentWidth, start + gesture.dx),
+          );
+          translateX.setValue(next);
+        },
+        onPanResponderRelease: (
+          _evt: GestureResponderEvent,
+          gesture: PanResponderGestureState,
+        ) => {
+          onSwipeDragStateChange(false);
+          const revealDistance = currentRevealWidth - gesture.dx;
+
+          if (
+            gesture.dx > swipeActionWidth * 0.55 ||
+            revealDistance < swipeActionWidth * 0.35
+          ) {
+            settleSwipe(null);
+            return;
+          }
+
+          if (
+            revealDistance > swipeContentWidth * 0.58 ||
+            gesture.dx < -swipeContentWidth * 0.42 ||
+            gesture.vx < -0.85
+          ) {
+            settleSwipe("details");
+            return;
+          }
+
+          if (revealDistance > 38 || gesture.vx < -0.28) {
+            settleSwipe("actions");
+            return;
+          }
+
+          settleSwipe(null);
+        },
+        onPanResponderTerminate: () => {
+          onSwipeDragStateChange(false);
+          settleSwipe(swipeStage);
+        },
+      }),
+    [
+      canSwipe,
+      currentRevealWidth,
+      onSwipeDragStateChange,
+      settleSwipe,
+      swipeActionWidth,
+      swipeContentWidth,
+      swipeStage,
+      translateX,
+    ],
+  );
 
   // Calculate left offset of the action column for dropdown positioning
   const actionLeft = useMemo(() => {
@@ -201,85 +358,112 @@ const DynamicRow = memo(function DynamicRow<T>({
       if (renderCell) return renderCell(item, col, rowIndex, isOpen);
       return null;
     },
-    [item, rowIndex, renderCell, isOpen]
+    [item, rowIndex, renderCell, isOpen],
   );
 
   const RowComponent = onRowPress ? TouchableOpacity : View;
-  const rowProps = onRowPress ? { onPress: handleRowPress, activeOpacity: 0.7 } : {};
+  const rowProps = onRowPress
+    ? { onPress: handleRowPress, activeOpacity: 0.7 }
+    : {};
 
   return (
-    <View style={[styles.rowWrap, { zIndex, elevation: zIndex }]}>
-      <RowComponent
-        style={styles.row}
-        {...rowProps}
+    <View
+      style={[
+        styles.rowWrap,
+        { zIndex, elevation: zIndex, minHeight: rowHeight },
+      ]}
+    >
+      {canSwipe && (
+        <View
+          style={[
+            styles.swipeContent,
+            { width: swipeContentWidth, minHeight: rowHeight },
+          ]}
+        >
+          {renderSwipeContent?.(
+            item,
+            rowIndex,
+            onSwipeClose,
+            swipeStage ?? "actions",
+            onSwipeOpenRequest,
+          )}
+        </View>
+      )}
+
+      <Animated.View
+        style={canSwipe ? { transform: [{ translateX }] } : undefined}
+        {...(canSwipe ? panResponder.panHandlers : {})}
       >
-        {/* Leading cell (accent + checkbox) */}
-        {leadingColumnWidth != null && leadingColumnWidth > 0 && (
-          <View style={{ width: leadingColumnWidth }}>
-            {renderLeadingCell?.(item, rowIndex) ?? null}
-          </View>
-        )}
+        <RowComponent style={styles.row} {...rowProps}>
+          {/* Leading cell (accent + checkbox) */}
+          {leadingColumnWidth != null && leadingColumnWidth > 0 && (
+            <View style={{ width: leadingColumnWidth }}>
+              {renderLeadingCell?.(item, rowIndex) ?? null}
+            </View>
+          )}
 
-        {/* Data columns */}
-        {columns.map((col) => {
-          const isAction = col.key === actionColumnKey;
-          const cellNode = resolveCell(col);
+          {/* Data columns */}
+          {columns.map((col) => {
+            const isAction = col.key === actionColumnKey;
+            const cellNode = resolveCell(col);
 
-          if (isAction) {
+            if (isAction) {
+              return (
+                <TouchableOpacity
+                  key={col.key}
+                  style={{ width: col.width }}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    if (isOpen) {
+                      onClose();
+                    } else {
+                      onOpenRequest();
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  {cellNode}
+                </TouchableOpacity>
+              );
+            }
+
+            if (col.onPress) {
+              return (
+                <TouchableOpacity
+                  key={col.key}
+                  style={[
+                    { width: col.width },
+                    col.align === "center" && styles.alignCenter,
+                    col.align === "right" && styles.alignRight,
+                  ]}
+                  onPress={() => col.onPress?.(item, rowIndex)}
+                  activeOpacity={0.7}
+                >
+                  {cellNode}
+                </TouchableOpacity>
+              );
+            }
+
             return (
-              <TouchableOpacity
-                key={col.key}
-                style={{ width: col.width }}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  isOpen ? onClose() : onOpenRequest();
-                }}
-                activeOpacity={0.8}
-              >
-                {cellNode}
-              </TouchableOpacity>
-            );
-          }
-
-          if (col.onPress) {
-            return (
-              <TouchableOpacity
+              <View
                 key={col.key}
                 style={[
                   { width: col.width },
                   col.align === "center" && styles.alignCenter,
                   col.align === "right" && styles.alignRight,
                 ]}
-                onPress={() => col.onPress?.(item, rowIndex)}
-                activeOpacity={0.7}
               >
                 {cellNode}
-              </TouchableOpacity>
+              </View>
             );
-          }
-
-          return (
-            <View
-              key={col.key}
-              style={[
-                { width: col.width },
-                col.align === "center" && styles.alignCenter,
-                col.align === "right" && styles.alignRight,
-              ]}
-            >
-              {cellNode}
-            </View>
-          );
-        })}
-      </RowComponent>
+          })}
+        </RowComponent>
+      </Animated.View>
 
       {/* Per-row dropdown */}
       {isOpen && renderDropdown && (
         <View
-          style={[
-            styles.dropdown,
-            { left: actionLeft, width: actionColWidth },
-          ]}
+          style={[styles.dropdown, { left: actionLeft, width: actionColWidth }]}
         >
           {renderDropdown(item, rowIndex, onClose)}
         </View>
@@ -308,27 +492,46 @@ function DynamicTable<T = any>({
   collapsible = true,
   maxHeight = 300,
   onFilterPress,
+  renderSwipeContent,
+  swipeContentWidth = 330,
+  swipeActionWidth = 190,
+  disableHorizontalScroll = false,
 }: DynamicTableProps<T>): React.ReactElement {
   const [collapsed, setCollapsed] = useState(false);
   const [openRowIndex, setOpenRowIndex] = useState<number | null>(null);
+  const [openSwipeRow, setOpenSwipeRow] = useState<{
+    index: number;
+    stage: SwipeStage;
+  } | null>(null);
+  const [isSwipeDragging, setIsSwipeDragging] = useState(false);
 
   const handleToggleCollapse = useCallback(() => {
     setCollapsed((v) => !v);
     setOpenRowIndex(null);
+    setOpenSwipeRow(null);
   }, []);
 
   const handleOpenRow = useCallback((i: number) => {
     setOpenRowIndex(i);
+    setOpenSwipeRow(null);
   }, []);
 
   const handleCloseRow = useCallback(() => {
     setOpenRowIndex(null);
   }, []);
 
+  const handleOpenSwipeRow = useCallback((i: number, stage: SwipeStage) => {
+    setOpenSwipeRow({ index: i, stage });
+    setOpenRowIndex(null);
+  }, []);
+
+  const handleCloseSwipeRow = useCallback(() => {
+    setOpenSwipeRow(null);
+  }, []);
+
   const resolveKey = useCallback(
-    (item: T, i: number) =>
-      keyExtractor ? keyExtractor(item, i) : String(i),
-    [keyExtractor]
+    (item: T, i: number) => (keyExtractor ? keyExtractor(item, i) : String(i)),
+    [keyExtractor],
   );
 
   // Header cells are stable — only recalculate when columns change
@@ -347,7 +550,7 @@ function DynamicTable<T = any>({
           {col.title}
         </Text>
       )),
-    [columns]
+    [columns],
   );
 
   return (
@@ -403,8 +606,18 @@ function DynamicTable<T = any>({
           renderLeadingCell={renderLeadingCell}
           onRowPress={onRowPress}
           openRowIndex={openRowIndex}
+          openSwipeRow={openSwipeRow}
           handleOpenRow={handleOpenRow}
           handleCloseRow={handleCloseRow}
+          handleOpenSwipeRow={handleOpenSwipeRow}
+          handleCloseSwipeRow={handleCloseSwipeRow}
+          renderSwipeContent={renderSwipeContent}
+          swipeContentWidth={swipeContentWidth}
+          swipeActionWidth={swipeActionWidth}
+          horizontalScrollEnabled={
+            !disableHorizontalScroll && !isSwipeDragging && openSwipeRow == null
+          }
+          onSwipeDragStateChange={setIsSwipeDragging}
           rowZIndex={rowZIndex}
           openRowZIndex={openRowZIndex}
           resolveKey={resolveKey}
@@ -433,8 +646,16 @@ interface StickyHeaderTableProps<T> {
   renderLeadingCell?: (item: T, rowIndex: number) => ReactNode;
   onRowPress?: (item: T, rowIndex: number) => void;
   openRowIndex: number | null;
+  openSwipeRow: { index: number; stage: SwipeStage } | null;
   handleOpenRow: (i: number) => void;
   handleCloseRow: () => void;
+  handleOpenSwipeRow: (i: number, stage: SwipeStage) => void;
+  handleCloseSwipeRow: () => void;
+  renderSwipeContent?: DynamicTableProps<T>["renderSwipeContent"];
+  swipeContentWidth: number;
+  swipeActionWidth: number;
+  horizontalScrollEnabled: boolean;
+  onSwipeDragStateChange: (dragging: boolean) => void;
   rowZIndex: number;
   openRowZIndex: number;
   resolveKey: (item: T, i: number) => string;
@@ -442,34 +663,75 @@ interface StickyHeaderTableProps<T> {
 }
 
 function StickyHeaderTable<T>({
-  columns, data, headerCells, leadingColumnWidth, loading, emptyText,
-  renderCell, renderDropdown, actionColumnKey, renderLeadingCell, onRowPress,
-  openRowIndex, handleOpenRow, handleCloseRow, rowZIndex, openRowZIndex, resolveKey,
+  columns,
+  data,
+  headerCells,
+  leadingColumnWidth,
+  loading,
+  emptyText,
+  renderCell,
+  renderDropdown,
+  actionColumnKey,
+  renderLeadingCell,
+  onRowPress,
+  openRowIndex,
+  openSwipeRow,
+  handleOpenRow,
+  handleCloseRow,
+  handleOpenSwipeRow,
+  handleCloseSwipeRow,
+  renderSwipeContent,
+  swipeContentWidth,
+  swipeActionWidth,
+  horizontalScrollEnabled,
+  onSwipeDragStateChange,
+  rowZIndex,
+  openRowZIndex,
+  resolveKey,
   maxHeight,
 }: StickyHeaderTableProps<T>) {
   const headerScrollRef = useRef<ScrollView>(null);
   const bodyHScrollRef = useRef<ScrollView>(null);
   const isSyncingHeader = useRef(false);
   const isSyncingBody = useRef(false);
+  const [bodyWidth, setBodyWidth] = useState<number | null>(null);
+
+  const handleBodyLayout = useCallback((event: LayoutChangeEvent) => {
+    setBodyWidth(event.nativeEvent.layout.width);
+  }, []);
 
   const onHeaderScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (isSyncingHeader.current) { isSyncingHeader.current = false; return; }
+      if (isSyncingHeader.current) {
+        isSyncingHeader.current = false;
+        return;
+      }
       isSyncingBody.current = true;
-      bodyHScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
-    }, []
+      bodyHScrollRef.current?.scrollTo({
+        x: e.nativeEvent.contentOffset.x,
+        animated: false,
+      });
+    },
+    [],
   );
 
   const onBodyScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (isSyncingBody.current) { isSyncingBody.current = false; return; }
+      if (isSyncingBody.current) {
+        isSyncingBody.current = false;
+        return;
+      }
       isSyncingHeader.current = true;
-      headerScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
-    }, []
+      headerScrollRef.current?.scrollTo({
+        x: e.nativeEvent.contentOffset.x,
+        animated: false,
+      });
+    },
+    [],
   );
 
   return (
-    <View>
+    <View onLayout={handleBodyLayout}>
       {/* Fixed header — horizontal sync only */}
       <ScrollView
         ref={headerScrollRef}
@@ -492,6 +754,7 @@ function StickyHeaderTable<T>({
         ref={bodyHScrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
+        scrollEnabled={horizontalScrollEnabled}
         keyboardShouldPersistTaps="always"
         onScroll={onBodyScroll}
         scrollEventThrottle={16}
@@ -529,6 +792,20 @@ function StickyHeaderTable<T>({
                 isOpen={openRowIndex === i}
                 onOpenRequest={() => handleOpenRow(i)}
                 onClose={handleCloseRow}
+                renderSwipeContent={renderSwipeContent}
+                swipeContentWidth={
+                  bodyWidth
+                    ? Math.min(swipeContentWidth, Math.max(220, bodyWidth - 32))
+                    : swipeContentWidth
+                }
+                swipeActionWidth={swipeActionWidth}
+                isSwipeOpen={openSwipeRow?.index === i}
+                swipeStage={
+                  openSwipeRow?.index === i ? openSwipeRow.stage : null
+                }
+                onSwipeOpenRequest={(stage) => handleOpenSwipeRow(i, stage)}
+                onSwipeClose={handleCloseSwipeRow}
+                onSwipeDragStateChange={onSwipeDragStateChange}
                 rowZIndex={rowZIndex}
                 openRowZIndex={openRowZIndex}
               />
@@ -577,22 +854,33 @@ const styles = StyleSheet.create({
   // Table header row
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#E6E6E6",
+    backgroundColor: "#EAEAEA",
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    marginBottom: 2,
+    marginBottom: 4,
     alignItems: "center",
   },
   colHead: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontFamily: "SF_Pro_Medium",
-    color: "#1D1D1D",
+    color: "#4B5563",
     paddingRight: 8,
   },
 
   // Data row wrapper (needed for z-index elevation on open dropdown)
   rowWrap: { position: "relative" },
+
+  swipeContent: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    minHeight: 52,
+    zIndex: 0,
+    elevation: 0,
+    backgroundColor: "#00DEAB",
+  },
 
   // Data row
   row: {
