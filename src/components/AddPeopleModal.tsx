@@ -102,7 +102,7 @@ function FloatingSearchInput({ value, onChangeText }: FloatingSearchProps) {
   return (
     <TouchableWithoutFeedback onPress={() => inputRef.current?.focus()}>
       <View style={[searchStyles.wrapper, { borderColor }]}>
-        {/* Floating label */}
+      {/* Floating label */}
         <Animated.Text
           style={[
             searchStyles.label,

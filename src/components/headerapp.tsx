@@ -1,6 +1,5 @@
 import Icons from "@/constants/icons";
-
-const { BellIcon, FilterIcon, FilterIconBlack } = Icons;
+import { useAuth } from "@/hooks/useAuth";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -13,7 +12,8 @@ import {
   View,
 } from "react-native";
 import InboxModal from "./InboxModal";
-import { useAuth } from "@/hooks/useAuth";
+
+const { BellIcon, FilterIcon, FilterIconBlack } = Icons;
 
 type AppHeaderProps = {
   greeting: string;
@@ -92,28 +92,28 @@ export default function AppHeader({
       </View>
 
       {showProfileMenu && (
-  <>
-    <Pressable
-      style={StyleSheet.absoluteFill}
-      onPress={() => setShowProfileMenu(false)}
-    />
+        <>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowProfileMenu(false)}
+          />
 
-    <View style={styles.profileMenu}>
-      <TouchableOpacity
-        style={styles.menuItem}
-        onPress={handleLogout}
-      >
-        <MaterialCommunityIcons
-          name="logout"
-          size={18}
-          color="#6B7280"
-        />
+          <View style={styles.profileMenu}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={handleLogout}
+            >
+              <MaterialCommunityIcons
+                name="logout"
+                size={18}
+                color="#6B7280"
+              />
 
-        <Text style={styles.menuText}>Sign out</Text>
-      </TouchableOpacity>
-    </View>
-  </>
-)}
+              <Text style={styles.menuText}>Sign out</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
 
       {showSearch && isSearchVisible && (
         <Pressable onPress={(e) => e.stopPropagation()}>
@@ -126,7 +126,7 @@ export default function AppHeader({
                 placeholderTextColor="#9CA3AF"
                 value={search}
                 onChangeText={setSearch}
-                autoFocus
+                // autoFocus
               />
             </View>
             {showFilter && (

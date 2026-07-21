@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   dayHeader: {
-    width: `${100 / 7}%`,
+    width: "14.2%",
     textAlign: "center",
     fontSize: 12,
     color: "#9CA3AF",
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   cellWrap: {
-    width: `${100 / 7}%`,
+    width: "14.2%",
     aspectRatio: 1,
     padding: 2,
   },

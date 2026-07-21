@@ -103,6 +103,8 @@ interface CreateChannelModalProps {
   visible: boolean;
   onClose: () => void;
   onNext: (channelName: string) => void;
+  title?: string;
+  placeholder?: string;
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -111,6 +113,8 @@ export default function CreateChannelModal({
   visible,
   onClose,
   onNext,
+  title = "Create Channel",
+  placeholder = "Write your channel name",
 }: CreateChannelModalProps) {
   const [channelName, setChannelName] = useState("");
 
@@ -153,10 +157,10 @@ export default function CreateChannelModal({
             <Ionicons name="close" size={17} color="#fff" />
           </TouchableOpacity>
 
-          <Text style={modalStyles.title}>Create Channel</Text>
+          <Text style={modalStyles.title}>{title}</Text>
 
           <FloatingInput
-            label="Write your channel name"
+            label={placeholder}
             value={channelName}
             onChangeText={setChannelName}
           />

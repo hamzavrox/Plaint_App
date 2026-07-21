@@ -158,17 +158,17 @@ const dp = StyleSheet.create({
         gap: 8,
     },
     sidebar: {
-        width: 82,
+        width: 100,
         gap: 0,
     },
     rangeItem: {
-        paddingVertical: 7,
-        paddingHorizontal: 4,
+        paddingVertical: 10,
+        paddingHorizontal: 6,
         borderRadius: 6,
     },
     rangeItemActive: {},
     rangeText: {
-        fontSize: 11,
+        fontSize: 11.5,
         fontFamily: "SF_Pro_Regular",
         color: "#6B7280",
     },
@@ -551,8 +551,8 @@ export default function ConversationScreen() {
                                     style={[styles.postTypeListRow, { backgroundColor: pt.bg }]}
                                     activeOpacity={0.75}
                                 >
-                                    <Ionicons name={pt.icon as any} size={16} color={pt.color} />
-                                    <Text style={[styles.postTypeListLabel, { color: pt.color }]}>{pt.label}</Text>
+                                    <Ionicons name={pt.icon as any} size={14} color={pt.color} />
+                                    <Text style={[styles.postTypeListLabel, { color: pt.color }]} numberOfLines={1}>{pt.label}</Text>
                                     <View style={styles.postTypeListBadge}>
                                         <Text style={[styles.postTypeListBadgeText, { color: pt.color }]}>
                                             {String(pt.count).padStart(2, "0")}
@@ -1145,6 +1145,9 @@ const styles = StyleSheet.create({
 
     // Post Type panel (shown when top tab is clicked)
     postTypeListPanel: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        justifyContent: "space-between",
         paddingHorizontal: 16,
         paddingVertical: 8,
         gap: 8,
@@ -1152,22 +1155,23 @@ const styles = StyleSheet.create({
     postTypeListRow: {
         flexDirection: "row",
         alignItems: "center",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 12,
-        gap: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 10,
+        borderRadius: 5,
+        gap: 6,
+        width: "48.5%",
     },
     postTypeListLabel: {
         flex: 1,
-        fontSize: 14,
+        fontSize: 11.5,
         fontFamily: "SF_Pro_Medium",
     },
     postTypeListBadge: {
-        minWidth: 28,
+        minWidth: 20,
         alignItems: "center",
     },
     postTypeListBadgeText: {
-        fontSize: 13,
+        fontSize: 11,
         fontFamily: "SF_Pro_Semibold",
     },
 

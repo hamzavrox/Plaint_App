@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     modalContainer: {
         flex: 1,
         justifyContent: "flex-start",
-        alignItems: "center",
+        alignItems: "flex-end",
     },
     backdrop: {
         position: "absolute",
@@ -305,29 +305,30 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(0, 0, 0, 0.15)",
     },
     popup: {
-        width: "95%",
+        width: 270,
+        maxWidth: "80%",
         backgroundColor: "#fff",
-        borderRadius: 14,
-        marginTop: 100, // Positioned below header right-hand icons
-        // marginRight: 16,
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 8,
+        borderRadius: 12,
+        marginTop: 100,
+        marginRight: 45,
+        paddingHorizontal: 12,
+        paddingTop: 12,
+        paddingBottom: 6,
         shadowColor: "#000",
         shadowOpacity: 0.12,
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 4 },
         elevation: 6,
-        maxHeight: 420,
+        maxHeight: 200,
     },
     header: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: 14,
+        marginBottom: 10,
     },
     title: {
-        fontSize: 18,
+        fontSize: 15,
         fontFamily: "SF_Pro_Medium",
         color: "#1C1C1E",
     },
@@ -336,29 +337,25 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     markReadText: {
-        fontSize: 13,
+        fontSize: 11.5,
         fontFamily: "SF_Pro_Semibold",
         color: "#556EE6",
-        marginRight: 12,
+        marginRight: 10,
     },
     viewAllText: {
-        fontSize: 13,
+        fontSize: 11.5,
         fontFamily: "SF_Pro_Semibold",
         color: "#00DEAB",
     },
     tabsContainer: {
         flexDirection: "row",
-        // justifyContent: "space-around",
         borderBottomWidth: 1,
-       
         borderBottomColor: "#E5E5EA",
-        marginBottom: 5,
-        // gap: 16,
+        marginBottom: 4,
     },
     tabButton: {
         minWidth: "33%",
-        // backgroundColor: '#dc6b6bff',
-        paddingVertical: 8,
+        paddingVertical: 6,
         borderBottomWidth: 2,
         borderBottomColor: "transparent",
         marginBottom: -1,
@@ -368,7 +365,7 @@ const styles = StyleSheet.create({
         borderRadius: 10
     },
     tabText: {
-        fontSize: 13,
+        fontSize: 11.5,
         textAlign: "center",
         fontFamily: "SF_Pro_Medium",
         color: "#8E8E93",
@@ -431,8 +428,8 @@ const styles = StyleSheet.create({
         backgroundColor: "#00DEAB",
     },
     avatar: {
-        width: 20,
-        height: 20,
+        width: 24,
+        height: 24,
         borderRadius: 3,
         backgroundColor: "#00DEAB",
         alignItems: "center",
@@ -440,16 +437,16 @@ const styles = StyleSheet.create({
     },
     avatarText: {
         color: "#fff",
-        fontSize: 8,
+        fontSize: 10,
         fontFamily: "SF_Pro_Bold",
     },
     infoCol: {
         flex: 1,
-        marginLeft: 5,
+        marginLeft: 6,
     },
     messageText: {
-        fontSize: 9.5,
-        lineHeight: 10,
+        fontSize: 11,
+        lineHeight: 14,
     },
     senderName: {
         fontFamily: "SF_Pro_Semibold",
@@ -462,13 +459,13 @@ const styles = StyleSheet.create({
     timeRow: {
         flexDirection: "row",
         alignItems: "center",
-        marginTop: 3,
+        marginTop: 2,
     },
     timeIcon: {
         marginRight: 3,
     },
     timeText: {
-        fontSize: 11,
+        fontSize: 9.5,
         fontFamily: "SF_Pro_Regular",
         color: "#8E8E93",
     },

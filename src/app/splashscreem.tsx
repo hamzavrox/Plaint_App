@@ -1,19 +1,17 @@
-import React, { useRef, useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Dimensions,
-  ScrollView,
-  Image,
-} from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { StatusBar } from "expo-status-bar";
-import { router } from "expo-router";
 import TopMintGlow from "@/components/gradientheader";
 import { Colors } from "@/theme/root";
 import useAppFonts from "@/theme/useAppFonts";
+import { router } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import {
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import Images from "@/constants/images";
 
@@ -25,6 +23,7 @@ const SLIDES = [
   Images.MainBanner,
   Images.MainBanner,
 ];
+
 
 function Dots({ active }: { active: number }) {
   return (
@@ -38,22 +37,51 @@ function Dots({ active }: { active: number }) {
 
 export default function OnboardingScreen() {
   const scrollRef = useRef<ScrollView>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [active, setActive] = useState(0);
 
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setActive((prev) => {
+  //       const next = (prev + 1) % SLIDES.length;
+  //       scrollRef.current?.scrollTo({ x: next * SW, animated: true });
+  //       return next;
+  //     });
+  //   }, 2500);
+  //   return () => clearInterval(interval);
+  // }, []);
+
   useEffect(() => {
-    const interval = setInterval(() => {
+    startAutoSlide();
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  const startAutoSlide = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    intervalRef.current = setInterval(() => {
       setActive((prev) => {
         const next = (prev + 1) % SLIDES.length;
-        scrollRef.current?.scrollTo({ x: next * SW, animated: true });
+
+        scrollRef.current?.scrollTo({
+          x: next * SW,
+          animated: true,
+        });
+
         return next;
       });
     }, 2500);
-    return () => clearInterval(interval);
-  }, []);
+  };
+  const [fontsLoaded] = useAppFonts();
 
-    const [fontsLoaded] = useAppFonts();
-
-    if (!fontsLoaded) return null;
+  if (!fontsLoaded) return null;
 
   return (
     <View style={styles.root}>
@@ -62,21 +90,45 @@ export default function OnboardingScreen() {
       {/* Top half: gradient bg + slider */}
       <View style={styles.topHalf}>
 
-        <TopMintGlow/>
+        <TopMintGlow />
         {/* <LinearGradient
           colors={["#B8F0E6", "#D8FAF3", "#F0FEFA"]}
           locations={[0, 0.5, 1]}
           style={StyleSheet.absoluteFill}
         /> */}
-        <View/>
+        <View />
 
-        <ScrollView
+        {/* <ScrollView
           ref={scrollRef}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           scrollEnabled={false}
           style={styles.slider}
+        >
+          {SLIDES.map((src, i) => (
+            <View key={i} style={styles.slide}>
+              <Image source={src} style={styles.bannerImage} resizeMode="contain" />
+            </View>
+          ))}
+        </ScrollView> */}
+
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled
+          style={styles.slider}
+          contentContainerStyle={{ flexGrow: 1 }}
+          onMomentumScrollEnd={(e) => {
+            const index = Math.round(
+              e.nativeEvent.contentOffset.x / SW
+            );
+
+            setActive(index);
+            startAutoSlide();
+          }}
         >
           {SLIDES.map((src, i) => (
             <View key={i} style={styles.slide}>
@@ -100,7 +152,7 @@ export default function OnboardingScreen() {
           activeOpacity={0.85}
           onPress={() => router.replace("/login")}
         >
-            <Text style={styles.ctaText}>Get Started</Text>
+          <Text style={styles.ctaText}>Get Started</Text>
         </TouchableOpacity>
       </View>
     </View>
