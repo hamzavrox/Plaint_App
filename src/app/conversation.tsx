@@ -1,14 +1,20 @@
 import Icons from "@/constants/icons";
-const { ChatIcon: MainChatIcon } = Icons;
-import AddPeopleModal, { AddPeopleUser } from "@/components/AddPeopleModal";
+import AddPeopleModal from "@/components/AddPeopleModal";
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import { router, useLocalSearchParams } from "expo-router";
 import CalendarPicker from "@/components/CalendarPicker";
-import React, { useRef, useState } from "react";
+import { useChat } from "@/hooks/useChat";
+import { useAuth } from "@/hooks/useAuth";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+    ActivityIndicator,
+    Alert,
     Animated,
+    FlatList,
     Image,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     Pressable,
     SafeAreaView,
@@ -19,58 +25,144 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import EmojiPicker from "rn-emoji-keyboard";
+import { ChatMessage, RoomMember, Room } from "@/types/chat.types";
+import {
+    getMessageInitials,
+    formatMessageTime,
+    isOwnMessage,
+    groupMessagesByDate,
+    filterMessagesByText,
+} from "@/utils/chatHelpers";
+import { formatFileSize, validateFiles } from "@/services/api/upload.service";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Message {
-    id: string;
-    sender: string;
-    initials: string;
-    time: string;
-    text: string;
-    isOwn: boolean;
+let Audio: typeof import("expo-av").Audio | null = null;
+try {
+    const expoAv = require("expo-av");
+    Audio = expoAv?.Audio ?? null;
+} catch (e) {
+    console.log("[Audio] ExponentAV native module not available:", e);
 }
 
-// ─── Static Data ──────────────────────────────────────────────────────────────
+const { ChatIcon: MainChatIcon } = Icons;
 
-const STATIC_MESSAGES: Message[] = [
-    {
-        id: "1",
-        sender: "Muhammad Salman",
-        initials: "MS",
-        time: "10.00AM",
-        text: "Hello Junaid! How are you?",
-        isOwn: false,
+// ─── Voice Note Player Component ─────────────────────────────────────────────
+
+function VoiceNotePlayer({ audioUrl }: { audioUrl: string }) {
+    const [sound, setSound] = useState<any>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [position, setPosition] = useState(0);
+    const [duration, setDuration] = useState(0);
+
+    const handlePlayPause = async () => {
+        if (!Audio) {
+            Alert.alert("Audio Unavailable", "Voice playback is unavailable in this environment.");
+            return;
+        }
+        if (sound) {
+            if (isPlaying) {
+                await sound.pauseAsync();
+                setIsPlaying(false);
+            } else {
+                await sound.playAsync();
+                setIsPlaying(true);
+            }
+        } else {
+            try {
+                const { sound: newSound } = await Audio.Sound.createAsync(
+                    { uri: audioUrl },
+                    { shouldPlay: true },
+                    (status: any) => {
+                        if (status.isLoaded) {
+                            setPosition(status.positionMillis);
+                            setDuration(status.durationMillis ?? 0);
+                            setIsPlaying(status.isPlaying);
+                            if (status.didJustFinish) {
+                                setIsPlaying(false);
+                                setPosition(0);
+                            }
+                        }
+                    }
+                );
+                setSound(newSound);
+                setIsPlaying(true);
+            } catch (err) {
+                console.log("[Audio] Failed to play voice note:", err);
+            }
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            if (sound) {
+                sound.unloadAsync();
+            }
+        };
+    }, [sound]);
+
+    const progress = duration > 0 ? (position / duration) * 100 : 0;
+    const posSec = Math.floor(position / 1000);
+    const durSec = Math.floor(duration / 1000);
+
+    return (
+        <View style={vnStyles.container}>
+            <TouchableOpacity onPress={handlePlayPause} style={vnStyles.playBtn} activeOpacity={0.8}>
+                <Ionicons name={isPlaying ? "pause" : "play"} size={16} color="#fff" />
+            </TouchableOpacity>
+            <View style={vnStyles.trackContainer}>
+                <View style={vnStyles.trackBg}>
+                    <View style={[vnStyles.trackFill, { width: `${progress}%` }]} />
+                </View>
+                <Text style={vnStyles.timeText}>
+                    {duration > 0
+                        ? `${Math.floor(posSec / 60)}:${(posSec % 60).toString().padStart(2, "0")} / ${Math.floor(durSec / 60)}:${(durSec % 60).toString().padStart(2, "0")}`
+                        : "Voice note"}
+                </Text>
+            </View>
+        </View>
+    );
+}
+
+const vnStyles = StyleSheet.create({
+    container: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "rgba(0,0,0,0.05)",
+        borderRadius: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        marginVertical: 4,
+        gap: 10,
+        minWidth: 180,
     },
-    {
-        id: "2",
-        sender: "Muhammad Junaid",
-        initials: "MS",
-        time: "10.00AM",
-        text: "Hello Salman! I am good.",
-        isOwn: true,
+    playBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: "#00DEAB",
+        alignItems: "center",
+        justifyContent: "center",
     },
-];
-
-const CHANNEL_MEMBERS = [
-    { id: "1", name: "Muhammad Zanaen Ull...", initials: "M", isYou: false },
-    { id: "2", name: "Mohammad Areeb Akr...", initials: "M", isYou: false },
-    { id: "3", name: "Shanawar Butt", initials: "S", isYou: false },
-    { id: "4", name: "Muhammad H...", initials: "M", isYou: true },
-];
-
-const MOCK_USERS: AddPeopleUser[] = [
-    { id: "1", name: "Muhammad Salman", email: "salman@email.com" },
-    { id: "2", name: "Muhammad Haris", email: "haris@email.com" },
-    { id: "3", name: "Najam Ali", email: "najam@email.com" },
-    { id: "4", name: "Junaid", email: "junaid@email.com" },
-    { id: "5", name: "Awais", email: "awais@email.com" },
-    { id: "6", name: "Nida Mumtaz", email: "nida@email.com" },
-    { id: "7", name: "Wahab Ahmad", email: "wahab@email.com" },
-    { id: "8", name: "Maryam", email: "maryam@email.com" },
-    { id: "9", name: "Anum", email: "anum@email.com" },
-    { id: "10", name: "Waqas", email: "waqas@email.com" },
-];
+    trackContainer: {
+        flex: 1,
+        gap: 4,
+    },
+    trackBg: {
+        height: 4,
+        backgroundColor: "#D1D5DB",
+        borderRadius: 2,
+        overflow: "hidden",
+    },
+    trackFill: {
+        height: "100%",
+        backgroundColor: "#00DEAB",
+    },
+    timeText: {
+        fontSize: 10,
+        color: "#6B7280",
+        fontFamily: "SF_Pro_Regular",
+    },
+});
 
 // ─── Date Panel ───────────────────────────────────────────────────────────────
 
@@ -185,15 +277,18 @@ const dp = StyleSheet.create({
 
 const ATTACH_TABS = ["Images", "Videos", "Docs", "Links"];
 
-// Placeholder image squares
-const PLACEHOLDER_IMAGES = Array.from({ length: 8 });
-const IMAGES: string[] = [];
-
-function AttachmentsPanel() {
+function AttachmentsPanel({ messages }: { messages: ChatMessage[] }) {
     const [activeTab, setActiveTab] = useState("Images");
+
+    const imageAttachments = messages.flatMap((m) =>
+        (m.attachments || []).filter((a) => {
+            const ext = (a.name || a.url || "").split(".").pop()?.toLowerCase();
+            return ["jpg", "jpeg", "png", "gif", "webp"].includes(ext || "");
+        })
+    );
+
     return (
         <View style={ap.container}>
-            {/* Sub-tabs */}
             <View style={ap.tabRow}>
                 {ATTACH_TABS.map((t) => (
                     <TouchableOpacity
@@ -217,24 +312,23 @@ function AttachmentsPanel() {
                     </TouchableOpacity>
                 ))}
             </View>
-            {/* Image grid */}
             {activeTab === "Images" && (
-  IMAGES.length > 0 ? (
-    <View style={ap.imageGrid}>
-      {IMAGES.map((item, index) => (
-        <Image
-          key={index}
-          source={{ uri: item }}
-          style={ap.imageThumb}
-        />
-      ))}
-    </View>
-  ) : (
-    <View style={ap.emptyTab}>
-      <Text style={ap.emptyTabText}>No images found</Text>
-    </View>
-  )
-)}
+                imageAttachments.length > 0 ? (
+                    <View style={ap.imageGrid}>
+                        {imageAttachments.map((item, index) => (
+                            <Image
+                                key={index}
+                                source={{ uri: item.url }}
+                                style={ap.imageThumb}
+                            />
+                        ))}
+                    </View>
+                ) : (
+                    <View style={ap.emptyTab}>
+                        <Text style={ap.emptyTabText}>No images found</Text>
+                    </View>
+                )
+            )}
             {activeTab !== "Images" && (
                 <View style={ap.emptyTab}>
                     <Text style={ap.emptyTabText}>No {activeTab.toLowerCase()} found</Text>
@@ -283,7 +377,6 @@ const ap = StyleSheet.create({
         width: "25%",
         aspectRatio: 1,
         backgroundColor: "#1a1a2e",
-        // borderWidth: 1.5,
         borderColor: "#fff",
     },
     emptyTab: {
@@ -299,16 +392,50 @@ const ap = StyleSheet.create({
 
 // ─── Message Action Icons ─────────────────────────────────────────────────────
 
-function MessageActions({ isOwn }: { isOwn: boolean }) {
-    const icons: Array<React.ComponentProps<typeof Ionicons>["name"]> = isOwn
-        ? ["thumbs-up-outline", "happy-outline", "arrow-redo-outline", "arrow-undo-outline", "ellipsis-vertical"]
-        : ["thumbs-up-outline", "happy-outline", "arrow-redo-outline", "pencil-outline", "arrow-undo-outline", "ellipsis-vertical"];
+function MessageActions({
+    isOwn,
+    onReact,
+    onEmoji,
+    onForward,
+    onEdit,
+    onReply,
+    onMore,
+}: {
+    isOwn: boolean;
+    onReact?: () => void;
+    onEmoji?: () => void;
+    onForward?: () => void;
+    onEdit?: () => void;
+    onReply?: () => void;
+    onMore?: () => void;
+}) {
+    const icons: Array<{ name: React.ComponentProps<typeof Ionicons>["name"]; handler?: () => void }> = isOwn
+        ? [
+            { name: "thumbs-up-outline", handler: onReact },
+            { name: "happy-outline", handler: onEmoji },
+            { name: "arrow-redo-outline", handler: onForward },
+            { name: "arrow-undo-outline", handler: onReply },
+            { name: "ellipsis-vertical", handler: onMore },
+        ]
+        : [
+            { name: "thumbs-up-outline", handler: onReact },
+            { name: "happy-outline", handler: onEmoji },
+            { name: "arrow-redo-outline", handler: onForward },
+            { name: "pencil-outline", handler: onEdit },
+            { name: "arrow-undo-outline", handler: onReply },
+            { name: "ellipsis-vertical", handler: onMore },
+        ];
 
     return (
         <View style={styles.actionsRow}>
             {icons.map((icon, idx) => (
-                <TouchableOpacity key={idx} activeOpacity={0.7} style={styles.actionBtn}>
-                    <Ionicons name={icon} size={14} color="#9CA3AF" />
+                <TouchableOpacity
+                    key={idx}
+                    activeOpacity={0.7}
+                    style={styles.actionBtn}
+                    onPress={icon.handler}
+                >
+                    <Ionicons name={icon.name} size={14} color="#9CA3AF" />
                 </TouchableOpacity>
             ))}
         </View>
@@ -317,46 +444,107 @@ function MessageActions({ isOwn }: { isOwn: boolean }) {
 
 // ─── Message Bubble ───────────────────────────────────────────────────────────
 
-function MessageBubble({ message }: { message: Message }) {
-    // Incoming: avatar on RIGHT, bubble right-aligned
-    if (!message.isOwn) {
+function MessageBubble({
+    message,
+    currentUserId,
+    members,
+    onReact,
+    onEmoji,
+    onForward,
+    onEdit,
+    onReply,
+    onMore,
+}: {
+    message: ChatMessage;
+    currentUserId: number;
+    members?: RoomMember[];
+    onReact?: () => void;
+    onEmoji?: () => void;
+    onForward?: () => void;
+    onEdit?: () => void;
+    onReply?: () => void;
+    onMore?: () => void;
+}) {
+    const own = isOwnMessage(message, currentUserId);
+    const senderMember = members?.find((m) => m.id === message.sender_id);
+    const senderName = message.sender_name || (senderMember ? `${senderMember.first_name} ${senderMember.last_name}` : "");
+    const initials = getMessageInitials(senderName);
+    const time = formatMessageTime(message.createdAt);
+
+    const audioAtt = message.attachments?.find((a) => {
+        const str = (a.url || a.name || "").toLowerCase();
+        return str.includes(".m4a") || str.includes(".mp3") || str.includes(".wav") || str.includes(".caf") || str.includes("audio");
+    });
+
+    if (!own) {
         return (
             <View style={styles.messageWrapper}>
                 <View style={styles.incomingRow}>
                     <View style={styles.incomingContent}>
                         <Text style={styles.senderMeta}>
-                            {message.sender}{" "}
-                            <Text style={styles.timeMeta}>| {message.time}</Text>
+                            {senderName}{" "}
+                            <Text style={styles.timeMeta}>| {time}</Text>
                         </Text>
                         <View style={styles.incomingBubble}>
-                            <Text style={styles.bubbleText}>{message.text}</Text>
+                            {audioAtt ? (
+                                <VoiceNotePlayer audioUrl={audioAtt.url} />
+                            ) : null}
+                            {message.text && message.text !== "🎤 Voice message" ? (
+                                <Text style={styles.bubbleText}>{message.text}</Text>
+                            ) : null}
                         </View>
-                        <MessageActions isOwn={false} />
+                        {message.reactions && message.reactions.length > 0 && (
+                            <View style={styles.reactionsRow}>
+                                {message.reactions.map((r, idx) => (
+                                    <View key={idx} style={styles.reactionBadge}>
+                                        <Text style={styles.reactionText}>
+                                            {r.emoji} {r.users.length}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+                        <MessageActions isOwn={false} onReact={onReact} onEmoji={onEmoji} onForward={onForward} onEdit={onEdit} onReply={onReply} onMore={onMore} />
                     </View>
                     <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>{message.initials}</Text>
+                        <Text style={styles.avatarText}>{initials}</Text>
                     </View>
                 </View>
             </View>
         );
     }
 
-    // Outgoing: avatar on LEFT, bubble left-aligned
     return (
         <View style={styles.messageWrapper}>
             <View style={styles.outgoingRow}>
                 <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{message.initials}</Text>
+                    <Text style={styles.avatarText}>{initials}</Text>
                 </View>
                 <View style={styles.outgoingContent}>
                     <Text style={styles.senderMetaOutgoing}>
-                        {message.sender}{" "}
-                        <Text style={styles.timeMeta}>| {message.time}</Text>
+                        {senderName}{" "}
+                        <Text style={styles.timeMeta}>| {time}</Text>
                     </Text>
                     <View style={styles.outgoingBubble}>
-                        <Text style={styles.bubbleText}>{message.text}</Text>
+                        {audioAtt ? (
+                            <VoiceNotePlayer audioUrl={audioAtt.url} />
+                        ) : null}
+                        {message.text && message.text !== "🎤 Voice message" ? (
+                            <Text style={styles.bubbleText}>{message.text}</Text>
+                        ) : null}
                     </View>
-                    <MessageActions isOwn={true} />
+                    {message.reactions && message.reactions.length > 0 && (
+                        <View style={styles.reactionsRow}>
+                            {message.reactions.map((r, idx) => (
+                                <View key={idx} style={styles.reactionBadge}>
+                                    <Text style={styles.reactionText}>
+                                        {r.emoji} {r.users.length}
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                    <MessageActions isOwn={true} onReact={onReact} onEmoji={onEmoji} onForward={onForward} onEdit={onEdit} onReply={onReply} onMore={onMore} />
                 </View>
             </View>
         </View>
@@ -368,22 +556,47 @@ function MessageBubble({ message }: { message: Message }) {
 type FilterTab = "date" | "attachments" | "chat_member" | "post_type" | null;
 
 export default function ConversationScreen() {
-    const params = useLocalSearchParams<{ name?: string; initials?: string; isChannel?: string }>();
-    const name = params.name ?? "Muhammad Junaid";
-    const initials = params.initials ?? "J";
+    const params = useLocalSearchParams<{
+        roomId?: string;
+        name?: string;
+        initials?: string;
+        isChannel?: string;
+        roomType?: string;
+    }>();
+    const name = params.name ?? "Chat";
+    const initials = params.initials ?? "C";
     const isChannel = params.isChannel === "true";
+    const roomId = params.roomId;
+
+    const {
+        state,
+        fetchMessages,
+        sendMessage,
+        editMessage,
+        deleteMessage,
+        toggleReaction,
+        togglePin,
+        fetchPostTypes,
+        postTypes,
+        addMember,
+        fetchRoomPermissions,
+        roomPermissions,
+        roomCreator,
+        setSearchQuery,
+    } = useChat();
+    const authState = useAuth();
+    const currentUserId = authState?.state?.user?.id ?? 0;
 
     const [message, setMessage] = useState("");
     const scrollRef = useRef<ScrollView>(null);
     const [postTypeOpen, setPostTypeOpen] = useState(false);
     const [addPeopleOpen, setAddPeopleOpen] = useState(false);
+    const [sending, setSending] = useState(false);
+    const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
 
-    const POST_TYPES = [
-        { id: "announcement", label: "Announcement", icon: "megaphone", color: "#00DEAB", bg: "#E6FAF5", count: 1 },
-        { id: "discussion", label: "Discussion", icon: "chatbubbles", color: "#3B82F6", bg: "#EFF6FF", count: 0 },
-        { id: "idea", label: "Idea", icon: "bulb", color: "#EAB308", bg: "#FEF9C3", count: 0 },
-        { id: "updates", label: "Update", icon: "notifications", color: "#8B5CF6", bg: "#F5F3FF", count: 0 },
-    ];
+    // Upload progress
+    const [uploadProgress, setUploadProgress] = useState<{ percentage: number; fileName: string } | null>(null);
+    const abortUploadRef = useRef<{ abort: () => void } | null>(null);
 
     // Search
     const [searchOpen, setSearchOpen] = useState(false);
@@ -393,9 +606,278 @@ export default function ConversationScreen() {
     // Filter tabs
     const [activeFilter, setActiveFilter] = useState<FilterTab>(null);
 
+    // Emoji picker
+    const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+    const [emojiPickerMsg, setEmojiPickerMsg] = useState<ChatMessage | null>(null);
+
+    // Voice recorder state
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingInstance, setRecordingInstance] = useState<any>(null);
+    const [recordingDuration, setRecordingDuration] = useState(0);
+    const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const startRecording = useCallback(async () => {
+        if (!Audio) {
+            Alert.alert("Audio Unavailable", "Audio recording requires a custom native build with expo-av module.");
+            return;
+        }
+        try {
+            const permission = await Audio.requestPermissionsAsync();
+            if (permission.status !== "granted") {
+                Alert.alert("Permission Required", "Microphone access is required to record voice notes.");
+                return;
+            }
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: true,
+                playsInSilentModeIOS: true,
+            });
+            const { recording } = await Audio.Recording.createAsync(
+                Audio.RecordingOptionsPresets.HIGH_QUALITY
+            );
+            setRecordingInstance(recording);
+            setIsRecording(true);
+            setRecordingDuration(0);
+
+            if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+            recordingTimerRef.current = setInterval(() => {
+                setRecordingDuration((prev) => prev + 1);
+            }, 1000);
+        } catch (err) {
+            console.log("[Audio] Start recording error:", err);
+            Alert.alert("Error", "Could not start audio recording");
+        }
+    }, []);
+
+    const stopAndSendRecording = useCallback(async () => {
+        if (!recordingInstance || !roomId) return;
+        if (recordingTimerRef.current) {
+            clearInterval(recordingTimerRef.current);
+            recordingTimerRef.current = null;
+        }
+        setSending(true);
+        try {
+            await recordingInstance.stopAndUnloadAsync();
+            if (Audio) {
+                await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+            }
+            const uri = recordingInstance.getURI();
+            setRecordingInstance(null);
+            setIsRecording(false);
+            setRecordingDuration(0);
+
+            if (uri) {
+                const fileName = `voice_${Date.now()}.m4a`;
+                await sendMessage({
+                    room_id: roomId,
+                    text: "🎤 Voice message",
+                    attachments: [
+                        {
+                            uri,
+                            name: fileName,
+                            type: "audio/m4a",
+                        },
+                    ],
+                });
+            }
+        } catch (err) {
+            console.log("[Audio] Send voice note error:", err);
+            Alert.alert("Error", "Failed to send voice note");
+        } finally {
+            setSending(false);
+        }
+    }, [recordingInstance, roomId, sendMessage]);
+
+    const cancelRecording = useCallback(async () => {
+        if (recordingTimerRef.current) {
+            clearInterval(recordingTimerRef.current);
+            recordingTimerRef.current = null;
+        }
+        if (recordingInstance) {
+            try {
+                await recordingInstance.stopAndUnloadAsync();
+                if (Audio) {
+                    await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+                }
+            } catch {}
+        }
+        setRecordingInstance(null);
+        setIsRecording(false);
+        setRecordingDuration(0);
+    }, [recordingInstance]);
+
+    const formatRecordingTimer = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    };
+
+    // Forward
+    const [forwardOpen, setForwardOpen] = useState(false);
+    const [forwardMsg, setForwardMsg] = useState<ChatMessage | null>(null);
+    const [forwarding, setForwarding] = useState(false);
+
+    // Edit
+    const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
+    const [editText, setEditText] = useState("");
+    const [editing, setEditing] = useState(false);
+    const editInputRef = useRef<TextInput>(null);
+
     const toggleFilter = (tab: FilterTab) => {
         setActiveFilter((prev) => (prev === tab ? null : tab));
     };
+
+    // Trigger initial user search when AddPeople modal opens
+    useEffect(() => {
+        if (addPeopleOpen) {
+            setSearchQuery("");
+        }
+    }, [addPeopleOpen, setSearchQuery]);
+
+    // Fetch messages when room changes
+    useEffect(() => {
+        if (roomId) {
+            fetchMessages(roomId);
+            if (isChannel) {
+                fetchPostTypes(roomId).catch(() => {});
+                fetchRoomPermissions(roomId).catch(() => {});
+            }
+        }
+    }, [roomId, isChannel, fetchMessages, fetchPostTypes, fetchRoomPermissions]);
+
+    // Auto-scroll to bottom on new messages
+    useEffect(() => {
+        if (state.messages.length > 0) {
+            setTimeout(() => {
+                scrollRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+        }
+    }, [state.messages.length]);
+
+    const handleSend = useCallback(async () => {
+        if (!message.trim() || !roomId || sending) return;
+
+        const text = message.trim();
+        setMessage("");
+        setSending(true);
+        setReplyTo(null);
+
+        try {
+            console.log("[Conv] Sending message:", { roomId, text });
+            await sendMessage({
+                room_id: roomId,
+                text,
+                parent_id: replyTo?.id.toString(),
+            });
+            console.log("[Conv] Message sent successfully");
+        } catch (err) {
+            console.log("[Conv] Send message error:", err);
+            setMessage(text);
+        } finally {
+            setSending(false);
+        }
+    }, [message, roomId, sending, replyTo, sendMessage]);
+
+    const handleReact = useCallback(
+        async (msg: ChatMessage) => {
+            if (!roomId) return;
+            try {
+                await toggleReaction(msg.id.toString(), "👍");
+            } catch {
+                // Silent fail
+            }
+        },
+        [roomId, toggleReaction]
+    );
+
+    const handleAddPeopleInvite = useCallback(
+        async (users: Array<{ id: string; name: string }>) => {
+            setAddPeopleOpen(false);
+            if (!roomId) return;
+            for (const user of users) {
+                try {
+                    await addMember(roomId, parseInt(user.id, 10));
+                } catch {
+                    // Continue with next user
+                }
+            }
+        },
+        [roomId, addMember]
+    );
+
+    const handleEmojiReact = useCallback(
+        async (msg: ChatMessage, emoji: string) => {
+            setEmojiPickerOpen(false);
+            setEmojiPickerMsg(null);
+            try {
+                await toggleReaction(msg.id.toString(), emoji);
+            } catch {}
+        },
+        [toggleReaction]
+    );
+
+    const handleForward = useCallback(
+        async (room: Room) => {
+            if (!forwardMsg) return;
+            setForwarding(true);
+            try {
+                await sendMessage({
+                    room_id: room._id,
+                    text: forwardMsg.text,
+                    is_forwarded: true,
+                    forwarded_from_name: forwardMsg.sender_name || "Someone",
+                });
+                setForwardOpen(false);
+                setForwardMsg(null);
+            } catch {
+                Alert.alert("Error", "Failed to forward message");
+            } finally {
+                setForwarding(false);
+            }
+        },
+        [forwardMsg, sendMessage]
+    );
+
+    const handleEdit = useCallback(async () => {
+        if (!editingMsg || !editText.trim()) return;
+        setEditing(true);
+        try {
+            await editMessage({
+                messageId: editingMsg._id,
+                text: editText.trim(),
+            });
+            setEditingMsg(null);
+            setEditText("");
+        } catch {
+            Alert.alert("Error", "Failed to edit message");
+        } finally {
+            setEditing(false);
+        }
+    }, [editingMsg, editText, editMessage]);
+
+    const handleMore = useCallback(
+        (msg: ChatMessage) => {
+            const isOwn = isOwnMessage(msg, currentUserId);
+            Alert.alert("Message Options", "", [
+                { text: "Copy Text", onPress: () => { Clipboard.setStringAsync(msg.text); } },
+                ...(isOwn ? [{ text: "Edit", onPress: () => { setEditingMsg(msg); setEditText(msg.text); } }] : []),
+                { text: msg.is_pinned ? "Unpin" : "Pin", onPress: () => { togglePin(msg.id.toString()).catch(() => {}); } },
+                ...(isOwn ? [{ text: "Delete", style: "destructive" as const, onPress: () => {
+                    Alert.alert("Delete Message", "Delete this message for everyone?", [
+                        { text: "Cancel", style: "cancel" },
+                        { text: "Delete", style: "destructive", onPress: () => { deleteMessage(msg._id, "everyone").catch(() => {}); } },
+                    ]);
+                }}] : []),
+                { text: "Cancel", style: "cancel" },
+            ]);
+        },
+        [currentUserId, togglePin, deleteMessage]
+    );
+
+    // Group messages by date for display
+    const filteredMessages = search.trim()
+        ? filterMessagesByText(state.messages, search)
+        : state.messages;
+    const messageGroups = groupMessagesByDate(filteredMessages);
 
     return (
         <View style={styles.root}>
@@ -419,7 +901,11 @@ export default function ConversationScreen() {
 
                                 <View style={styles.headerInfo}>
                                     <Text style={styles.headerName} numberOfLines={1}>{name}</Text>
-                                    <Text style={styles.headerStatus}>Active 10h ago</Text>
+                                    <Text style={styles.headerStatus}>
+                                        {isChannel
+                                            ? `${roomPermissions.length} member${roomPermissions.length !== 1 ? "s" : ""}`
+                                            : "Active"}
+                                    </Text>
                                 </View>
                             </View>
 
@@ -434,7 +920,6 @@ export default function ConversationScreen() {
                             </TouchableOpacity>
                         </>
                     ) : (
-                        /* ── Search bar (same style as headerapp) ── */
                         <Pressable style={styles.searchRow} onPress={(e) => e.stopPropagation()}>
                             <View style={styles.searchBox}>
                                 <Ionicons name="search-outline" size={18} color="#9CA3AF" />
@@ -497,36 +982,36 @@ export default function ConversationScreen() {
                         </TouchableOpacity>
 
                         {isChannel && (
-                            <TouchableOpacity
-                                style={[styles.filterChip, activeFilter === "chat_member" && styles.filterChipActive]}
-                                activeOpacity={0.75}
-                                onPress={() => toggleFilter("chat_member")}
-                            >
-                                <Ionicons
-                                    name="people-outline"
-                                    size={11}
-                                    color={activeFilter === "chat_member" ? "#fff" : "#6B7280"}
-                                />
-                                <Text style={[styles.filterChipText, activeFilter === "chat_member" && styles.filterChipTextActive]}>
-                                    Chat Member
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                        {isChannel && (
-                            <TouchableOpacity
-                                style={[styles.filterChip, activeFilter === "post_type" && styles.filterChipActive]}
-                                activeOpacity={0.75}
-                                onPress={() => toggleFilter("post_type")}
-                            >
-                                <Ionicons
-                                    name="apps-outline"
-                                    size={11}
-                                    color={activeFilter === "post_type" ? "#fff" : "#6B7280"}
-                                />
-                                <Text style={[styles.filterChipText, activeFilter === "post_type" && styles.filterChipTextActive]}>
-                                    Post Type
-                                </Text>
-                            </TouchableOpacity>
+                            <>
+                                <TouchableOpacity
+                                    style={[styles.filterChip, activeFilter === "chat_member" && styles.filterChipActive]}
+                                    activeOpacity={0.75}
+                                    onPress={() => toggleFilter("chat_member")}
+                                >
+                                    <Ionicons
+                                        name="people-outline"
+                                        size={11}
+                                        color={activeFilter === "chat_member" ? "#fff" : "#6B7280"}
+                                    />
+                                    <Text style={[styles.filterChipText, activeFilter === "chat_member" && styles.filterChipTextActive]}>
+                                        Chat Member
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.filterChip, activeFilter === "post_type" && styles.filterChipActive]}
+                                    activeOpacity={0.75}
+                                    onPress={() => toggleFilter("post_type")}
+                                >
+                                    <Ionicons
+                                        name="apps-outline"
+                                        size={11}
+                                        color={activeFilter === "post_type" ? "#fff" : "#6B7280"}
+                                    />
+                                    <Text style={[styles.filterChipText, activeFilter === "post_type" && styles.filterChipTextActive]}>
+                                        Post Type
+                                    </Text>
+                                </TouchableOpacity>
+                            </>
                         )}
                     </ScrollView>
                 )}
@@ -539,51 +1024,53 @@ export default function ConversationScreen() {
                 )}
                 {!searchOpen && activeFilter === "attachments" && (
                     <View style={styles.panelWrapper}>
-                        <AttachmentsPanel />
+                        <AttachmentsPanel messages={state.messages} />
                     </View>
                 )}
                 {!searchOpen && activeFilter === "post_type" && isChannel && (
                     <View style={styles.panelWrapper}>
                         <View style={styles.postTypeListPanel}>
-                            {POST_TYPES.map((pt) => (
+                            {postTypes.map((pt: { name: string; color: string }) => (
                                 <TouchableOpacity
-                                    key={pt.id}
-                                    style={[styles.postTypeListRow, { backgroundColor: pt.bg }]}
+                                    key={pt.name}
+                                    style={[styles.postTypeListRow, { backgroundColor: pt.color + "15" }]}
                                     activeOpacity={0.75}
                                 >
-                                    <Ionicons name={pt.icon as any} size={14} color={pt.color} />
-                                    <Text style={[styles.postTypeListLabel, { color: pt.color }]} numberOfLines={1}>{pt.label}</Text>
-                                    <View style={styles.postTypeListBadge}>
-                                        <Text style={[styles.postTypeListBadgeText, { color: pt.color }]}>
-                                            {String(pt.count).padStart(2, "0")}
-                                        </Text>
-                                    </View>
+                                    <Ionicons name="pricetag" size={14} color={pt.color} />
+                                    <Text style={[styles.postTypeListLabel, { color: pt.color }]} numberOfLines={1}>{pt.name}</Text>
                                 </TouchableOpacity>
                             ))}
+                            {postTypes.length === 0 && (
+                                <Text style={{ fontSize: 12, color: "#9CA3AF", fontFamily: "SF_Pro_Regular", padding: 12 }}>
+                                    No post types configured
+                                </Text>
+                            )}
                         </View>
                     </View>
                 )}
                 {!searchOpen && activeFilter === "chat_member" && isChannel && (
                     <View style={styles.panelWrapper}>
                         <View style={styles.memberListPanel}>
-                            {CHANNEL_MEMBERS.map((member) => (
-                                <View key={member.id} style={styles.memberRow}>
+                            {state.roomPermissions.map((member) => (
+                                <View key={member.userId} style={styles.memberRow}>
                                     <View style={styles.memberAvatar}>
-                                        <Text style={styles.memberAvatarText}>{member.initials}</Text>
+                                        <Text style={styles.memberAvatarText}>
+                                            {String(member.userId).charAt(0)}
+                                        </Text>
                                     </View>
-                                    <Text style={styles.memberName} numberOfLines={1}>{member.name}</Text>
-                                    {member.isYou && (
-                                        <View style={styles.youBadge}>
-                                            <Text style={styles.youBadgeText}>You</Text>
-                                        </View>
-                                    )}
-                                    {member.isYou && (
-                                        <TouchableOpacity activeOpacity={0.7} style={styles.leaveBtn}>
-                                            <Ionicons name="exit-outline" size={18} color="#6B7280" />
-                                        </TouchableOpacity>
-                                    )}
+                                    <Text style={styles.memberName} numberOfLines={1}>
+                                        User #{member.userId}
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: "#6B7280", fontFamily: "SF_Pro_Regular" }}>
+                                        {member.permission}
+                                    </Text>
                                 </View>
                             ))}
+                            {state.roomPermissions.length === 0 && (
+                                <Text style={{ fontSize: 12, color: "#9CA3AF", fontFamily: "SF_Pro_Regular", padding: 12 }}>
+                                    No members loaded
+                                </Text>
+                            )}
                         </View>
                     </View>
                 )}
@@ -629,110 +1116,365 @@ export default function ConversationScreen() {
                             </View>
                         )}
 
-                        {/* ── Date separator ── */}
-                        <View style={styles.dateSeparator}>
-                            <View style={styles.dateLine} />
-                            <View style={styles.datePill}>
-                                <Text style={styles.datePillText}>Today's Discussion</Text>
-                                <Ionicons name="chevron-down" size={12} color="#6B7280" style={{ marginLeft: 4 }} />
+                        {/* ── Messages ── */}
+                        {state.messagesLoading && state.messages.length === 0 ? (
+                            <View style={{ padding: 40, alignItems: "center" }}>
+                                <ActivityIndicator size="large" color="#00DEAB" />
+                            </View>
+                        ) : search.trim() && filteredMessages.length === 0 ? (
+                            <View style={{ padding: 40, alignItems: "center" }}>
+                                <Ionicons name="search-outline" size={32} color="#D1D5DB" />
+                                <Text style={{ fontSize: 13, color: "#9CA3AF", fontFamily: "SF_Pro_Regular", marginTop: 8 }}>
+                                    No messages matching "{search}"
+                                </Text>
+                            </View>
+                        ) : (
+                            <View style={styles.messagesContainer}>
+                                {search.trim() && filteredMessages.length > 0 && (
+                                    <View style={styles.searchResultBadge}>
+                                        <Text style={styles.searchResultText}>
+                                            {filteredMessages.length} result{filteredMessages.length !== 1 ? "s" : ""} found
+                                        </Text>
+                                    </View>
+                                )}
+                                {filteredMessages.map((msg) => (
+                                    <MessageBubble
+                                        key={msg._id}
+                                        message={msg}
+                                        currentUserId={currentUserId}
+                                        members={state.currentRoom?.members}
+                                        onReact={() => handleReact(msg)}
+                                        onEmoji={() => { setEmojiPickerMsg(msg); setEmojiPickerOpen(true); }}
+                                        onForward={() => { setForwardMsg(msg); setForwardOpen(true); }}
+                                        onEdit={() => { setEditingMsg(msg); setEditText(msg.text); }}
+                                        onReply={() => setReplyTo(msg)}
+                                        onMore={() => handleMore(msg)}
+                                    />
+                                ))}
+                                {filteredMessages.length === 0 && state.messages.length === 0 && (
+                                    <View style={{ padding: 40, alignItems: "center" }}>
+                                        <Text style={{ fontSize: 13, color: "#9CA3AF", fontFamily: "SF_Pro_Regular" }}>
+                                            No messages yet. Start the conversation!
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
+                        {/* Load more */}
+                        {state.hasMore && !state.messagesLoading && (
+                            <TouchableOpacity
+                                style={{ padding: 16, alignItems: "center" }}
+                                onPress={() => {
+                                    if (roomId) {
+                                        const nextPage = state.messagePage + 1;
+                                        fetchMessages(roomId, nextPage);
+                                    }
+                                }}
+                            >
+                                <Text style={{ fontSize: 13, color: "#00DEAB", fontFamily: "SF_Pro_Medium" }}>
+                                    Load older messages
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                        {state.messagesLoading && state.messages.length > 0 && (
+                            <View style={{ padding: 16, alignItems: "center" }}>
+                                <ActivityIndicator size="small" color="#00DEAB" />
+                            </View>
+                        )}
+                    </ScrollView>
+
+                    {/* ── Reply Preview ── */}
+                    {replyTo && (
+                        <View style={styles.replyPreview}>
+                            <View style={styles.replyPreviewBar} />
+                            <View style={styles.replyPreviewContent}>
+                                <Text style={styles.replyPreviewName} numberOfLines={1}>
+                                    Replying to {replyTo.sender_name}
+                                </Text>
+                                <Text style={styles.replyPreviewText} numberOfLines={1}>
+                                    {replyTo.text}
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setReplyTo(null)} hitSlop={8}>
+                                <Ionicons name="close" size={16} color="#9CA3AF" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* ── Upload Progress ── */}
+                    {uploadProgress && (
+                        <View style={styles.uploadProgressContainer}>
+                            <View style={styles.uploadProgressRow}>
+                                <Ionicons name="cloud-upload-outline" size={14} color="#00DEAB" />
+                                <Text style={styles.uploadProgressText} numberOfLines={1}>
+                                    Uploading {uploadProgress.fileName}...
+                                </Text>
+                                <Text style={styles.uploadProgressPercent}>
+                                    {uploadProgress.percentage}%
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        abortUploadRef.current?.abort();
+                                        setUploadProgress(null);
+                                    }}
+                                    hitSlop={8}
+                                >
+                                    <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.uploadProgressBarBg}>
+                                <View
+                                    style={[
+                                        styles.uploadProgressBarFill,
+                                        { width: `${uploadProgress.percentage}%` },
+                                    ]}
+                                />
                             </View>
                         </View>
-
-                        {/* ── Messages ── */}
-                        <View style={styles.messagesContainer}>
-                            {STATIC_MESSAGES.map((msg) => (
-                                <MessageBubble key={msg.id} message={msg} />
-                            ))}
-                        </View>
-                    </ScrollView>
+                    )}
 
                     {/* ── Bottom Input Bar ── */}
                     <View style={styles.inputBar}>
-                        <View style={styles.inputContainer}>
-                            <View style={styles.inputRow}>
-                                <TextInput
-                                    style={styles.textInput}
-                                    placeholder="Type anything..."
-                                    placeholderTextColor="#9CA3AF"
-                                    value={message}
-                                    onChangeText={setMessage}
-                                    multiline
-                                    maxLength={2000}
-                                />
+                        {isRecording ? (
+                            <View style={styles.recordingBar}>
+                                <View style={styles.recordingLiveIndicator}>
+                                    <View style={styles.redDot} />
+                                    <Text style={styles.recordingTimerText}>
+                                        {formatRecordingTimer(recordingDuration)}
+                                    </Text>
+                                </View>
+                                <View style={styles.recordingActions}>
+                                    <TouchableOpacity
+                                        style={styles.cancelRecordBtn}
+                                        onPress={cancelRecording}
+                                        hitSlop={8}
+                                    >
+                                        <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.sendRecordBtn}
+                                        onPress={stopAndSendRecording}
+                                        activeOpacity={0.8}
+                                        disabled={sending}
+                                    >
+                                        {sending ? (
+                                            <ActivityIndicator size="small" color="#fff" />
+                                        ) : (
+                                            <Ionicons name="paper-plane" size={16} color="#fff" />
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-
-                            {/* Action row */}
-                            <View style={styles.inputActions}>
-                                <View style={styles.inputActionsLeft}>
-                                    <TouchableOpacity activeOpacity={0.75} style={styles.inputActionBtn}>
-                                        <Ionicons name="add" size={20} color="#1D1D1D" />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity activeOpacity={0.75} style={styles.inputActionBtn}>
-                                        <Ionicons name="happy-outline" size={18} color="#1D1D1D" />
-                                        <Text style={styles.plusBadge}>+</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity activeOpacity={0.75} style={styles.inputActionBtn}>
-                                        <Ionicons name="mic" size={18} color="#1D1D1D" />
-                                    </TouchableOpacity>
-                                    {isChannel && (
-                                        <TouchableOpacity 
-                                            activeOpacity={0.75} 
-                                            style={[
-                                                styles.inputActionBtn,
-                                                styles.postTypeToggle,
-                                                postTypeOpen && styles.postTypeToggleActive,
-                                            ]}
-                                            onPress={() => setPostTypeOpen(!postTypeOpen)}
-                                        >
-                                            <Text style={[styles.postTypeToggleText, postTypeOpen && styles.postTypeToggleTextActive]}>Post Type</Text>
-                                        </TouchableOpacity>
-                                    )}
+                        ) : (
+                            <View style={styles.inputContainer}>
+                                <View style={styles.inputRow}>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder="Type anything..."
+                                        placeholderTextColor="#9CA3AF"
+                                        value={message}
+                                        onChangeText={setMessage}
+                                        multiline
+                                        maxLength={2000}
+                                    />
                                 </View>
 
-                                <TouchableOpacity
-                                    style={[styles.sendBtn, message.trim().length > 0 && styles.sendBtnActive]}
-                                    activeOpacity={0.85}
-                                    onPress={() => { if (message.trim()) setMessage(""); }}
-                                >
-                                    <Ionicons name="paper-plane" size={16} color="#fff" />
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* ── Post Type (horizontal chips, inside input box) ── */}
-                            {postTypeOpen && (
-                                <ScrollView
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    style={styles.postTypeScroll}
-                                    contentContainerStyle={styles.postTypeScrollContent}
-                                    keyboardShouldPersistTaps="handled"
-                                >
-                                    {POST_TYPES.map((pt) => (
-                                        <TouchableOpacity key={pt.id} style={[styles.postTypeChip, { backgroundColor: pt.bg }]} activeOpacity={0.7}>
-                                            <Ionicons name={pt.icon as any} size={14} color={pt.color} style={{ marginRight: 4 }} />
-                                            <Text style={[styles.postTypeChipText, { color: pt.color }]}>{pt.label}</Text>
+                                {/* Action row */}
+                                <View style={styles.inputActions}>
+                                    <View style={styles.inputActionsLeft}>
+                                        <TouchableOpacity activeOpacity={0.75} style={styles.inputActionBtn}>
+                                            <Ionicons name="add" size={20} color="#1D1D1D" />
                                         </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            )}
-                        </View>
+                                        <TouchableOpacity
+                                            activeOpacity={0.75}
+                                            style={styles.inputActionBtn}
+                                            onPress={() => {
+                                                setEmojiPickerMsg(null);
+                                                setEmojiPickerOpen(true);
+                                            }}
+                                        >
+                                            <Ionicons name="happy-outline" size={18} color="#1D1D1D" />
+                                            <Text style={styles.plusBadge}>+</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            activeOpacity={0.75}
+                                            style={styles.inputActionBtn}
+                                            onPress={startRecording}
+                                        >
+                                            <Ionicons name="mic" size={18} color="#1D1D1D" />
+                                        </TouchableOpacity>
+                                        {isChannel && postTypes.length > 0 && (
+                                            <TouchableOpacity 
+                                                activeOpacity={0.75} 
+                                                style={[
+                                                    styles.inputActionBtn,
+                                                    styles.postTypeToggle,
+                                                    postTypeOpen && styles.postTypeToggleActive,
+                                                ]}
+                                                onPress={() => setPostTypeOpen(!postTypeOpen)}
+                                            >
+                                                <Text style={[styles.postTypeToggleText, postTypeOpen && styles.postTypeToggleTextActive]}>Post Type</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.sendBtn,
+                                            (message.trim().length > 0 || sending) && styles.sendBtnActive,
+                                        ]}
+                                        activeOpacity={0.85}
+                                        onPress={handleSend}
+                                        disabled={sending || !message.trim()}
+                                    >
+                                        {sending ? (
+                                            <ActivityIndicator size="small" color="#fff" />
+                                        ) : (
+                                            <Ionicons name="paper-plane" size={16} color="#fff" />
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* ── Post Type (horizontal chips, inside input box) ── */}
+                                {postTypeOpen && (
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        style={styles.postTypeScroll}
+                                        contentContainerStyle={styles.postTypeScrollContent}
+                                        keyboardShouldPersistTaps="handled"
+                                    >
+                                        {postTypes.map((pt: { name: string; color: string }) => (
+                                            <TouchableOpacity key={pt.name} style={[styles.postTypeChip, { backgroundColor: pt.color + "15" }]} activeOpacity={0.7}>
+                                                <Ionicons name="pricetag" size={14} color={pt.color} style={{ marginRight: 4 }} />
+                                                <Text style={[styles.postTypeChipText, { color: pt.color }]}>{pt.name}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                )}
+                            </View>
+                        )}
                     </View>
                 </KeyboardAvoidingView>
             </SafeAreaView>
 
             <AddPeopleModal
                 visible={addPeopleOpen}
-                users={MOCK_USERS}
+                users={state.searchResults.map((u) => ({
+                    id: String(u.id),
+                    name: u.full_name || `${u.first_name || ""} ${u.last_name || ""}`.trim(),
+                    email: u.email,
+                }))}
                 isChannelMode={true}
                 onClose={() => setAddPeopleOpen(false)}
-                onSearch={(query) => console.log("Search:", query)}
-                onInviteUsers={(users) => {
-                    setAddPeopleOpen(false);
+                onSearch={(query) => setSearchQuery(query)}
+                onInviteUsers={handleAddPeopleInvite}
+            />
+
+            {/* ── Emoji Picker (rn-emoji-keyboard) ── */}
+            <EmojiPicker
+                open={emojiPickerOpen}
+                onClose={() => {
+                    setEmojiPickerOpen(false);
+                    setEmojiPickerMsg(null);
+                }}
+                onEmojiSelected={(emojiObject) => {
+                    const emoji = emojiObject.emoji;
+                    setEmojiPickerOpen(false);
+                    if (emojiPickerMsg) {
+                        handleEmojiReact(emojiPickerMsg, emoji);
+                        setEmojiPickerMsg(null);
+                    } else {
+                        setMessage((prev) => prev + emoji);
+                    }
                 }}
             />
+
+            {/* ── Forward Room Picker Modal ── */}
+            <Modal visible={forwardOpen} transparent animationType="slide" onRequestClose={() => setForwardOpen(false)}>
+                <Pressable style={styles.modalOverlay} onPress={() => setForwardOpen(false)}>
+                    <View style={styles.forwardPickerContainer} onStartShouldSetResponder={() => true}>
+                        <View style={styles.forwardHeader}>
+                            <Text style={styles.forwardTitle}>Forward to</Text>
+                            <TouchableOpacity onPress={() => setForwardOpen(false)}>
+                                <Ionicons name="close" size={20} color="#9CA3AF" />
+                            </TouchableOpacity>
+                        </View>
+                        {forwardMsg && (
+                            <View style={styles.forwardPreview}>
+                                <Text style={styles.forwardPreviewLabel}>Message:</Text>
+                                <Text style={styles.forwardPreviewText} numberOfLines={2}>{forwardMsg.text}</Text>
+                            </View>
+                        )}
+                        <FlatList
+                            data={state.rooms}
+                            keyExtractor={(item) => item._id}
+                            renderItem={({ item: room }) => {
+                                const otherMembers = room.members?.filter((m) => m.id !== currentUserId);
+                                const displayName = room.name || otherMembers?.map((m) => `${m.first_name} ${m.last_name}`).join(", ") || "Chat";
+                                return (
+                                    <TouchableOpacity
+                                        style={styles.forwardRoomRow}
+                                        onPress={() => handleForward(room)}
+                                        disabled={forwarding}
+                                    >
+                                        <View style={styles.forwardRoomAvatar}>
+                                            <Text style={styles.forwardRoomAvatarText}>
+                                                {displayName.charAt(0).toUpperCase()}
+                                            </Text>
+                                        </View>
+                                        <Text style={styles.forwardRoomName} numberOfLines={1}>{displayName}</Text>
+                                        {forwarding && <ActivityIndicator size="small" color="#00DEAB" />}
+                                    </TouchableOpacity>
+                                );
+                            }}
+                        />
+                    </View>
+                </Pressable>
+            </Modal>
+
+            {/* ── Edit Message Overlay ── */}
+            <Modal visible={!!editingMsg} transparent animationType="fade" onRequestClose={() => { setEditingMsg(null); setEditText(""); }}>
+                <Pressable style={styles.modalOverlay} onPress={() => { setEditingMsg(null); setEditText(""); }}>
+                    <View style={styles.editContainer} onStartShouldSetResponder={() => true}>
+                        <Text style={styles.editTitle}>Edit Message</Text>
+                        <TextInput
+                            ref={editInputRef}
+                            style={styles.editInput}
+                            value={editText}
+                            onChangeText={setEditText}
+                            multiline
+                            autoFocus
+                            placeholder="Edit your message..."
+                            placeholderTextColor="#9CA3AF"
+                        />
+                        <View style={styles.editActions}>
+                            <TouchableOpacity onPress={() => { setEditingMsg(null); setEditText(""); }} style={styles.editCancelBtn}>
+                                <Text style={styles.editCancelText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={handleEdit}
+                                style={[styles.editSaveBtn, (!editText.trim() || editing) && styles.editSaveBtnDisabled]}
+                                disabled={!editText.trim() || editing}
+                            >
+                                {editing ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <Text style={styles.editSaveText}>Save</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Pressable>
+            </Modal>
         </View>
     );
 }
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const EMOJI_LIST = ["👍", "❤️", "😂", "😮", "😢", "😡", "🎉", "🔥", "👏", "💯", "✅", "❌", "⭐", "💪", "🙏", "😊", "😎", "🤔", "👀", "💐"];
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
@@ -789,7 +1531,7 @@ const styles = StyleSheet.create({
         marginTop: 1,
     },
 
-    // ── Search (matches headerapp.tsx exactly) ──
+    // ── Search ──
     searchRow: {
         flex: 1,
         flexDirection: "row",
@@ -828,8 +1570,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 10,
         gap: 8,
-        // borderBottomWidth: 1,
-        // borderBottomColor: "#F3F4F6",
     },
     filterChip: {
         flexDirection: "row",
@@ -858,47 +1598,12 @@ const styles = StyleSheet.create({
 
     // ── Panel ──
     panelWrapper: {
-        // borderBottomWidth: 1,
-        // borderBottomColor: "#E5E7EB",
         paddingTop: 4,
     },
 
     // ── Scroll ──
     scroll: { flex: 1 },
     scrollContent: { paddingBottom: 12 },
-
-    // ── Date Separator ──
-    dateSeparator: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        marginVertical: 16,
-        position: "relative",
-    },
-    dateLine: {
-        position: "absolute",
-        left: 0,
-        right: 0,
-        height: 1,
-        backgroundColor: "#E6E6E6",
-        zIndex: 0,
-    },
-    datePill: {
-        flexDirection: "row",
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: "#E6E6E6",
-        borderRadius: 20,
-        paddingHorizontal: 14,
-        paddingVertical: 5,
-        backgroundColor: "#fff",
-        zIndex: 1,
-    },
-    datePillText: {
-        fontSize: 12,
-        fontFamily: "SF_Pro_Regular",
-        color: TEXT_SECONDARY,
-    },
 
     // ── Empty State ──
     workspaceContainer: {
@@ -929,8 +1634,20 @@ const styles = StyleSheet.create({
         paddingTop: 8,
     },
     messageWrapper: { width: "100%" },
+    searchResultBadge: {
+        backgroundColor: "#F3F4F6",
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        alignSelf: "center",
+        marginBottom: 4,
+    },
+    searchResultText: {
+        fontSize: 11,
+        fontFamily: "SF_Pro_Medium",
+        color: "#6B7280",
+    },
 
-    // Incoming (received): content right-aligned, avatar on far right
     incomingRow: {
         flexDirection: "row",
         justifyContent: "flex-end",
@@ -957,7 +1674,6 @@ const styles = StyleSheet.create({
         maxWidth: "90%",
     },
 
-    // Outgoing (sent): avatar on far left, bubble left-aligned, white bg
     outgoingRow: {
         flexDirection: "row",
         justifyContent: "flex-start",
@@ -984,7 +1700,6 @@ const styles = StyleSheet.create({
         maxWidth: "90%",
     },
 
-    // Shared bubble text
     bubbleText: {
         fontSize: 14,
         fontFamily: "SF_Pro_Regular",
@@ -995,6 +1710,24 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontFamily: "SF_Pro_Regular",
         color: TEXT_SECONDARY,
+    },
+
+    // ── Reactions ──
+    reactionsRow: {
+        flexDirection: "row",
+        gap: 4,
+        marginTop: 4,
+    },
+    reactionBadge: {
+        backgroundColor: "#F3F4F6",
+        borderRadius: 10,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+    },
+    reactionText: {
+        fontSize: 11,
+        fontFamily: "SF_Pro_Regular",
+        color: TEXT_PRIMARY,
     },
 
     // ── Message Actions ──
@@ -1022,6 +1755,75 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontFamily: "SF_Pro_Semibold",
         letterSpacing: 0.3,
+    },
+
+    // ── Reply Preview ──
+    replyPreview: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#F9FAFB",
+        borderTopWidth: 1,
+        borderTopColor: "#F3F4F6",
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        gap: 8,
+    },
+    replyPreviewBar: {
+        width: 3,
+        height: 30,
+        borderRadius: 1.5,
+        backgroundColor: TEAL,
+    },
+    replyPreviewContent: {
+        flex: 1,
+        gap: 2,
+    },
+    replyPreviewName: {
+        fontSize: 11,
+        fontFamily: "SF_Pro_Semibold",
+        color: TEXT_PRIMARY,
+    },
+    replyPreviewText: {
+        fontSize: 11,
+        fontFamily: "SF_Pro_Regular",
+        color: TEXT_SECONDARY,
+    },
+
+    // ── Upload Progress ──
+    uploadProgressContainer: {
+        backgroundColor: "#F9FAFB",
+        borderTopWidth: 1,
+        borderTopColor: "#F3F4F6",
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+    },
+    uploadProgressRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        marginBottom: 6,
+    },
+    uploadProgressText: {
+        flex: 1,
+        fontSize: 11,
+        fontFamily: "SF_Pro_Regular",
+        color: TEXT_SECONDARY,
+    },
+    uploadProgressPercent: {
+        fontSize: 11,
+        fontFamily: "SF_Pro_Semibold",
+        color: "#00DEAB",
+    },
+    uploadProgressBarBg: {
+        height: 3,
+        backgroundColor: "#E5E7EB",
+        borderRadius: 1.5,
+        overflow: "hidden",
+    },
+    uploadProgressBarFill: {
+        height: "100%",
+        backgroundColor: "#00DEAB",
+        borderRadius: 1.5,
     },
 
     // ── Input Bar ──
@@ -1092,6 +1894,51 @@ const styles = StyleSheet.create({
     },
     sendBtnActive: { backgroundColor: TEAL },
 
+    // Recording Bar
+    recordingBar: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        backgroundColor: "#FFF5F5",
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: "#FEE2E2",
+    },
+    recordingLiveIndicator: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    redDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: "#EF4444",
+    },
+    recordingTimerText: {
+        fontSize: 14,
+        fontFamily: "SF_Pro_Semibold",
+        color: "#EF4444",
+    },
+    recordingActions: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 16,
+    },
+    cancelRecordBtn: {
+        padding: 6,
+    },
+    sendRecordBtn: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: TEAL,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
     // Channel specific empty state button
     addPeopleChannelBtn: {
         backgroundColor: TEAL,
@@ -1106,7 +1953,7 @@ const styles = StyleSheet.create({
         fontSize: 13,
     },
 
-    // Post Type Popover & Toggle
+    // Post Type
     postTypeToggle: {
         width: "auto",
         paddingHorizontal: 12,
@@ -1123,7 +1970,6 @@ const styles = StyleSheet.create({
     postTypeToggleTextActive: {
         color: "#fff",
     },
-    // Post Type horizontal chips (inside input)
     postTypeScroll: {
         marginTop: 10,
     },
@@ -1143,7 +1989,6 @@ const styles = StyleSheet.create({
         fontFamily: "SF_Pro_Medium",
     },
 
-    // Post Type panel (shown when top tab is clicked)
     postTypeListPanel: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -1165,14 +2010,6 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 11.5,
         fontFamily: "SF_Pro_Medium",
-    },
-    postTypeListBadge: {
-        minWidth: 20,
-        alignItems: "center",
-    },
-    postTypeListBadgeText: {
-        fontSize: 11,
-        fontFamily: "SF_Pro_Semibold",
     },
 
     // Chat Member panel
@@ -1209,18 +2046,163 @@ const styles = StyleSheet.create({
         fontFamily: "SF_Pro_Regular",
         color: "#1D1D1D",
     },
-    youBadge: {
-        backgroundColor: "#E5E7EB",
-        borderRadius: 4,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
+
+    // ── Modal Overlay ──
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.4)",
+        justifyContent: "center",
+        alignItems: "center",
     },
-    youBadgeText: {
+
+    // ── Emoji Picker ──
+    emojiPickerContainer: {
+        backgroundColor: "#fff",
+        borderRadius: 16,
+        padding: 16,
+        width: "80%",
+        maxWidth: 340,
+    },
+    emojiPickerTitle: {
+        fontSize: 15,
+        fontFamily: "SF_Pro_Medium",
+        color: TEXT_PRIMARY,
+        textAlign: "center",
+        marginBottom: 12,
+    },
+    emojiGrid: {
+        alignItems: "center",
+    },
+    emojiItem: {
+        width: 50,
+        height: 50,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    emojiText: {
+        fontSize: 26,
+    },
+
+    // ── Forward Picker ──
+    forwardPickerContainer: {
+        backgroundColor: "#fff",
+        borderRadius: 16,
+        width: "85%",
+        maxHeight: "70%",
+        overflow: "hidden",
+    },
+    forwardHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: "#F3F4F6",
+    },
+    forwardTitle: {
+        fontSize: 16,
+        fontFamily: "SF_Pro_Medium",
+        color: TEXT_PRIMARY,
+    },
+    forwardPreview: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        backgroundColor: "#F9FAFB",
+    },
+    forwardPreviewLabel: {
         fontSize: 11,
         fontFamily: "SF_Pro_Medium",
-        color: "#6B7280",
+        color: TEXT_SECONDARY,
+        marginBottom: 4,
     },
-    leaveBtn: {
-        padding: 4,
+    forwardPreviewText: {
+        fontSize: 13,
+        fontFamily: "SF_Pro_Regular",
+        color: TEXT_PRIMARY,
+    },
+    forwardRoomRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        gap: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: "#F3F4F6",
+    },
+    forwardRoomAvatar: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: TEAL,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    forwardRoomAvatarText: {
+        color: "#fff",
+        fontSize: 14,
+        fontFamily: "SF_Pro_Semibold",
+    },
+    forwardRoomName: {
+        flex: 1,
+        fontSize: 14,
+        fontFamily: "SF_Pro_Regular",
+        color: TEXT_PRIMARY,
+    },
+
+    // ── Edit Message ──
+    editContainer: {
+        backgroundColor: "#fff",
+        borderRadius: 16,
+        padding: 16,
+        width: "85%",
+    },
+    editTitle: {
+        fontSize: 16,
+        fontFamily: "SF_Pro_Medium",
+        color: TEXT_PRIMARY,
+        marginBottom: 12,
+    },
+    editInput: {
+        borderWidth: 1,
+        borderColor: "#E6E6E6",
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        fontSize: 14,
+        fontFamily: "SF_Pro_Regular",
+        color: TEXT_PRIMARY,
+        minHeight: 80,
+        textAlignVertical: "top",
+    },
+    editActions: {
+        flexDirection: "row",
+        justifyContent: "flex-end",
+        gap: 12,
+        marginTop: 14,
+    },
+    editCancelBtn: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 8,
+    },
+    editCancelText: {
+        fontSize: 14,
+        fontFamily: "SF_Pro_Medium",
+        color: TEXT_SECONDARY,
+    },
+    editSaveBtn: {
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        borderRadius: 8,
+        backgroundColor: TEAL,
+    },
+    editSaveBtnDisabled: {
+        opacity: 0.5,
+    },
+    editSaveText: {
+        fontSize: 14,
+        fontFamily: "SF_Pro_Medium",
+        color: "#fff",
     },
 });

@@ -40,6 +40,7 @@ async function handleResponse<T>(res: Response): Promise<T> {
   }
 
   if (!res.ok) {
+    console.log("[API] Error response:", { status: res.status, url: res.url, body: JSON.stringify(body).slice(0, 500) });
     const errBody = body as ApiErrorEnvelope;
     const msg =
       (typeof errBody === "object" && errBody !== null
@@ -78,6 +79,7 @@ export async function apiPost<T>(
 ): Promise<T> {
   const token = await getStoredToken();
   const url = `${BASE_URL}${path}`;
+  console.log("[API] POST:", path, "body:", isFormData ? "(FormData)" : JSON.stringify(body).slice(0, 500));
 
   const res = await fetch(url, {
     method: "POST",

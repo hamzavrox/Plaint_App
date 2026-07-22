@@ -1,12 +1,17 @@
 import Icons from "@/constants/icons";
 const { ChatIcon: MainChatIcon, ChannelTabIcon } = Icons;
-import AddPeopleModal, { AddPeopleUser } from "@/components/AddPeopleModal";
+import AddPeopleModal from "@/components/AddPeopleModal";
 import CreateChannelModal from "@/components/CreateChannelModal";
 import AppHeader from "@/components/headerapp";
+import { useChat } from "@/hooks/useChat";
+import { useAuth } from "@/hooks/useAuth";
+import { useTasks } from "@/hooks/useTasks";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+    ActivityIndicator,
+    Alert,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -14,139 +19,352 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { Room, RoomType } from "@/types/chat.types";
+import { TaskOwner } from "@/types/task.types";
+import {
+    getRoomDisplayName,
+    getRoomInitials,
+    isRoomUnread,
+    filterRoomsByType,
+    filterUnreadRooms,
+    filterReadRooms,
+    formatChatListTime,
+    getLastMessagePreview,
+} from "@/utils/chatHelpers";
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+// ─── Chip Config ──────────────────────────────────────────────────────────────
+
 const CHIP_DATA = [
-    { id: "all", label: "All", hasUnread: true },
-    { id: "unread", label: "Unread", hasUnread: true },
-    { id: "read", label: "Read", hasUnread: false },
-    { id: "channels", label: "Channels", hasUnread: true },
-    { id: "projects", label: "Projects", hasUnread: true },
-];
-
-type ChatUser = AddPeopleUser & {
-    message: string;
-    time: string;
-    unreadCount?: number;
-    status: "read" | "unread";
-};
-
-const ALL_USERS: ChatUser[] = [
-    { id: "1", name: "Muhammad Salman", email: "salman@email.com", message: "Hi, How are you?", time: "12:50pm", unreadCount: 5, status: "unread" },
-    { id: "2", name: "Muhammad Haris", email: "haris@email.com", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-    { id: "3", name: "Najam Ali", email: "najam@email.com", message: "Hi, How are you?", time: "12:50pm", status: "unread" },
-    { id: "4", name: "Junaid", email: "junaid@email.com", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-    { id: "5", name: "Awais", email: "awais@email.com", message: "Hi, How are you?", time: "12:50pm", status: "unread" },
-    { id: "6", name: "Nida Mumtaz", email: "nida@email.com", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-    { id: "7", name: "Wahab Ahmad", email: "wahab@email.com", message: "Hi, How are you?", time: "12:50pm", status: "unread" },
-    { id: "8", name: "Maryam", email: "maryam@email.com", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-    { id: "9", name: "Anum", email: "anum@email.com", message: "Hi, How are you?", time: "12:50pm", status: "unread" },
-    { id: "10", name: "Waqas", email: "waqas@email.com", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-    { id: "11", name: "Shahid", email: "shahid@email.com", message: "Hi, How are you?", time: "12:50pm", status: "unread" },
-    { id: "12", name: "Zahid", email: "zahid@email.com", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-];
-
-const CHANNELS_DATA: ChatUser[] = [
-    { id: "c1", name: "SEO Channel", email: "", message: "Hi, How are you?", time: "12:50pm", unreadCount: 5, status: "unread" },
-    { id: "c2", name: "Design Channel", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-    { id: "c3", name: "Dev Channel", email: "", message: "Hi, How are you?", time: "12:50pm", unreadCount: 5, status: "unread" },
-    { id: "c4", name: "Sales Channel", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-    { id: "c5", name: "Technical Channel", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-    { id: "c6", name: "Websouls Wins Board", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-    { id: "c7", name: "Planit Internal", email: "", message: "Hi, How are you?", time: "12:50pm", unreadCount: 5, status: "unread" },
-    { id: "c8", name: "Planit Dev", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-    { id: "c9", name: "Planit Design", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-    { id: "c10", name: "Websouls Web Design and Dev", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-    { id: "c11", name: "Websouls Internal Discussion", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-    { id: "c12", name: "IGI Insurance", email: "", message: "Hi, How are you?", time: "12:50pm", status: "read" },
-];
-
-interface ProjectData {
-    id: string;
-    name: string;
-    message: string;
-    time: string;
-    unreadCount?: number;
-    status: "read" | "unread";
-    expanded?: boolean;
-    channels: string[];
-}
-
-const INITIAL_PROJECTS: ProjectData[] = [
-    { id: "p1", name: "SEO Group", message: "Hi, How are you?", time: "12:50pm", unreadCount: 5, status: "unread", expanded: false, channels: ["General", "Discussion"] },
-    { id: "p2", name: "Design Group", message: "Hi, How are you?", time: "12:50pm", status: "read", expanded: false, channels: ["General", "Discussion"] },
-    { id: "p3", name: "Dev Group", message: "Hi, How are you?", time: "12:50pm", unreadCount: 5, status: "unread", expanded: false, channels: ["General", "Discussion"] },
-    { id: "p4", name: "Sales Group", message: "Hi, How are you?", time: "12:50pm", status: "read", expanded: false, channels: ["General", "Discussion"] },
-    { id: "p5", name: "Technical Team", message: "Hi, How are you?", time: "12:50pm", status: "read", expanded: false, channels: ["General", "Discussion"] },
-    { id: "p6", name: "Websouls", message: "Hi, How are you?", time: "12:50pm", status: "read", expanded: false, channels: ["General", "Discussion"] },
-    { id: "p7", name: "Planit Internal", message: "Hi, How are you?", time: "12:50pm", unreadCount: 5, status: "unread", expanded: false, channels: ["General", "Discussion"] },
-    { id: "p8", name: "Planit Dev", message: "Hi, How are you?", time: "12:50pm", status: "read", expanded: false, channels: ["General", "Discussion"] },
-    { id: "p9", name: "Planit Design", message: "Hi, How are you?", time: "12:50pm", status: "read", expanded: false, channels: ["General", "Discussion"] },
-    { id: "p10", name: "Websouls Web Design and Dev", message: "Hi, How are you?", time: "12:50pm", status: "read", expanded: false, channels: ["General", "Discussion"] },
+    { id: "all", label: "All" },
+    { id: "unread", label: "Unread" },
+    { id: "read", label: "Read" },
+    { id: "channels", label: "Channels" },
+    { id: "projects", label: "Projects" },
 ];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
+
 export default function ChatScreen() {
+    const {
+        state, fetchRooms, getOrCreateRoom, markRead, searchUsers,
+        setSearchQuery, initSocket, cleanupSocket, inviteUser, addMember,
+        createProjectWithChannels,
+    } = useChat();
+    const authState = useAuth();
+    const { state: taskState } = useTasks();
+    const currentUserId = authState?.state?.user?.id ?? 0;
+
     const [addPeopleOpen, setAddPeopleOpen] = useState(false);
+    const [addPeopleQuery, setAddPeopleQuery] = useState("");
     const [createChannelOpen, setCreateChannelOpen] = useState(false);
-    const [createGroupOpen, setCreateGroupOpen] = useState(false);
     const [isChannelMode, setIsChannelMode] = useState(false);
     const [activeChip, setActiveChip] = useState("all");
-
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-    const [chats, setChats] = useState<ChatUser[]>(ALL_USERS);
-    const [channels, setChannels] = useState<ChatUser[]>(CHANNELS_DATA);
-    const [projects, setProjects] = useState<ProjectData[]>(INITIAL_PROJECTS);
     const [newChannelName, setNewChannelName] = useState("");
-    const [newGroupName, setNewGroupName] = useState("");
-    const [activeProjectIdForGroup, setActiveProjectIdForGroup] = useState<string | null>(null);
+    // Track which project we're adding a channel to (null = standalone channel)
+    const [projectContext, setProjectContext] = useState<Room | null>(null);
+    // Track expanded projects in the Projects chip view
+    const [expandedProjects, setExpandedProjects] = useState<Set<number>>(new Set());
 
-    const filteredChats = chats.filter((chat) => {
-        if (activeChip === "all" || activeChip === "channels" || activeChip === "groups" || activeChip === "projects") return true;
-        if (activeChip === "unread") return chat.status === "unread";
-        if (activeChip === "read") return chat.status === "read";
-        return true;
-    });
+    // Fetch rooms on mount
+    useEffect(() => {
+        fetchRooms();
+    }, [fetchRooms]);
 
-    const displayList = activeChip === "channels" ? channels : filteredChats;
-
-    const markAsRead = (id: string) => {
-        if (activeChip === "channels") {
-            setChannels((prev) =>
-                prev.map((chat) =>
-                    chat.id === id ? { ...chat, status: "read", unreadCount: undefined } : chat
-                )
-            );
-        } else {
-            setChats((prev) =>
-                prev.map((chat) =>
-                    chat.id === id ? { ...chat, status: "read", unreadCount: undefined } : chat
-                )
-            );
+    // Initialize socket when user is available
+    useEffect(() => {
+        if (currentUserId) {
+            initSocket(currentUserId);
         }
-    };
+        return () => {
+            cleanupSocket();
+        };
+    }, [currentUserId, initSocket, cleanupSocket]);
 
-    const toggleProjectExpand = (id: string) => {
-        setProjects((prev) =>
-            prev.map((proj) =>
-                proj.id === id ? { ...proj, expanded: !proj.expanded } : proj
-            )
+    // Reset search query when modal closes
+    useEffect(() => {
+        if (!addPeopleOpen) {
+            setAddPeopleQuery("");
+        }
+    }, [addPeopleOpen]);
+
+    // Build a default list of all company members from existing room members + task owners.
+    // The backend requires ≥2 chars to search, so we use local data as the default list.
+    const defaultMemberList = useMemo(() => {
+        const memberMap = new Map<string, { id: string; name: string; email?: string }>();
+        // From all rooms' members
+        for (const room of state.rooms ?? []) {
+            for (const m of room.members ?? []) {
+                if (m.id === currentUserId) continue;
+                const key = String(m.id);
+                if (!memberMap.has(key)) {
+                    const name = `${m.first_name || ""} ${m.last_name || ""}`.trim() || `User #${m.id}`;
+                    memberMap.set(key, { id: key, name });
+                }
+            }
+        }
+        // From task owners
+        for (const owner of (taskState?.taskOwners ?? []) as TaskOwner[]) {
+            if (!owner?.id) continue;
+            if (owner.id === currentUserId) continue;
+            const key = String(owner.id);
+            if (!memberMap.has(key)) {
+                const name = `${owner.first_name || ""} ${owner.last_name || ""}`.trim() || `User #${owner.id}`;
+                memberMap.set(key, { id: key, name, email: owner.email });
+            }
+        }
+        return Array.from(memberMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    }, [state.rooms, taskState?.taskOwners, currentUserId]);
+
+    // Build the user list shown in AddPeopleModal:
+    // - When query has ≥2 chars: use API search results (populated by setSearchQuery)
+    // - Otherwise: use defaultMemberList built from rooms + task owners
+    const addPeopleUsers = useMemo(() => {
+        if (addPeopleQuery.trim().length >= 2 && state.searchResults.length > 0) {
+            return state.searchResults.map((u) => ({
+                id: String(u.id),
+                name: u.full_name || `${u.first_name || ""} ${u.last_name || ""}`.trim() || `User #${u.id}`,
+                email: u.email,
+            }));
+        }
+        return defaultMemberList;
+    }, [addPeopleQuery, state.searchResults, defaultMemberList]);
+
+    // Compute unread counts per chip
+    const chipUnread = useMemo(() => {
+        const rooms = state.rooms;
+        const hasUnread = (rooms: Room[]) => rooms.some((r) => r.unreadCount > 0 || r.force_unread);
+        return {
+            all: hasUnread(rooms),
+            unread: hasUnread(rooms),
+            read: false,
+            channels: hasUnread(rooms.filter((r) => r.type === "channel")),
+            projects: hasUnread(rooms.filter((r) => r.type === "project")),
+        };
+    }, [state.rooms]);
+
+    // Categorize rooms based on active chip
+    const displayRooms = useMemo(() => {
+        const rooms = state.rooms;
+
+        switch (activeChip) {
+            case "channels":
+                // Show standalone channels (no parent_id) and channels under projects
+                return filterRoomsByType(rooms, "channel");
+            case "projects":
+                return filterRoomsByType(rooms, "project");
+            case "unread":
+                return filterUnreadRooms(rooms);
+            case "read":
+                return filterReadRooms(rooms);
+            case "all":
+            default:
+                return rooms;
+        }
+    }, [state.rooms, activeChip]);
+
+    // Group channels by their parent project for the Projects view
+    const projectChannelMap = useMemo(() => {
+        const map = new Map<number, Room[]>();
+        for (const room of state.rooms) {
+            if (room.type === "channel" && room.parent_id) {
+                const existing = map.get(room.parent_id) ?? [];
+                existing.push(room);
+                map.set(room.parent_id, existing);
+            }
+        }
+        return map;
+    }, [state.rooms]);
+
+    const toggleProjectExpand = useCallback((projectId: number) => {
+        setExpandedProjects((prev) => {
+            const next = new Set(prev);
+            if (next.has(projectId)) next.delete(projectId);
+            else next.add(projectId);
+            return next;
+        });
+    }, []);
+
+    const handleRoomPress = useCallback(
+        async (room: Room) => {
+            console.log("[Chat] Room pressed:", { id: room.id, _id: room._id, type: room.type, name: room.name });
+            setSelectedChatId(room.id.toString());
+            if (isRoomUnread(room)) {
+                markRead(room._id).catch(() => {});
+            }
+            router.push({
+                pathname: "/conversation",
+                params: {
+                    roomId: room._id,
+                    name: getRoomDisplayName(room, currentUserId),
+                    initials: getRoomInitials(room, currentUserId),
+                    isChannel: String(room.type === "channel"),
+                    roomType: room.type,
+                },
+            });
+        },
+        [currentUserId, markRead]
+    );
+
+    const handleAddPeopleSelect = useCallback(
+        async (user: { id: string; name: string; email?: string }) => {
+            setAddPeopleOpen(false);
+            try {
+                const room = await getOrCreateRoom({
+                    type: "direct",
+                    targetId: parseInt(user.id, 10),
+                });
+                router.push({
+                    pathname: "/conversation",
+                    params: {
+                        roomId: room._id,
+                        name: getRoomDisplayName(room, currentUserId),
+                        initials: getRoomInitials(room, currentUserId),
+                        isChannel: "false",
+                        roomType: "direct",
+                    },
+                });
+            } catch {
+                // Fallback: navigate with user info
+                router.push({
+                    pathname: "/conversation",
+                    params: {
+                        name: user.name,
+                        initials: user.name.charAt(0).toUpperCase(),
+                    },
+                });
+            }
+        },
+        [getOrCreateRoom, currentUserId]
+    );
+
+    const handleChannelCreate = useCallback(
+        async (name: string) => {
+            console.log("[Chat] Creating channel:", name);
+            setCreateChannelOpen(false);
+            setNewChannelName(name);
+            setIsChannelMode(true);
+            setTimeout(() => setAddPeopleOpen(true), 300);
+        },
+        []
+    );
+
+    const handleInviteUsers = useCallback(
+        async (users: Array<{ id: string; name: string; email?: string }>) => {
+            console.log("[Chat] handleInviteUsers called:", { channelName: newChannelName, userCount: users.length, projectContext: projectContext?.name });
+            setAddPeopleOpen(false);
+            setIsChannelMode(false);
+            if (newChannelName) {
+                try {
+                    // Build create room request — if projectContext is set, link as child channel
+                    const createRoomReq: { type: "channel"; name: string; parent_id?: number } = {
+                        type: "channel",
+                        name: newChannelName,
+                    };
+                    if (projectContext) {
+                        createRoomReq.parent_id = projectContext.id;
+                    }
+
+                    const room = await getOrCreateRoom(createRoomReq);
+                    console.log("[Chat] Channel created:", room.id, room.name);
+
+                    // ── Invite/Add each selected user ──
+                    let emailSent = 0;
+                    let directAdded = 0;
+                    let failed = 0;
+
+                    for (const user of users) {
+                        const userId = parseInt(user.id, 10);
+                        if (isNaN(userId)) continue;
+
+                        try {
+                            if (user.email) {
+                                // Has email → send invite via POST /chat/invite (sends email)
+                                await inviteUser(room._id, user.email, userId, "Full edit");
+                                emailSent++;
+                                console.log(`[Chat] Invite email sent to ${user.email}`);
+                            } else {
+                                // No email → add directly via POST /chat/add-member
+                                await addMember(room._id, userId);
+                                directAdded++;
+                                console.log(`[Chat] Member added directly: ${user.name}`);
+                            }
+                        } catch (err) {
+                            failed++;
+                            console.log(`[Chat] Failed to invite/add ${user.name}:`, err);
+                        }
+                    }
+
+                    // Show feedback
+                    const parts: string[] = [];
+                    if (emailSent > 0) parts.push(`${emailSent} invite email(s) sent`);
+                    if (directAdded > 0) parts.push(`${directAdded} member(s) added`);
+                    if (failed > 0) parts.push(`${failed} failed`);
+                    if (parts.length > 0) {
+                        Alert.alert("Channel Created", `"${room.name}" created.\n${parts.join(", ")}.`);
+                    }
+
+                    // Refresh rooms to show updated member lists
+                    fetchRooms();
+
+                    // Navigate to the new channel
+                    router.push({
+                        pathname: "/conversation",
+                        params: {
+                            roomId: room._id,
+                            name: room.name,
+                            initials: room.name.charAt(0).toUpperCase(),
+                            isChannel: "true",
+                            roomType: "channel",
+                        },
+                    });
+                } catch (err) {
+                    console.log("[Chat] Channel creation error:", err);
+                    Alert.alert("Error", "Failed to create channel. Please try again.");
+                }
+                setNewChannelName("");
+                setProjectContext(null);
+            }
+        },
+        [newChannelName, projectContext, getOrCreateRoom, inviteUser, addMember, fetchRooms]
+    );
+
+    // Handler for creating a channel under a specific project
+    const handleProjectAddChannel = useCallback(
+        (project: Room) => {
+            setProjectContext(project);
+            setCreateChannelOpen(true);
+        },
+        []
+    );
+
+    if (state.loading && state.rooms.length === 0) {
+        return (
+            <View style={styles.root}>
+                <SafeAreaView style={styles.safe}>
+                    <AppHeader
+                        greeting="Good morning!"
+                        subGreeting="Loading your chats..."
+                        initials="..."
+                        placeholder="Search Task"
+                        showSearch
+                    />
+                    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                        <ActivityIndicator size="large" color="#00DEAB" />
+                    </View>
+                </SafeAreaView>
+            </View>
         );
-    };
-
-    const handleAddGroupPress = (projectId: string) => {
-        setActiveProjectIdForGroup(projectId);
-        setCreateGroupOpen(true);
-    };
+    }
 
     return (
         <View style={styles.root}>
             <SafeAreaView style={styles.safe}>
                 {/* Header */}
                 <AppHeader
-                    greeting="Good morning, Junaid!"
+                    greeting="Good morning!"
                     subGreeting="Let's make today productive!"
-                    initials="JD"
+                    initials={currentUserId ? String(currentUserId).slice(0, 2) : "U"}
                     placeholder="Search Task"
                     showSearch
                 />
@@ -162,173 +380,198 @@ export default function ChatScreen() {
                         showsHorizontalScrollIndicator={false} 
                         contentContainerStyle={styles.chipsContainer}
                     >
-                        {CHIP_DATA.map((chip,index) => {
+                        {CHIP_DATA.map((chip, index) => {
                             const isActive = activeChip === chip.id;
+                            const showDot = chipUnread[chip.id as keyof typeof chipUnread] ?? false;
                             return (
-    <View
-      key={chip.id}
-      style={{ flexDirection: "row", alignItems: "center" }}
-    >
-      <TouchableOpacity
-        style={[
-          styles.chipButton,
-          isActive && styles.chipButtonActive,
-        ]}
-        onPress={() => setActiveChip(chip.id)}
-      >
-        <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-                                        {chip.label}
-                                    </Text>
-                                    {chip.hasUnread && (
-                                        <View style={[styles.unreadDot, isActive && styles.unreadDotActive]} />
+                                <View
+                                    key={chip.id}
+                                    style={{ flexDirection: "row", alignItems: "center" }}
+                                >
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.chipButton,
+                                            isActive && styles.chipButtonActive,
+                                        ]}
+                                        onPress={() => setActiveChip(chip.id)}
+                                    >
+                                        <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                                            {chip.label}
+                                        </Text>
+                                        {showDot && (
+                                            <View style={[styles.unreadDot, isActive && styles.unreadDotActive]} />
+                                        )}
+                                    </TouchableOpacity>
+                                    {index === 2 && (
+                                        <View style={styles.verticalDivider} />
                                     )}
-      </TouchableOpacity>
-
-      {index === 2 && (
-        <View style={styles.verticalDivider} />
-      )}
-    </View>
+                                </View>
                             );
                         })}
                     </ScrollView>
 
-                    {activeChip === "projects" ? (
+                    {displayRooms.length > 0 ? (
                         <View style={styles.chatListContainer}>
-                            {projects.map((project) => (
-                                <View key={project.id}>
-                                    <TouchableOpacity
-                                        style={[styles.chatRow, selectedChatId === project.id && styles.chatRowSelected]}
-                                        activeOpacity={0.7}
-                                        onPress={() => {
-                                            setSelectedChatId(project.id);
-                                            toggleProjectExpand(project.id);
-                                        }}
-                                    >
-                                        <View style={styles.avatarContainer}>
-                                            <View style={styles.avatarBox}>
-                                                <Text style={styles.avatarText}>{project.name.charAt(0).toUpperCase()}</Text>
-                                            </View>
-                                            {project.status === "unread" && (
-                                                <View style={styles.onlineIndicator} />
-                                            )}
-                                        </View>
-                                        <View style={styles.chatInfo}>
-                                            <Text style={styles.chatName}>{project.name}</Text>
-                                            <Text style={styles.chatSnippet} numberOfLines={1}>{project.message}</Text>
-                                        </View>
-                                        <View style={styles.chatMeta}>
-                                            {project.unreadCount && project.status === "unread" && (
-                                                <View style={styles.unreadBubble}>
-                                                    <Text style={styles.unreadBubbleText}>+{project.unreadCount}</Text>
-                                                </View>
-                                            )}
-                                            <Text style={styles.chatTime}>{project.time}</Text>
-                                            
-                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginLeft: 6 }}>
-                                                <TouchableOpacity
-                                                    activeOpacity={0.7}
-                                                    style={{ padding: 4 }}
-                                                    onPress={(e) => {
-                                                        e.stopPropagation();
-                                                        handleAddGroupPress(project.id);
-                                                    }}
-                                                >
-                                                    <Ionicons name="add" size={20} color="#1D1D1D" />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    activeOpacity={0.7}
-                                                    style={{ padding: 4 }}
-                                                    onPress={(e) => {
-                                                        e.stopPropagation();
-                                                        toggleProjectExpand(project.id);
-                                                    }}
-                                                >
-                                                    <Ionicons 
-                                                        name={project.expanded ? "chevron-up" : "chevron-down"} 
-                                                        size={20} 
-                                                        color="#1D1D1D" 
-                                                    />
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
-                                    </TouchableOpacity>
+                            {activeChip === "projects" ? (
+                                /* ── Projects view with expandable child channels ── */
+                                displayRooms.map((project) => {
+                                    const displayName = getRoomDisplayName(project, currentUserId);
+                                    const initials = getRoomInitials(project, currentUserId);
+                                    const unread = isRoomUnread(project);
+                                    const lastPreview = project.members.length > 0
+                                        ? `${project.members.length} member${project.members.length > 1 ? "s" : ""}`
+                                        : "No messages yet";
+                                    const isExpanded = expandedProjects.has(project.id);
+                                    const childChannels = projectChannelMap.get(project.id) ?? [];
 
-                                    {project.expanded && (
-                                        <View style={styles.channelsContainer}>
-                                            {project.channels.map((channel, cIdx) => (
-                                                <TouchableOpacity
-                                                    key={cIdx}
-                                                    style={styles.channelRow}
-                                                    activeOpacity={0.7}
-                                                    onPress={() => {
-                                                        router.push({
-                                                            pathname: "/conversation",
-                                                            params: {
-                                                                name: channel,
-                                                                initials: channel.charAt(0).toUpperCase(),
-                                                                isChannel: "true",
-                                                            },
-                                                        });
-                                                    }}
-                                                >
-                                                    <View style={styles.subAvatarContainer}>
-                                                        <View style={styles.subAvatarBox}>
-                                                            <Text style={styles.subAvatarText}>{channel.charAt(0).toUpperCase()}</Text>
+                                    return (
+                                        <View key={project.id}>
+                                            {/* Project row */}
+                                            <TouchableOpacity
+                                                style={[
+                                                    styles.chatRow,
+                                                    selectedChatId === project.id.toString() && styles.chatRowSelected,
+                                                ]}
+                                                activeOpacity={0.7}
+                                                onPress={() => handleRoomPress(project)}
+                                                onLongPress={() => toggleProjectExpand(project.id)}
+                                            >
+                                                <View style={styles.avatarContainer}>
+                                                    <View style={[styles.avatarBox, { backgroundColor: "#1D1D1D" }]}>
+                                                        <Ionicons name="folder-outline" size={18} color="#00DEAB" />
+                                                    </View>
+                                                    {unread && (
+                                                        <View style={styles.onlineIndicator} />
+                                                    )}
+                                                </View>
+                                                <View style={styles.chatInfo}>
+                                                    <Text style={styles.chatName} numberOfLines={1}>
+                                                        {displayName}
+                                                    </Text>
+                                                    <Text style={styles.chatSnippet} numberOfLines={1}>
+                                                        {lastPreview}{childChannels.length > 0 ? ` · ${childChannels.length} channel${childChannels.length > 1 ? "s" : ""}` : ""}
+                                                    </Text>
+                                                </View>
+                                                <View style={styles.chatMeta}>
+                                                    {childChannels.length > 0 && (
+                                                        <TouchableOpacity onPress={() => toggleProjectExpand(project.id)} hitSlop={8}>
+                                                            <Ionicons
+                                                                name={isExpanded ? "chevron-up" : "chevron-down"}
+                                                                size={18}
+                                                                color="#9CA3AF"
+                                                            />
+                                                        </TouchableOpacity>
+                                                    )}
+                                                    {unread && project.unreadCount > 0 && (
+                                                        <View style={styles.unreadBubble}>
+                                                            <Text style={styles.unreadBubbleText}>
+                                                                +{project.unreadCount}
+                                                            </Text>
                                                         </View>
+                                                    )}
+                                                </View>
+                                            </TouchableOpacity>
+
+                                            {/* Child channels (expanded) */}
+                                            {isExpanded && childChannels.map((channel) => {
+                                                const chName = channel.name;
+                                                const chUnread = isRoomUnread(channel);
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={channel.id}
+                                                        style={[styles.chatRow, { paddingLeft: 44 }]}
+                                                        activeOpacity={0.7}
+                                                        onPress={() => handleRoomPress(channel)}
+                                                    >
+                                                        <View style={styles.avatarContainer}>
+                                                            <View style={[styles.avatarBox, { width: 28, height: 28, backgroundColor: "#F4F4F4" }]}>
+                                                                <Text style={[styles.avatarText, { fontSize: 12, color: "#1D1D1D" }]}>#</Text>
+                                                            </View>
+                                                            {chUnread && <View style={styles.onlineIndicator} />}
+                                                        </View>
+                                                        <View style={styles.chatInfo}>
+                                                            <Text style={[styles.chatName, { fontSize: 14 }]} numberOfLines={1}>
+                                                                {chName}
+                                                            </Text>
+                                                        </View>
+                                                        {chUnread && channel.unreadCount > 0 && (
+                                                            <View style={styles.unreadBubble}>
+                                                                <Text style={styles.unreadBubbleText}>+{channel.unreadCount}</Text>
+                                                            </View>
+                                                        )}
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+
+                                            {/* Add channel button under expanded project */}
+                                            {isExpanded && (
+                                                <TouchableOpacity
+                                                    style={[styles.chatRow, { paddingLeft: 44 }]}
+                                                    activeOpacity={0.7}
+                                                    onPress={() => handleProjectAddChannel(project)}
+                                                >
+                                                    <View style={[styles.avatarBox, { width: 28, height: 28, backgroundColor: "#F0FDF9" }]}>
+                                                        <Ionicons name="add" size={16} color="#00DEAB" />
                                                     </View>
-                                                    <View style={styles.channelInfo}>
-                                                        <Text style={styles.channelName}>{channel}</Text>
-                                                        <Text style={styles.channelSnippet}>Hi, How are you?</Text>
-                                                    </View>
+                                                    <Text style={[styles.chatSnippet, { marginLeft: 14, color: "#00DEAB", fontFamily: "SF_Pro_Medium" }]}>Add Channel</Text>
                                                 </TouchableOpacity>
-                                            ))}
+                                            )}
                                         </View>
-                                    )}
-                                </View>
-                            ))}
-                        </View>
-                    ) : displayList.length > 0 ? (
-                        <View style={styles.chatListContainer}>
-                            {displayList.map((chat, index) => (
-                                <TouchableOpacity
-                                    key={chat.id}
-                                    style={[styles.chatRow, selectedChatId === chat.id && styles.chatRowSelected]}
-                                    activeOpacity={0.7}
-                                    onPress={() => {
-                                        setSelectedChatId(chat.id);
-                                        if (chat.status === "unread") markAsRead(chat.id);
-                                        router.push({
-                                            pathname: "/conversation",
-                                            params: {
-                                                name: chat.name,
-                                                initials: chat.name.charAt(0).toUpperCase(),
-                                                isChannel: String(activeChip === "channels"),
-                                            },
-                                        });
-                                    }}
-                                >
-                                    <View style={styles.avatarContainer}>
-                                        <View style={styles.avatarBox}>
-                                            <Text style={styles.avatarText}>{chat.name.charAt(0).toUpperCase()}</Text>
-                                        </View>
-                                        {activeChip !== "channels" && chat.status === "unread" && (
-                                            <View style={styles.onlineIndicator} />
-                                        )}
-                                    </View>
-                                    <View style={styles.chatInfo}>
-                                        <Text style={styles.chatName}>{chat.name}</Text>
-                                        <Text style={styles.chatSnippet} numberOfLines={1}>{chat.message}</Text>
-                                    </View>
-                                    <View style={styles.chatMeta}>
-                                        {chat.unreadCount && chat.status === "unread" && (
-                                            <View style={styles.unreadBubble}>
-                                                <Text style={styles.unreadBubbleText}>+{chat.unreadCount}</Text>
+                                    );
+                                })
+                            ) : (
+                                displayRooms.map((room) => {
+                                    const displayName = getRoomDisplayName(room, currentUserId);
+                                    const initials = getRoomInitials(room, currentUserId);
+                                    const unread = isRoomUnread(room);
+                                    const lastPreview = room.members.length > 0
+                                        ? `${room.members.length} member${room.members.length > 1 ? "s" : ""}`
+                                        : "No messages yet";
+
+                                    return (
+                                        <TouchableOpacity
+                                            key={room.id}
+                                            style={[
+                                                styles.chatRow,
+                                                selectedChatId === room.id.toString() && styles.chatRowSelected,
+                                            ]}
+                                            activeOpacity={0.7}
+                                            onPress={() => handleRoomPress(room)}
+                                        >
+                                            <View style={styles.avatarContainer}>
+                                                <View style={styles.avatarBox}>
+                                                    <Text style={styles.avatarText}>{initials}</Text>
+                                                </View>
+                                                {unread && (
+                                                    <View style={styles.onlineIndicator} />
+                                                )}
                                             </View>
-                                        )}
-                                        <Text style={styles.chatTime}>{chat.time}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
+                                            <View style={styles.chatInfo}>
+                                                <Text style={styles.chatName} numberOfLines={1}>
+                                                    {displayName}
+                                                </Text>
+                                                <Text style={styles.chatSnippet} numberOfLines={1}>
+                                                    {lastPreview}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.chatMeta}>
+                                                {unread && room.unreadCount > 0 && (
+                                                    <View style={styles.unreadBubble}>
+                                                        <Text style={styles.unreadBubbleText}>
+                                                            +{room.unreadCount}
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                                <Text style={styles.chatTime}>
+                                                    {room.my_visible_from
+                                                        ? formatChatListTime(room.my_visible_from)
+                                                        : ""}
+                                                </Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })
+                            )}
                         </View>
                     ) : activeChip === "channels" ? (
                         <View style={styles.workspaceContainer}>
@@ -342,7 +585,10 @@ export default function ChatScreen() {
                             <TouchableOpacity
                                 style={styles.addPeopleButton}
                                 activeOpacity={0.85}
-                                onPress={() => setCreateChannelOpen(true)}
+                                onPress={() => {
+                                    setProjectContext(null);
+                                    setCreateChannelOpen(true);
+                                }}
                             >
                                 <Text style={styles.addPeopleText}>+ Create Channel</Text>
                             </TouchableOpacity>
@@ -378,12 +624,13 @@ export default function ChatScreen() {
                 </ScrollView>
                 
                 {/* FAB */}
-                {displayList.length > 0 && activeChip !== "projects" && (
+                {displayRooms.length > 0 && (
                     <TouchableOpacity 
                         style={styles.fab} 
                         activeOpacity={0.8}  
                         onPress={() => {
-                            if (activeChip === "channels") {
+                            if (activeChip === "channels" || activeChip === "projects") {
+                                setProjectContext(null);
                                 setCreateChannelOpen(true);
                             } else {
                                 setIsChannelMode(false);
@@ -392,7 +639,7 @@ export default function ChatScreen() {
                         }}
                     >
                         <MaterialCommunityIcons 
-                            name={activeChip === "channels" ? "account-multiple-plus" : "message-plus"} 
+                            name={activeChip === "channels" || activeChip === "projects" ? "account-multiple-plus" : "message-plus"} 
                             size={24} 
                             color="#000" 
                         />
@@ -402,82 +649,31 @@ export default function ChatScreen() {
 
             <AddPeopleModal
                 visible={addPeopleOpen}
-                users={ALL_USERS}
+                users={addPeopleUsers}
                 isChannelMode={isChannelMode}
                 onClose={() => {
                     setAddPeopleOpen(false);
                     setIsChannelMode(false);
-                    setActiveProjectIdForGroup(null);
                 }}
-                onSearch={(query) => console.log("Search:", query)}
-                onSelectUser={(user) => {
-                    setAddPeopleOpen(false);
-                    router.push({
-                        pathname: "/conversation",
-                        params: {
-                            name: user.name,
-                            initials: user.name.charAt(0).toUpperCase(),
-                        },
-                    });
-                }}
-                onInviteUsers={(users) => {
-                    setAddPeopleOpen(false);
-                    setIsChannelMode(false);
-                    if (activeProjectIdForGroup && newGroupName) {
-                        setProjects((prev) =>
-                            prev.map((proj) => {
-                                if (proj.id === activeProjectIdForGroup) {
-                                    return {
-                                        ...proj,
-                                        expanded: true,
-                                        channels: [...proj.channels, newGroupName],
-                                    };
-                                }
-                                return proj;
-                            })
-                        );
-                        setNewGroupName("");
-                        setActiveProjectIdForGroup(null);
-                    } else if (newChannelName) {
-                        setChannels(prev => [{
-                            id: "c" + Date.now(),
-                            name: newChannelName,
-                            email: "",
-                            message: "Just created",
-                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toLowerCase(),
-                            status: "read",
-                        }, ...prev]);
-                        setNewChannelName("");
-                        setActiveChip("channels"); // switch to channels tab if not already
+                onSearch={(query) => {
+                    setAddPeopleQuery(query);
+                    // Only hit the API when the user has typed 2+ chars
+                    if (query.trim().length >= 2) {
+                        setSearchQuery(query);
                     }
                 }}
+                onSelectUser={handleAddPeopleSelect}
+                onInviteUsers={handleInviteUsers}
             />
 
             <CreateChannelModal
                 visible={createChannelOpen}
-                onClose={() => setCreateChannelOpen(false)}
-                onNext={(name) => {
-                    setNewChannelName(name);
-                    setCreateChannelOpen(false);
-                    setIsChannelMode(true);
-                    setTimeout(() => setAddPeopleOpen(true), 300); // small delay for modal transition
-                }}
-            />
-
-            <CreateChannelModal
-                visible={createGroupOpen}
-                title="Create Group"
-                placeholder="Write your group name"
                 onClose={() => {
-                    setCreateGroupOpen(false);
-                    setActiveProjectIdForGroup(null);
+                    setCreateChannelOpen(false);
+                    setProjectContext(null);
                 }}
-                onNext={(name) => {
-                    setNewGroupName(name);
-                    setCreateGroupOpen(false);
-                    setIsChannelMode(true);
-                    setTimeout(() => setAddPeopleOpen(true), 300);
-                }}
+                onNext={handleChannelCreate}
+                title={projectContext ? `Add Channel to "${projectContext.name}"` : "Create Channel"}
             />
         </View>
     );
@@ -497,7 +693,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingTop: 8,
-        paddingBottom: 80, // Extra padding for FAB
+        paddingBottom: 80,
     },
 
     // ── Chips ──
@@ -526,14 +722,13 @@ const styles = StyleSheet.create({
     chipTextActive: {
         color: "#fff",
     },
-verticalDivider: {
-  width: 1.5,
-  height: 33,
-  backgroundColor: "#F4F4F4",
-//   marginHorizontal: 12,
- marginLeft: 7,
- marginRight: 3,
-},
+    verticalDivider: {
+        width: 1.5,
+        height: 33,
+        backgroundColor: "#F4F4F4",
+        marginLeft: 7,
+        marginRight: 3,
+    },
     unreadDot: {
         position: "absolute",
         top: -1,
@@ -545,9 +740,9 @@ verticalDivider: {
         borderWidth: 1.5,
         borderColor: "#fff",
     },
-    // unreadDotActive: {
-    //     borderColor: "#1D1D1D",
-    // },
+    unreadDotActive: {
+        borderColor: "#1D1D1D",
+    },
 
     // ── Chat List ──
     chatListContainer: {
@@ -559,13 +754,10 @@ verticalDivider: {
         paddingHorizontal: 16,
         paddingVertical: 12,
     },
-    // chatRowFirst: {
-    //     backgroundColor: "#F4F4F4", // Light gray background for first item as shown in design
-    // },
     chatRowSelected: {
-    backgroundColor: "#F4F4F4",
-    marginHorizontal: 3,
-},
+        backgroundColor: "#F4F4F4",
+        marginHorizontal: 3,
+    },
     avatarContainer: {
         position: "relative",
         marginRight: 12,
@@ -610,12 +802,12 @@ verticalDivider: {
         color: "#4B5563",
     },
     chatMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 10,
-    minWidth: 80,
-},
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "flex-end",
+        gap: 10,
+        minWidth: 80,
+    },
     chatTime: {
         fontSize: 11,
         fontFamily: "SF_Pro_Medium",
@@ -696,53 +888,5 @@ verticalDivider: {
         backgroundColor: "#00DEAB",
         alignItems: "center",
         justifyContent: "center",
-        // shadowColor: "#00DEAB",
-        // shadowOpacity: 0.3,
-        // shadowRadius: 8,
-        // shadowOffset: { width: 0, height: 4 },
-        // elevation: 6,
-    },
-    channelsContainer: {
-        backgroundColor: "#FCFCFC",
-        borderBottomWidth: 1,
-        borderBottomColor: "#F4F4F4",
-    },
-    channelRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingLeft: 56,
-        paddingVertical: 10,
-    },
-    channelName: {
-        fontSize: 15,
-        fontFamily: "SF_Pro_Semibold",
-        color: "#1D1D1D",
-    },
-    subAvatarContainer: {
-        position: "relative",
-        marginRight: 12,
-    },
-    subAvatarBox: {
-        width: 36,
-        height: 36,
-        borderRadius: 5,
-        backgroundColor: "#00DEAB",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    subAvatarText: {
-        color: "#fff",
-        fontSize: 15,
-        fontFamily: "SF_Pro_Medium",
-    },
-    channelInfo: {
-        flex: 1,
-        justifyContent: "center",
-        gap: 2,
-    },
-    channelSnippet: {
-        fontSize: 13,
-        fontFamily: "SF_Pro_Regular",
-        color: "#4B5563",
     },
 });

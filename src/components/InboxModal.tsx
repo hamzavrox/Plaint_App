@@ -1,6 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/context/NotificationContext";
+import { useCallback, useEffect, useState } from "react";
 import {
+    ActivityIndicator,
     Modal,
     Pressable,
     ScrollView,
@@ -9,90 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-
-interface NotificationItem {
-    id: string;
-    initials: string;
-    name: string;
-    message: string;
-    time: string;
-    unread: boolean;
-}
-
-const MOCK_NOTIFICATIONS: NotificationItem[] = [
-    {
-        id: "1",
-        initials: "MZ",
-        name: "Muhammad Zanaen Ullah",
-        message: "Recurring task auto-generated",
-        time: "5 hours ago",
-        unread: true,
-    },
-    {
-        id: "2",
-        initials: "MZ",
-        name: "Muhammad Zanaen Ullah",
-        message: "Recurring task auto-generated",
-        time: "1 day ago",
-        unread: true,
-    },
-    {
-        id: "3",
-        initials: "MZ",
-        name: "Muhammad Zanaen Ullah",
-        message: "Recurring task auto-generated",
-        time: "4 days ago",
-        unread: true,
-    },
-    {
-        id: "4",
-        initials: "MZ",
-        name: "Muhammad Zanaen Ullah",
-        message: "Recurring task auto-generated",
-        time: "5 days ago",
-        unread: true,
-    },
-    {
-        id: "5",
-        initials: "MZ",
-        name: "Muhammad Zanaen Ullah",
-        message: "Recurring task auto-generated",
-        time: "6 days ago",
-        unread: true,
-    },
-    {
-        id: "6",
-        initials: "MZ",
-        name: "Muhammad Zanaen Ullah",
-        message: "Recurring task auto-generated",
-        time: "7 days ago",
-        unread: true,
-    },
-    {
-        id: "7",
-        initials: "MZ",
-        name: "Muhammad Zanaen Ullah",
-        message: "Recurring task auto-generated",
-        time: "7 days ago",
-        unread: true,
-    },
-    {
-        id: "8",
-        initials: "MZ",
-        name: "Muhammad Zanaen Ullah",
-        message: "Recurring task auto-generated",
-        time: "7 days ago",
-        unread: true,
-    },
-    {
-        id: "9",
-        initials: "MZ",
-        name: "Muhammad Zanaen Ullah",
-        message: "Recurring task auto-generated",
-        time: "7 days ago",
-        unread: true,
-    },
-];
+import { NotificationItem } from "@/types/chat.types";
 
 interface InboxModalProps {
     visible: boolean;
@@ -101,28 +21,76 @@ interface InboxModalProps {
 
 type TabType = "all" | "unread" | "mentions";
 
+function formatNotificationTime(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function getNotificationInitials(item: NotificationItem): string {
+    if (item.assigned) {
+        const first = item.assigned.first_name?.[0] ?? "";
+        const last = item.assigned.last_name?.[0] ?? "";
+        return (first + last).toUpperCase() || "SY";
+    }
+    return "SY";
+}
+
+function getNotificationName(item: NotificationItem): string {
+    if (item.assigned) {
+        return `${item.assigned.first_name} ${item.assigned.last_name}`;
+    }
+    return "System";
+}
+
 export default function InboxModal({ visible, onClose }: InboxModalProps) {
     const [activeTab, setActiveTab] = useState<TabType>("all");
-    const [notifications, setNotifications] = useState<NotificationItem[]>(
-        MOCK_NOTIFICATIONS
+    const authState = useAuth();
+    const companyId = authState?.state?.company?.company_id ?? 0;
+    const {
+        state: notifState,
+        fetchNotifications,
+        markRead,
+        markAllRead,
+    } = useNotifications();
+
+    useEffect(() => {
+        if (visible && companyId) {
+            fetchNotifications(companyId, true);
+        }
+    }, [visible, companyId, fetchNotifications]);
+
+    const handleMarkAllRead = useCallback(() => {
+        if (companyId) {
+            markAllRead(companyId);
+        }
+    }, [companyId, markAllRead]);
+
+    const handleItemPress = useCallback(
+        (item: NotificationItem) => {
+            if (item.readed === 0) {
+                markRead(item.id);
+            }
+        },
+        [markRead]
     );
 
-    const handleMarkAllRead = () => {
-        setNotifications((prev) =>
-            prev.map((item) => ({ ...item, unread: false }))
-        );
-    };
-
-    // Calculate unread count
-    const unreadCount = notifications.filter((item) => item.unread).length;
-
-    // Filter items based on active tab
-    const filteredNotifications = notifications.filter((item) => {
-        if (activeTab === "unread") return item.unread;
-        // Mocking mentions as empty or subset (e.g. no items for now)
-        if (activeTab === "mentions") return false;
+    const filteredNotifications = notifState.notifications.filter((item) => {
+        if (activeTab === "unread") return item.readed === 0;
+        if (activeTab === "mentions") return item.typ === "chat";
         return true;
     });
+
+    const unreadCount = notifState.unreadCount;
 
     return (
         <Modal
@@ -133,26 +101,23 @@ export default function InboxModal({ visible, onClose }: InboxModalProps) {
             onRequestClose={onClose}
         >
             <View style={styles.modalContainer}>
-                {/* Backdrop sibling to handle tap outside */}
                 <Pressable style={styles.backdrop} onPress={onClose} />
 
-                {/* Popup Card */}
                 <View style={styles.popup}>
                     {/* Header */}
                     <View style={styles.header}>
                         <Text style={styles.title}>Inbox</Text>
                         <View style={styles.headerActions}>
-                            <TouchableOpacity
-                                onPress={handleMarkAllRead}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.markReadText}>
-                                    Mark all read
-                                </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity activeOpacity={0.7}>
-                                <Text style={styles.viewAllText}>View all</Text>
-                            </TouchableOpacity>
+                            {unreadCount > 0 && (
+                                <TouchableOpacity
+                                    onPress={handleMarkAllRead}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.markReadText}>
+                                        Mark all read
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </View>
 
@@ -188,8 +153,7 @@ export default function InboxModal({ visible, onClose }: InboxModalProps) {
                                 <Text
                                     style={[
                                         styles.tabText,
-                                        activeTab === "unread" &&
-                                        styles.activeTabText,
+                                        activeTab === "unread" && styles.activeTabText,
                                     ]}
                                 >
                                     Unread
@@ -215,8 +179,7 @@ export default function InboxModal({ visible, onClose }: InboxModalProps) {
                             <Text
                                 style={[
                                     styles.tabText,
-                                    activeTab === "mentions" &&
-                                    styles.activeTabText,
+                                    activeTab === "mentions" && styles.activeTabText,
                                 ]}
                             >
                                 Mentions
@@ -230,18 +193,32 @@ export default function InboxModal({ visible, onClose }: InboxModalProps) {
                         style={styles.listScroll}
                         contentContainerStyle={styles.listContent}
                     >
-                        {filteredNotifications.length === 0 ? (
+                        {notifState.loading ? (
                             <View style={styles.emptyContainer}>
+                                <ActivityIndicator size="small" color="#00DEAB" />
+                            </View>
+                        ) : filteredNotifications.length === 0 ? (
+                            <View style={styles.emptyContainer}>
+                                <Ionicons
+                                    name="notifications-off-outline"
+                                    size={28}
+                                    color="#D1D5DB"
+                                />
                                 <Text style={styles.emptyText}>
                                     No notifications found.
                                 </Text>
                             </View>
                         ) : (
                             filteredNotifications.map((item) => (
-                                <View key={item.id} style={styles.notificationRow}>
+                                <TouchableOpacity
+                                    key={item.id}
+                                    style={styles.notificationRow}
+                                    activeOpacity={0.7}
+                                    onPress={() => handleItemPress(item)}
+                                >
                                     {/* Unread dot */}
                                     <View style={styles.dotCol}>
-                                        {item.unread && (
+                                        {item.readed === 0 && (
                                             <View style={styles.unreadDot} />
                                         )}
                                     </View>
@@ -249,7 +226,7 @@ export default function InboxModal({ visible, onClose }: InboxModalProps) {
                                     {/* Avatar */}
                                     <View style={styles.avatar}>
                                         <Text style={styles.avatarText}>
-                                            {item.initials}
+                                            {getNotificationInitials(item)}
                                         </Text>
                                     </View>
 
@@ -260,14 +237,17 @@ export default function InboxModal({ visible, onClose }: InboxModalProps) {
                                             numberOfLines={2}
                                         >
                                             <Text style={styles.senderName}>
-                                                {item.name}
+                                                {getNotificationName(item)}
                                             </Text>
                                             <Text style={styles.messageBody}>
-                                                {" "}{item.message}
+                                                {" "}
+                                                {item.title.replace(
+                                                    getNotificationName(item),
+                                                    ""
+                                                ).trim() || item.title}
                                             </Text>
                                         </Text>
 
-                                        {/* Time */}
                                         <View style={styles.timeRow}>
                                             <Ionicons
                                                 name="time-outline"
@@ -276,11 +256,11 @@ export default function InboxModal({ visible, onClose }: InboxModalProps) {
                                                 style={styles.timeIcon}
                                             />
                                             <Text style={styles.timeText}>
-                                                {item.time}
+                                                {formatNotificationTime(item.createdAt)}
                                             </Text>
                                         </View>
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                             ))
                         )}
                     </ScrollView>
@@ -319,7 +299,7 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 4 },
         elevation: 6,
-        maxHeight: 200,
+        maxHeight: 350,
     },
     header: {
         flexDirection: "row",
@@ -340,12 +320,6 @@ const styles = StyleSheet.create({
         fontSize: 11.5,
         fontFamily: "SF_Pro_Semibold",
         color: "#556EE6",
-        marginRight: 10,
-    },
-    viewAllText: {
-        fontSize: 11.5,
-        fontFamily: "SF_Pro_Semibold",
-        color: "#00DEAB",
     },
     tabsContainer: {
         flexDirection: "row",
@@ -362,7 +336,7 @@ const styles = StyleSheet.create({
     },
     activeTabButton: {
         borderBottomColor: "#00DEAB",
-        borderRadius: 10
+        borderRadius: 10,
     },
     tabText: {
         fontSize: 11.5,
@@ -396,13 +370,14 @@ const styles = StyleSheet.create({
     listScroll: {
         maxHeight: 250,
     },
-    // listContent: {
-    //     paddingBottom: 8,
-    // },
+    listContent: {
+        paddingBottom: 8,
+    },
     emptyContainer: {
         paddingVertical: 32,
         alignItems: "center",
         justifyContent: "center",
+        gap: 8,
     },
     emptyText: {
         fontSize: 13,
@@ -413,8 +388,6 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         paddingVertical: 9,
-        // borderBottomWidth: 1,
-        // borderBottomColor: "#F2F2F7",
     },
     dotCol: {
         width: 14,

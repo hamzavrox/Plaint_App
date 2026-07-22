@@ -1,4 +1,6 @@
 import { AuthContext, AuthProvider } from "@/context/AuthContext";
+import { ChatProvider } from "@/context/ChatContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import { TaskProvider } from "@/context/TaskContext";
 import useAppFonts from "@/theme/useAppFonts";
 import { Stack, useRouter, useSegments } from "expo-router";
@@ -61,7 +63,11 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <TaskProvider>
-        <RootNavigator />
+        <ChatProvider>
+          <NotificationProvider>
+            <RootNavigator />
+          </NotificationProvider>
+        </ChatProvider>
       </TaskProvider>
     </AuthProvider>
   );

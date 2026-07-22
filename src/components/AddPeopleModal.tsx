@@ -333,6 +333,13 @@ export default function AddPeopleModal({
   );
 
   useEffect(() => {
+    if (visible) {
+      setQuery("");
+      setSelectedUserIds(new Set());
+    }
+  }, [visible]);
+
+  useEffect(() => {
     const show = Keyboard.addListener("keyboardDidShow", () =>
       setKeyboardShown(true),
     );
