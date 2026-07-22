@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "pk.planit"
+      "bundleIdentifier": "pk.planit",
+      "appleTeamId": "Y9Q8B6NUBB"
     },
     "android": {
       "adaptiveIcon": {

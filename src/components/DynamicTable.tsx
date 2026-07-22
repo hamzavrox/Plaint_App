@@ -166,6 +166,12 @@ export interface DynamicTableProps<T = any> {
   swipeActionWidth?: number;
   /** Disable table-level horizontal scrolling when row swipe owns horizontal dragging */
   disableHorizontalScroll?: boolean;
+  /** Base row height. Defaults to 52. */
+  rowHeight?: number;
+  /** Height used when the second swipe stage is revealed. */
+  detailRowHeight?: number;
+  /** Tighter header treatment used by compact mobile tables. */
+  compactHeader?: boolean;
 }
 
 // ─── DynamicRow (memoised) ────────────────────────────────────────────────────
@@ -193,6 +199,8 @@ interface DynamicRowProps<T> {
   onSwipeDragStateChange: (dragging: boolean) => void;
   rowZIndex: number;
   openRowZIndex: number;
+  rowHeight: number;
+  detailRowHeight: number;
 }
 
 const DynamicRow = memo(function DynamicRow<T>({
@@ -218,11 +226,14 @@ const DynamicRow = memo(function DynamicRow<T>({
   onSwipeDragStateChange,
   rowZIndex,
   openRowZIndex,
+  rowHeight,
+  detailRowHeight,
 }: DynamicRowProps<T>) {
   const canSwipe = typeof renderSwipeContent === "function";
   const zIndex = isOpen || isSwipeOpen ? openRowZIndex : rowZIndex;
   const translateX = useMemo(() => new Animated.Value(0), []);
-  const rowHeight = swipeStage === "details" ? 104 : 52;
+  const currentRowHeight =
+    swipeStage === "details" ? detailRowHeight : rowHeight;
   const currentRevealWidth =
     swipeStage === "details"
       ? swipeContentWidth
@@ -370,14 +381,14 @@ const DynamicRow = memo(function DynamicRow<T>({
     <View
       style={[
         styles.rowWrap,
-        { zIndex, elevation: zIndex, minHeight: rowHeight },
+        { zIndex, elevation: zIndex, minHeight: currentRowHeight },
       ]}
     >
       {canSwipe && (
         <View
           style={[
             styles.swipeContent,
-            { width: swipeContentWidth, minHeight: rowHeight },
+            { width: swipeContentWidth, minHeight: currentRowHeight },
           ]}
         >
           {renderSwipeContent?.(
@@ -394,7 +405,14 @@ const DynamicRow = memo(function DynamicRow<T>({
         style={canSwipe ? { transform: [{ translateX }] } : undefined}
         {...(canSwipe ? panResponder.panHandlers : {})}
       >
-        <RowComponent style={styles.row} {...rowProps}>
+        <RowComponent
+          style={[
+            styles.row,
+            rowHeight < 52 && styles.compactRow,
+            { minHeight: rowHeight },
+          ]}
+          {...rowProps}
+        >
           {/* Leading cell (accent + checkbox) */}
           {leadingColumnWidth != null && leadingColumnWidth > 0 && (
             <View style={{ width: leadingColumnWidth }}>
@@ -463,7 +481,10 @@ const DynamicRow = memo(function DynamicRow<T>({
       {/* Per-row dropdown */}
       {isOpen && renderDropdown && (
         <View
-          style={[styles.dropdown, { left: actionLeft, width: actionColWidth }]}
+          style={[
+            styles.dropdown,
+            { top: rowHeight, left: actionLeft, width: actionColWidth },
+          ]}
         >
           {renderDropdown(item, rowIndex, onClose)}
         </View>
@@ -496,6 +517,9 @@ function DynamicTable<T = any>({
   swipeContentWidth = 330,
   swipeActionWidth = 190,
   disableHorizontalScroll = false,
+  rowHeight = 52,
+  detailRowHeight = 104,
+  compactHeader = false,
 }: DynamicTableProps<T>): React.ReactElement {
   const [collapsed, setCollapsed] = useState(false);
   const [openRowIndex, setOpenRowIndex] = useState<number | null>(null);
@@ -542,6 +566,7 @@ function DynamicTable<T = any>({
           key={col.key}
           style={[
             styles.colHead,
+            compactHeader && styles.compactColHead,
             { width: col.width },
             col.align === "center" && styles.alignCenter,
             col.align === "right" && styles.alignRight,
@@ -550,7 +575,7 @@ function DynamicTable<T = any>({
           {col.title}
         </Text>
       )),
-    [columns],
+    [columns, compactHeader],
   );
 
   return (
@@ -622,6 +647,9 @@ function DynamicTable<T = any>({
           openRowZIndex={openRowZIndex}
           resolveKey={resolveKey}
           maxHeight={maxHeight}
+          rowHeight={rowHeight}
+          detailRowHeight={detailRowHeight}
+          compactHeader={compactHeader}
         />
       )}
     </View>
@@ -660,6 +688,9 @@ interface StickyHeaderTableProps<T> {
   openRowZIndex: number;
   resolveKey: (item: T, i: number) => string;
   maxHeight: number;
+  rowHeight: number;
+  detailRowHeight: number;
+  compactHeader: boolean;
 }
 
 function StickyHeaderTable<T>({
@@ -689,6 +720,9 @@ function StickyHeaderTable<T>({
   openRowZIndex,
   resolveKey,
   maxHeight,
+  rowHeight,
+  detailRowHeight,
+  compactHeader,
 }: StickyHeaderTableProps<T>) {
   const headerScrollRef = useRef<ScrollView>(null);
   const bodyHScrollRef = useRef<ScrollView>(null);
@@ -741,7 +775,12 @@ function StickyHeaderTable<T>({
         onScroll={onHeaderScroll}
         scrollEventThrottle={16}
       >
-        <View style={styles.tableHeader}>
+        <View
+          style={[
+            styles.tableHeader,
+            compactHeader && styles.compactTableHeader,
+          ]}
+        >
           {leadingColumnWidth != null && leadingColumnWidth > 0 && (
             <View style={{ width: leadingColumnWidth }} />
           )}
@@ -808,6 +847,8 @@ function StickyHeaderTable<T>({
                 onSwipeDragStateChange={onSwipeDragStateChange}
                 rowZIndex={rowZIndex}
                 openRowZIndex={openRowZIndex}
+                rowHeight={rowHeight}
+                detailRowHeight={detailRowHeight}
               />
             ))}
         </ScrollView>
@@ -854,22 +895,35 @@ const styles = StyleSheet.create({
   // Table header row
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#EAEAEA",
+    backgroundColor: "#E5E7EB",
     borderRadius: 8,
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 4,
+    paddingHorizontal: 8,
+    marginBottom: 6,
     alignItems: "center",
   },
+  compactTableHeader: {
+    backgroundColor: "#E5E7EB",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    marginBottom: 6,
+  },
   colHead: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontFamily: "SF_Pro_Medium",
-    color: "#4B5563",
-    paddingRight: 8,
+    color: "#1F2937",
+    paddingRight: 4,
+  },
+  compactColHead: {
+    fontSize: 13,
+    fontFamily: "SF_Pro_Medium",
+    color: "#1F2937",
+    paddingRight: 4,
   },
 
   // Data row wrapper (needed for z-index elevation on open dropdown)
-  rowWrap: { position: "relative" },
+  rowWrap: { position: "relative", overflow: "visible" },
 
   swipeContent: {
     position: "absolute",
@@ -886,17 +940,19 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    minHeight: 52,
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
     backgroundColor: "#fff",
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
+    overflow: "visible",
+  },
+  compactRow: {
+    paddingHorizontal: 6,
   },
 
   // Dropdown floats below the row, overlays rows underneath
   dropdown: {
     position: "absolute",
-    top: 52,
     zIndex: 9999,
     elevation: 9999,
     backgroundColor: "#fff",

@@ -13,7 +13,7 @@ function ChannelIcon(props) {
       {...props}
     >
       <Mask
-        id="a"
+        id="mask_channeltab"
         style={{
           maskType: "alpha"
         }}
@@ -25,7 +25,7 @@ function ChannelIcon(props) {
       >
         <Path fill="url(#pattern0_1626_6243)" d="M0 0H38.8574V38.8574H0z" />
       </Mask>
-      <G mask="url(#a)">
+      <G mask="url(#mask_channeltab)">
         <Path
           fill="#0DDFAB"
           d="M-7.22247 -4.34863H39.61293V42.48677H-7.22247z"

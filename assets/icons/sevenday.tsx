@@ -22,7 +22,7 @@ function SevendayIcon(props) {
       {...props}
     >
       <Mask
-        id="a"
+        id="mask_sevenday"
         style={{
           maskType: "alpha"
         }}
@@ -34,7 +34,7 @@ function SevendayIcon(props) {
       >
         <Path fill="url(#pattern0_1100_6601)" d="M0 0H13.6133V13.6133H0z" />
       </Mask>
-      <G mask="url(#a)">
+      <G mask="url(#mask_sevenday)">
         <Circle cx={6.99852} cy={6.4251} r={11.8775} fill="#0DDFAB" />
       </G>
       <Defs>

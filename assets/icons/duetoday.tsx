@@ -21,7 +21,7 @@ function DueTodayIcon(props) {
       {...props}
     >
       <Mask
-        id="a"
+        id="mask_duetoday"
         style={{
           maskType: "alpha"
         }}
@@ -33,7 +33,7 @@ function DueTodayIcon(props) {
       >
         <Path fill="url(#pattern0_1100_6597)" d="M0 0H17.835V17.835H0z" />
       </Mask>
-      <G mask="url(#a)">
+      <G mask="url(#mask_duetoday)">
         <Circle cx={9.10936} cy={8.53594} r={11.8775} fill="#0DDFAB" />
       </G>
       <Defs>

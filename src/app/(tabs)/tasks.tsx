@@ -37,7 +37,6 @@ export default function TasksScreen() {
     updateTaskStatusApi,
   } = useTasks();
 
-  const [isScrolled, setIsScrolled] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [filterVisible, setFilterVisible] = useState(false);
   const [createVisible, setCreateVisible] = useState(false);
@@ -225,7 +224,7 @@ export default function TasksScreen() {
           placeholder="Search Tasks..."
           showSearch
           showFilter={false}
-          forceSearchOpen={!isScrolled}
+          forceSearchOpen
           onFilterPress={() => setFilterVisible(true)}
         />
         <FilterModal
@@ -256,20 +255,16 @@ export default function TasksScreen() {
           ))}
         </ScrollView>
 
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          onScroll={(e) => setIsScrolled(e.nativeEvent.contentOffset.y > 10)}
-          scrollEventThrottle={16}
-        >
+        <View style={styles.tableShell}>
           <TaskTable
             sectionTitle={statsList.find((s) => s.id === activeTab)?.label ?? "All Tasks"}
             tasks={displayedTasks}
             onTaskPress={handleTaskPress}
             onStatusChange={handleStatusChange}
             onFilterPress={() => setFilterVisible(true)}
+            loading={taskState.loading}
           />
-        </ScrollView>
+        </View>
       </SafeAreaView>
 
       <TouchableOpacity style={styles.fab} activeOpacity={0.85} onPress={() => setCreateVisible(true)}>
@@ -287,8 +282,12 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   statsScroll: { maxHeight: 50 },
   statsContent: { paddingHorizontal: 16, paddingBottom: 15, gap: 6 },
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 },
+  tableShell: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 120,
+  },
   fab: {
     position: "absolute",
     bottom: 100,

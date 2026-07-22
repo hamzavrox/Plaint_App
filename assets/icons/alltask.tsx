@@ -22,7 +22,7 @@ function AllTasksIcon(props) {
       {...props}
     >
       <Mask
-        id="a"
+        id="mask_alltask"
         style={{
           maskType: "alpha"
         }}
@@ -34,7 +34,7 @@ function AllTasksIcon(props) {
       >
         <Path fill="url(#pattern0_1235_1019)" d="M0 0H15.8765V15.8765H0z" />
       </Mask>
-      <G mask="url(#a)">
+      <G mask="url(#mask_alltask)">
         <Circle cx={8.10884} cy={7.59852} r={10.5732} fill="#0DDFAB" />
       </G>
       <Defs>
