@@ -1,35 +1,50 @@
-# Plaint — Project Documentation
+﻿# Plaint — Project Documentation
+
+> Last updated: 2026-07-21
 
 ## Overview
 
-Plaint is a cross-platform Expo app for task and project management. It targets Android, iOS, and Web while using Expo Router, React Native, TypeScript, and custom SF Pro fonts.
+Plaint is a cross-platform Expo app for task, project, and team management. It targets Android, iOS, and Web using Expo Router, React Native, TypeScript, and custom SF Pro fonts. The app covers onboarding, authentication, task dashboards, real-time-style chat with project channels, conversation messaging, leave management, and performance tracking.
+
+---
 
 ## Key Features
 
-- Onboarding carousel with auto-advance and call‑to‑action navigation
+- Onboarding carousel with auto-advance and call-to-action navigation
 - Login screen with animated floating inputs and password visibility toggle
-- Primary task dashboard with search, filters, and status cards
-- Scrollable task table with swipeable rows to reveal hidden actions/columns and inline status dropdowns
-- Bottom sheet create task modal with task metadata chips and simulated attachments
-- Custom floating bottom tab bar across app sections
-- Chat list view with category filters, unread indicators, and empty states
-- Complex conversation screen with message bubbles, inline calendar/attachment panels, and animated search
+- Primary task dashboard with search, filters, stat cards, and scrollable task table
+- Swipeable task rows with inline status dropdowns and hidden action columns
+- Bottom sheet create/edit task modal with metadata chips and attachment simulation
+- Custom floating bottom tab bar across all sections
+- Chat list view with category chips (All, Unread, Read, Channels, Projects), unread indicators, and empty states
+- Projects tab with expandable project rows, default channels (General, Discussion), and add-group flow
+- Full-screen conversation/messaging screen with message bubbles, inline date filter, attachment panels, chat member list, post-type filter, and animated search bar
+- Notification bell with dropdown inbox panel (positioned contextually below the bell icon)
+- Leave management screen with leave type cards and detailed leave modals
+- Performance/HR stats placeholder tab
+- Profile screen
 
 ---
 
 ## Tech Stack
 
-- Expo SDK ~57
-- React Native 0.86.0
-- React 19.2.3
-- TypeScript ~6.0.3
-- Expo Router ~57.0.2
-- React Navigation via Expo Router Tabs
-- `@expo/vector-icons`, `react-native-svg`
-- `expo-font`, `expo-linear-gradient`, `expo-splash-screen`
-- `react-native-reanimated` 4.5.0
-- `react-native-gesture-handler`
-- `expo-image`, `expo-device`, `expo-constants`, `expo-linking`, `expo-web-browser`
+| Package | Version |
+|---|---|
+| Expo SDK | ~57 |
+| React Native | 0.86.0 |
+| React | 19.2.3 |
+| TypeScript | ~6.0.3 |
+| Expo Router | ~57.0.2 |
+| react-native-reanimated | 4.5.0 |
+| react-native-gesture-handler | latest |
+| @expo/vector-icons | latest |
+| react-native-svg | latest |
+| expo-font | latest |
+| expo-linear-gradient | latest |
+| expo-splash-screen | latest |
+| expo-image | latest |
+| expo-device / expo-constants | latest |
+| expo-linking / expo-web-browser | latest |
 
 ---
 
@@ -38,42 +53,50 @@ Plaint is a cross-platform Expo app for task and project management. It targets 
 ```
 Plaint/
 ├── assets/
-│   ├── fonts/              # SF Pro Text font files
+│   ├── fonts/              # SF Pro Text font files (.otf)
 │   ├── icons/              # Custom SVG icon components
-│   └── images/             # App visuals, splash, and icons
+│   └── images/             # App visuals, splash, banners, logos
 ├── scripts/
 │   └── reset-project.js    # Reset helper script
 ├── src/
 │   ├── app/                # Expo Router screens and routes
-│   │   ├── _layout.tsx     # Root layout with ThemeProvider and Stack
-│   │   ├── index.tsx       # Entry route
-│   │   ├── splashscreem.tsx# Onboarding screen
+│   │   ├── _layout.tsx     # Root layout (ThemeProvider + Stack)
+│   │   ├── index.tsx       # Entry redirect route
+│   │   ├── splashscreem.tsx# Onboarding/splash screen
 │   │   ├── explore.tsx     # Expo starter example screen
+│   │   ├── profile.tsx     # User profile screen
+│   │   ├── conversation.tsx# Full messaging/conversation screen
 │   │   ├── (auth)/
 │   │   │   └── login.tsx   # Login screen
 │   │   └── (tabs)/
-│   │       ├── _layout.tsx # Tabs layout with custom tab bar
-│   │       ├── Tasks.tsx   # Main task dashboard
-│   │       ├── Dashboard.tsx
-│   │       ├── stats.tsx
-│   │       ├── home.tsx
-│   │       ├── chat.tsx
-│   │       ├── biometric.tsx
-│   │       └── grid.tsx
-│   ├── components/         # Reusable UI components
+│   │       ├── _layout.tsx # Tabs layout with CustomTabBar
+│   │       ├── tasks.tsx   # Main task dashboard
+│   │       ├── chat.tsx    # Chat / Projects list screen
+│   │       ├── leaves.tsx  # Leave management screen
+│   │       ├── performance.tsx # Performance/HR placeholder
+│   │       ├── home.tsx    # Home placeholder
+│   │       ├── biometric.tsx   # Biometric placeholder
+│   │       └── grid.tsx    # Grid placeholder
+│   ├── components/         # Reusable UI components (see below)
 │   ├── constants/
-│   │   └── theme.ts        # Theme constants
-│   ├── context/            # Reserved for React providers
-│   ├── hooks/              # Custom hooks
-│   ├── services/           # Reserved for service logic
+│   │   ├── icons.tsx       # Centralized icon exports
+│   │   └── theme.ts        # System theme constants
+│   ├── context/            # Reserved for React context providers
+│   ├── data/               # Mock / static data files
+│   ├── hooks/
+│   │   ├── use-color-scheme.ts
+│   │   └── use-theme.ts
+│   ├── services/           # Reserved for API/service logic
 │   ├── theme/
-│   │   ├── root.tsx        # Colors, spacing, typography, radius
+│   │   ├── root.tsx        # App colors, spacing, typography, radius tokens
 │   │   └── useAppFonts.tsx # Font loader hook
+│   ├── types/              # Shared TypeScript types
 │   ├── utils/              # Utility helpers
 │   └── global.css          # Web global styles
 ├── app.json                # Expo configuration
 ├── package.json
-└── tsconfig.json
+├── tsconfig.json
+└── PROJECT.md              # This file
 ```
 
 ---
@@ -88,15 +111,16 @@ Plaint/
 
 ### Tab Layout — `src/app/(tabs)/_layout.tsx`
 - Uses Expo Router `Tabs` with a custom `CustomTabBar`.
-- Defines 7 bottom tab routes: `Tasks`, `Dashboard`, `stats`, `home`, `chat`, `biometric`, `grid`.
+- Defines tab routes: `tasks`, `chat`, `leaves`, `performance`, `home`, `biometric`, `grid`.
 
 ### App Flow
 
 ```
-/ -> splashscreem -> /login -> /(tabs)/Tasks
+/ → splashscreem → /login → /(tabs)/tasks
+                           → /(tabs)/chat → /conversation
+                           → /(tabs)/leaves
+                           → /profile
 ```
-
-`explore.tsx` remains available as a separate starter example screen.
 
 ---
 
@@ -104,216 +128,258 @@ Plaint/
 
 ### Onboarding — `src/app/splashscreem.tsx`
 - Auto-scrolling banner carousel with 4 slides.
-- Uses a custom top gradient header component.
-- Displays dot indicators for current slide.
+- Displays dot indicators for the current slide.
 - Navigates to `/login` on CTA tap.
 
+---
+
 ### Login — `src/app/(auth)/login.tsx`
-- Login form with email and password fields.
-- Uses `FloatingInput` with floating labels.
+- Login form with email and password fields using `FloatingInput`.
 - Password field includes an eye toggle.
-- `Log In` button routes to the Tasks tab.
-- Includes a placeholder `Forgot Password?` link.
+- `Log In` routes to the Tasks tab.
+- Placeholder `Forgot Password?` link.
 
-### Tasks — `src/app/(tabs)/Tasks.tsx`
-The app’s main task management screen.
+---
 
-Features:
-- Header with greeting, description, notification bell, and avatar initials.
-- Search input and filter button.
-- Scrollable status cards for task category selection.
-- Task table rendered from mocked task data.
-- Floating action button opens the create task modal.
+### Tasks — `src/app/(tabs)/tasks.tsx`
+Main task management dashboard.
 
-#### Task Filters
-- All Tasks
-- Due Today
-- Due in 7 days
-- Delayed
-- Created by me
-- Assigned to me
-- Recurring
-- Completed
+**Features:**
+- `AppHeader` with greeting, notification bell, avatar initials, and search.
+- Scrollable filter chips for task categories.
+- Stat cards for quick task-count overview.
+- `TaskTable` component renders mocked task data.
+- FAB opens the `CreateTaskModal`.
 
-### Dashboard — `src/app/(tabs)/Dashboard.tsx`
-- Placeholder screen showing the shared `AppHeader` component.
+**Task Filter Categories:**
+All Tasks · Due Today · Due in 7 Days · Delayed · Created by Me · Assigned to Me · Recurring · Completed
 
-### Stats / Home / Chat / Biometric / Grid Tabs
-- `src/app/(tabs)/stats.tsx`
-- `src/app/(tabs)/home.tsx`
+---
+
 ### Chat — `src/app/(tabs)/chat.tsx`
-- Displays a horizontal list of filter chips (All, Unread, Read, Channels, Groups) with green unread dot indicators.
-- Renders a mock list of chat users with initials avatars, online status dots, message snippets, timestamps, and unread count bubbles.
-- Fallback "Private workspace" empty state when no chats exist.
-- When the "Channels" chip is active, it renders a specialized empty state featuring the `ChannelTabIcon` and a "+ Create Channel" button.
-- Triggers a sequential modal flow for creating channels: `CreateChannelModal` -> `AddPeopleModal` (in multiple selection mode).
-- Bottom-right Floating Action Button (FAB) for creating new messages.
+Chat list screen with two sub-modes: **All Chats** and **Projects**.
+
+**Filter Chips:** All · Unread · Read · Channels · Projects
+
+**All / Unread / Read mode:**
+- List of users with initials avatars, online dot, message snippet, timestamp, unread bubble.
+- Tapping a user navigates to `/conversation`.
+- FAB opens `AddPeopleModal` to start a new chat.
+
+**Channels mode:**
+- Separate list of channel entries.
+- Empty state shows `ChannelTabIcon` + "Create Channel" button.
+- FAB opens `CreateChannelModal` → `AddPeopleModal` flow.
+
+**Projects mode:**
+- Expandable project rows (chevron toggle).
+- Each project has default channels: `# General`, `# Discussion`.
+- `+` button on each project row opens `CreateChannelModal` (group name) → `AddPeopleModal` → new group appended to the project's channels list.
+- Channel rows: white background by default; gray highlight on active/selected.
+- Project rows: gray highlight on active/selected.
+
+---
 
 ### Conversation — `src/app/conversation.tsx`
-- Full-screen messaging interface with incoming (right-aligned, teal background) and outgoing (left-aligned, white background) message bubbles.
-- Expandable animated search bar integrated via the header.
-- Interactive filter chips (Date, Attachments) that open inline panels:
-  - **Date Panel**: Sidebar with quick ranges (Today, Last 7 days, etc.) next to a compact `CalendarPicker`.
-  - **Attachments Panel**: Sub-tabs for Images, Videos, Docs, and Links.
+Full-screen messaging interface.
 
-### Biometric / Grid Tabs
-- `src/app/(tabs)/biometric.tsx`
-- `src/app/(tabs)/grid.tsx`
+**Features:**
+- Incoming (right-aligned, teal) and outgoing (left-aligned, white) message bubbles.
+- Expandable animated search bar in the header.
+- **Top filter chips** (single row): Date · Attachments · Chat Members · Post Type
+  - **Date chip**: Quick filter buttons (Today, Last 7 Days, Last 30 Days, This Month, Last Month, Custom Range) + responsive `CalendarPicker` with correct 7-column week layout.
+  - **Attachments chip**: Sub-tabs for Images, Videos, Docs, Links.
+  - **Chat Members chip**: List of conversation members.
+  - **Post Type chip**: Two post types displayed per row in a grid.
+- All filter chips fit on a single line without wrapping.
 
-These tabs are currently placeholders with shared app header scaffolding.
+---
+
+### Leaves — `src/app/(tabs)/leaves.tsx`
+Leave management screen.
+
+**Features:**
+- Leave balance cards (Annual, Sick, Casual, etc.).
+- Apply leave form / flow.
+- `LeaveDetailModal` for viewing leave request details.
+
+---
+
+### Performance — `src/app/(tabs)/performance.tsx`
+Placeholder for HR/performance metrics. Uses shared `AppHeader`.
+
+---
+
+### Profile — `src/app/profile.tsx`
+User profile screen with personal information and settings.
+
+---
 
 ### Explore — `src/app/explore.tsx`
-- Expo starter example screen.
-- Includes theme-aware layout, collapsible sections, and web-specific elements.
+Expo starter example screen (template remnant). Theme-aware layout, collapsible sections, web-specific elements.
 
 ---
 
 ## Components
 
-### `CustomTabBar`
-- Floating bottom tab bar with pill-shaped container.
-- Active tab icon is highlighted with a white circular background.
-- Uses Ionicons for navigation icons.
+### `AppHeader` — `src/components/headerapp.tsx`
+Reusable header used across all main screens.
 
-### `AppHeader`
-- Reusable header used across the main screen and placeholder tabs.
-- Shows title, subtitle, notification bell, and avatar initials.
-
-### `StatCard`
-- Displays an icon, label, and count.
-- Supports both Ionicons string icons and custom React nodes.
-- Active card is highlighted with a teal border.
-
-### `TaskTable`
-- Collapsible section with a horizontal scroll for wide rows.
-- Renders column headers and multiple `TaskRow` components.
-- Includes swipeable row logic: swiping left reveals hidden columns and a "More" actions button.
-- Maintains open state so only one row dropdown is expanded at a time.
-
-### `TaskRow`
-- Displays task title, creator, assignee, due date, status, comment icon, and project name.
-- Includes inline dropdown for changing status.
-- Marks completed tasks with a checkmark and strikethrough styling.
-- Supports statuses: `Pending`, `In-Progress`, `On-Hold`, `Rejected`, `Completed`, `Pending-Approval`.
-
-### `CreateTaskModal`
-- Bottom sheet modal for task creation.
-- Includes floating title input and description editor.
-- Shows action chips for assignee, due date, priority, approval, recurring, subtasks, and dependencies.
-- Simulates attachments and tag chips.
-- UI only; created tasks are not persisted.
-
-### `FloatingInput`
-- Animated floating label input field.
-- Handles focus/blur transitions and secure text entry.
-- Includes a password visibility toggle when `secureToggle` is enabled.
-
-### `CreateChannelModal`
-- A perfectly centered modal for naming a new channel.
-- Uses `FloatingInput` for the channel name.
-- Transitions seamlessly to `AddPeopleModal` after submission.
-
-### `AddPeopleModal`
-- Reusable bottom sheet modal for finding and selecting users.
-- Features a floating search input and a list of `UserRow` components.
-- Supports two modes:
-  - **Single Select**: Tapping a user routes directly to the conversation.
-  - **Channel Mode** (`isChannelMode`): Displays checkboxes for multi-selection, a "Select All" option, and a green "Invite" button at the top to finalize channel creation.
-
-### Additional Components
-- `FilterModal` — task filter modal.
-- `CalendarPicker` — date selection UI.
-- `BottomTabBar` — legacy alternate bottom tab bar.
-- `app-tabs.tsx` / `app-tabs.web.tsx` — platform tab abstractions.
-- `animated-icon.tsx` / `animated-icon.web.tsx` — animated icon wrappers.
-- `gradientheader.tsx` — top gradient decoration.
-- `gradientfooter.tsx` — bottom gradient decoration.
-- `radialbottom.tsx` — radial gradient accent.
-- `hint-row.tsx` — hint/tip row.
-- `external-link.tsx` — external link helper.
-- `themed-text.tsx` / `themed-view.tsx` — theme-aware wrappers.
-- `web-badge.tsx` — web-only badge.
-- `ui/collapsible.tsx` — reusable collapsible component.
+- Greeting title + subtitle.
+- Notification bell icon with contextual dropdown inbox panel:
+  - Opens directly below the bell icon, aligned to icon position.
+  - Responsive width — not full-screen.
+  - Compact notification list with icon, title, description.
+  - Text sizes match design spec (small/compact).
+- Search bar (optional, togglable).
+- Avatar initials circle.
 
 ---
 
-## Theme & Styling
+### `CustomTabBar` — `src/components/CustomTabBar.tsx`
+Floating pill-shaped bottom tab bar.
 
-### `src/theme/root.tsx`
-- Primary color: `#1ED9A5`
-- Button background: `#00DFAB`
-- Button text: `#1D1D1D`
-- Background: `#FFFFFF`
-- Primary text: `#1D1D1D`
-- Secondary text: `#6B6B6B`
-- Placeholder: `#E6E6E6`
-- Input border focus: `#1D1D1D`
-- Input border default: `#E6E6E6`
-
-### `src/theme/useAppFonts.tsx`
-- Loads SF Pro Text fonts: `Light`, `Regular`, `Medium`, `Semibold`, `Bold`.
-
-### Web Styles
-- `src/global.css` contains web-specific global styling.
+- Active tab icon has a white circular highlight.
+- Uses Ionicons for all nav icons.
+- Positioned above native system UI.
 
 ---
 
-## Assets
+### `StatCard` — `src/components/StatCard.tsx`
+Displays icon, label, and count.
 
-- `assets/fonts/` — SF Pro Text font files.
-- `assets/icons/` — custom SVG icon components.
-- `assets/images/` — splash, banners, logos, and app imagery.
-
----
-
-## Configuration
-
-### `package.json`
-- Expo app with React 19.2.3 and React Native 0.86.0.
-- Uses `expo-router`, `expo-font`, `expo-linear-gradient`, `react-native-reanimated`, and `@expo/vector-icons`.
-- Scripts: `start`, `android`, `ios`, `web`, `lint`, `reset-project`.
-
-### `app.json`
-- App name: `Plaint`
-- Scheme: `plaint`
-- Orientation: `portrait`
-- `userInterfaceStyle`: `automatic`
-- Android adaptive icon configuration.
-- Web output: `static`.
-- Uses Expo splash screen plugin with custom image.
-- Enables typed routes and React compiler experiment flags.
+- Supports Ionicons string icons and custom React nodes.
+- Active card highlighted with a teal border.
 
 ---
 
-## Scripts
+### `TaskTable` — `src/components/TaskTable.tsx`
+Collapsible section with horizontal scroll for wide rows.
 
-- `npm run start` — launch Expo dev server.
-- `npm run android` — run on Android.
-- `npm run ios` — run on iOS.
-- `npm run web` — launch web build.
-- `npm run lint` — run Expo lint.
-- `npm run reset-project` — execute `scripts/reset-project.js`.
+- Column headers and multiple `TaskRow` children.
+- Swipe-left reveals hidden columns and a "More" actions button.
+- Only one row dropdown expanded at a time via `openRowIndex` state.
 
 ---
 
-## Notes
+### `TaskRow` — `src/components/TaskRow.tsx`
+Individual task row inside `TaskTable`.
 
-- Most app data is currently mocked in `src/app/(tabs)/Tasks.tsx`.
-- Task creation modal is UI-only and does not persist tasks.
-- Several tab screens are placeholders ready for feature expansion.
-- `explore.tsx` and some components are Expo starter template remnants.
-- App structure is set up for iterative development of task management workflows.
+- Task title, creator, assignee, due date, status, comments icon, project name.
+- Inline status dropdown: Pending · In-Progress · On-Hold · Rejected · Completed · Pending-Approval.
+- Completed tasks show checkmark and strikethrough styling.
+
+---
+
+### `DynamicTable` — `src/components/DynamicTable.tsx`
+Advanced dynamic data table with configurable columns and rows.
+
+---
+
+### `CreateTaskModal` — `src/components/CreateTaskModal.tsx`
+Bottom sheet modal for task creation.
+
+- Floating title input and description editor.
+- Action chips: assignee, due date, priority, approval, recurring, subtasks, dependencies.
+- Simulated attachment chips and tags.
+- UI-only; tasks are not persisted.
+
+---
+
+### `TaskDetailModal` — `src/components/TaskDetailModal.tsx`
+Full-detail view modal for an existing task.
+
+- Read/edit task fields, status, attachments, comments.
+
+---
+
+### `CreateChannelModal` — `src/components/CreateChannelModal.tsx`
+Centered modal for naming a new channel or group.
+
+- Uses `FloatingInput` for the channel/group name.
+- Configurable `title` and `placeholder` props.
+- Transitions to `AddPeopleModal` after submission.
+
+---
+
+### `AddPeopleModal` — `src/components/AddPeopleModal.tsx`
+Bottom sheet user search and selection modal.
+
+- Floating search input with filterable user list.
+- **Single Select mode**: Tapping a user navigates directly to conversation.
+- **Channel/Group mode** (`isChannelMode`): Checkbox multi-selection, "Select All", and green "Invite" button.
+
+---
+
+### `CalendarPicker` — `src/components/CalendarPicker.tsx`
+Responsive date picker used inside the conversation date filter panel.
+
+- 7-column weekday grid with even `flex: 1` column distribution.
+- Responsive across all screen sizes (no empty Sunday column issue).
+- Quick filter shortcuts: Today, Last 7 Days, Last 30 Days, This Month, Last Month, Custom Range.
+
+---
+
+### `FilterModal` — `src/components/FilterModal.tsx`
+Task filter modal for the Tasks screen.
+
+---
+
+### `InboxModal` — `src/components/InboxModal.tsx`
+Notification/inbox dropdown panel.
+
+- Rendered inline below the bell icon (not full-screen).
+- Width constrained and aligned to bell icon position.
+- Lists notification items with icon, title, description.
+
+---
+
+### `LeaveDetailModal` — `src/components/LeaveDetailModal.tsx`
+Modal for viewing and managing leave request details.
+
+---
+
+### `FloatingInput` — `src/components/FloatingInput.tsx`
+Animated floating label input field.
 
 | Prop | Type | Description |
 |---|---|---|
-| label | string | Floating label text |
-| secureToggle | boolean | Adds eye icon for password visibility |
-| value / onChangeText | string / fn | Controlled input |
+| `label` | string | Floating label text |
+| `secureToggle` | boolean | Adds eye icon for password visibility |
+| `value` / `onChangeText` | string / fn | Controlled input |
 
-- Label animates up and shrinks on focus or when value is present
-- Border changes from `#E6E6E6` → `#1D1D1D` on focus
+- Label animates up and shrinks on focus or when value is present.
+- Border transitions: `#E6E6E6` → `#1D1D1D` on focus.
 
-### Custom Icons — `assets/icons/`
+---
+
+### `texteditor` — `src/components/texteditor.tsx`
+Rich text editor component for task descriptions.
+
+---
+
+### Decoration & Platform Components
+
+| Component | Purpose |
+|---|---|
+| `gradientheader.tsx` (TopMintGlow) | Mint/teal gradient at top of screen |
+| `gradientfooter.tsx` (BottomGlow) | Gradient at bottom of screen |
+| `radialbottom.tsx` | Radial gradient bottom accent |
+| `BottomTabBar.tsx` | Legacy alternate tab bar (unused) |
+| `animated-icon.tsx` / `.web.tsx` | Animated icon wrapper (native + web) |
+| `app-tabs.tsx` / `.web.tsx` | Platform tab abstraction |
+| `external-link.tsx` | External URL link component |
+| `themed-text.tsx` | Theme-aware Text wrapper |
+| `themed-view.tsx` | Theme-aware View wrapper |
+| `hint-row.tsx` | Hint/tip row UI element |
+| `web-badge.tsx` | Web-only badge component |
+| `ui/collapsible.tsx` | Generic collapsible section |
+
+---
+
+## Custom Icons — `assets/icons/`
+
+Accessed via the centralized `constants/icons.tsx` barrel export.
 
 | File | Component |
 |---|---|
@@ -321,45 +387,30 @@ These tabs are currently placeholders with shared app header scaffolding.
 | `duetoday.tsx` | Due Today icon (SVG) |
 | `filtericon.tsx` | Filter icon (SVG) |
 | `sevenday.tsx` | 7-day icon (SVG) |
-
-### Other Components
-
-| Component | Purpose |
-|---|---|
-| `gradientheader.tsx` (TopMintGlow) | Mint/teal gradient at top of screen |
-| `gradientfooter.tsx` (BottomGlow) | Gradient at bottom of screen |
-| `BottomTabBar.tsx` | Alternative tab bar (unused/legacy) |
-| `StatCard.tsx` | Stat card (see above) |
-| `collapsible.tsx` | Generic collapsible section |
-| `animated-icon.tsx` | Animated icon wrapper |
-| `external-link.tsx` | External URL link component |
-| `themed-text.tsx` | Theme-aware Text |
-| `themed-view.tsx` | Theme-aware View |
-| `hint-row.tsx` | Hint/tip row UI |
-| `radialbottom.tsx` | Radial gradient bottom decoration |
-| `web-badge.tsx` | Web-only badge |
-| `app-tabs.tsx` | Platform tab abstraction |
+| `ChatIcon` | Main chat icon (SVG) |
+| `ChannelTabIcon` | Channel tab icon (SVG) |
 
 ---
 
 ## Theme & Styling
 
-### `src/theme/root.tsx` — App Theme
+### `src/theme/root.tsx` — App Tokens
+
 ```ts
-Colors.primary          = '#1ED9A5'   // Teal brand color
-Colors.bgButtonColor    = '#00DFAB'   // CTA button background
-Colors.buttonText       = '#1D1D1D'   // Button text
-Colors.background       = '#FFFFFF'
-Colors.textPrimary      = '#1D1D1D'
-Colors.textSecondary    = '#6B6B6B'
-Colors.placeholder      = '#E6E6E6'
+Colors.primary       = '#1ED9A5'   // Teal brand color
+Colors.bgButtonColor = '#00DFAB'   // CTA button background
+Colors.buttonText    = '#1D1D1D'   // Button text
+Colors.background    = '#FFFFFF'
+Colors.textPrimary   = '#1D1D1D'
+Colors.textSecondary = '#6B6B6B'
+Colors.placeholder   = '#E6E6E6'
 ```
 
-Spacing: `xs(4)` `sm(8)` `md(16)` `lg(24)` `xl(32)` `xxl(48)`
+**Spacing:** `xs(4)` · `sm(8)` · `md(16)` · `lg(24)` · `xl(32)` · `xxl(48)`
 
-Border Radius: `sm(8)` `md(12)` `lg(16)` `pill(28)` `screen(40)`
+**Border Radius:** `sm(8)` · `md(12)` · `lg(16)` · `pill(28)` · `screen(40)`
 
-### `src/constants/theme.ts` — System Theme
+### `src/constants/theme.ts`
 Light/dark mode color tokens, platform-specific fonts, spacing scale.
 
 ### Fonts
@@ -410,6 +461,9 @@ npm install
 # Start dev server
 npx expo start
 
+# Start with cache cleared
+npm run start -c
+
 # Platform-specific
 npx expo start --android
 npx expo start --ios
@@ -427,8 +481,23 @@ npm run reset-project
 ## Key Design Decisions
 
 - **File-based routing** via Expo Router — screens map directly to file paths
-- **Custom tab bar** floats above content as a pill, no native tab bar used
-- **Inline status dropdown** in TaskRow — only one open at a time, managed by parent TaskTable via `openRowIndex` state
-- **StatCard filtering** — TASKS_MAP pre-filters task arrays per category; active tab drives which dataset renders
-- **Floating label inputs** — pure React Native Animated API, no third-party form library
+- **Custom tab bar** floats above content as a pill; no native tab bar used
+- **Inline status dropdown** in `TaskRow` — only one open at a time via `openRowIndex` in `TaskTable`
+- **StatCard filtering** — `TASKS_MAP` pre-filters task arrays per category; active tab drives which dataset renders
+- **Floating label inputs** — pure React Native `Animated` API, no third-party form library
 - **SF Pro fonts** loaded once at app root via `useAppFonts` hook before rendering
+- **Notification panel** opens contextually below the bell icon, not as a full-screen modal
+- **Projects chat** — expandable project rows with per-project channel lists; add-group flow appends new channels within a project
+- **Channel active state** — white background by default; gray (`#F4F4F4`) only on actively selected channel row
+- **Conversation filters** — all chips (Date, Attachments, Chat Members, Post Type) in a single horizontal row; Post Type shows 2 items per row in a grid
+- **CalendarPicker** — 7 weekday columns with even `flex: 1` distribution; fixes Sunday-column misalignment on narrow screens
+
+---
+
+## Notes
+
+- Most app data is currently mocked inline in screen files or in `src/data/`.
+- Task creation modal is UI-only; created tasks are not persisted.
+- Several tab screens (`home`, `biometric`, `grid`) are placeholders ready for feature expansion.
+- `explore.tsx` is an Expo starter template remnant kept for reference.
+- App structure is designed for iterative feature expansion with clear separation of screens, components, and theme tokens.

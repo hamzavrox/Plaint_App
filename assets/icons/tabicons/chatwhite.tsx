@@ -18,7 +18,7 @@ function ChatIconWhite(props) {
       />
       <Path
         d="M4.811 7.607h8.986M4.811 11.083h5.171"
-        stroke="#000"
+        stroke="#fff"
         strokeWidth={1.1}
         strokeLinecap="round"
       />

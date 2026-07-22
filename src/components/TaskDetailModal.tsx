@@ -1,8 +1,10 @@
+import { useAuth } from "@/hooks/useAuth";
+import { useTasks } from "@/hooks/useTasks";
+import { TaskNote } from "@/types/task.types";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -11,13 +13,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
-import { StatusType, STATUS_COLORS } from "./TaskRow";
-import { useAuth } from "@/hooks/useAuth";
-import { useTasks } from "@/hooks/useTasks";
-import { TaskNote } from "@/types/task.types";
-import { extractErrorMessage } from "@/utils/errorHandler";
+import { STATUS_COLORS, StatusType } from "./TaskRow";
 
 export type SubTask = { title: string; createdBy: string; dueDate: string };
 
@@ -45,9 +43,9 @@ type Props = { visible: boolean; onClose: () => void; task: TaskDetail | null };
 
 const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
   Urgent: { bg: "#CB5F00", text: "#fff" },
-  High:   { bg: "#EF4444", text: "#fff" },
+  High: { bg: "#EF4444", text: "#fff" },
   Medium: { bg: "#F59E0B", text: "#fff" },
-  Low:    { bg: "#10B981", text: "#fff" },
+  Low: { bg: "#10B981", text: "#fff" },
 };
 
 const COL = { title: 160, createdBy: 130, dueDate: 110 };
@@ -97,14 +95,18 @@ function CommentBubble({
   currentUserId,
   onPin,
   onDelete,
+  index = 0,
 }: {
   comment: TaskNote;
   currentUserId: number;
   onPin?: (note: TaskNote) => void;
   onDelete?: (note: TaskNote) => void;
+  index?: number;
 }) {
   const isOwn = comment.user_id === currentUserId;
+  // const isPinned = comment.pin_top === 1 || index === 0;
   const isPinned = comment.pin_top === 1;
+  // const isSelected = index === 2;
   const initials = (comment.user_name ?? "U")
     .trim()
     .split(/\s+/)
@@ -117,51 +119,173 @@ function CommentBubble({
   const formatDate = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
-      return d.toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" }) +
-        " | " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      if (isNaN(d.getTime())) return "25, April, 2026 | 10.00AM";
+      return (
+        d.toLocaleDateString("en-US", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }) +
+        " | " +
+        d.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      );
     } catch {
-      return dateStr;
+      return "25, April, 2026 | 10.00AM";
     }
   };
 
   return (
-    <View style={[
-      styles.bubble,
-      isPinned && styles.bubblePinned,
-      isOwn && styles.bubbleOwn,
-    ]}>
+    <View
+      style={[
+        styles.bubble,
+        isPinned && styles.bubblePinned,
+        // isSelected && styles.bubbleSelected,
+      ]}
+    >
       <View style={styles.bubbleHeader}>
         <View style={styles.bubbleAvatar}>
-          <Text style={styles.bubbleAvatarText}>{initials}</Text>
+          <Text style={styles.bubbleAvatarText}>{initials || "MJ"}</Text>
         </View>
         <View style={styles.bubbleNameRow}>
-          <Text numberOfLines={1} ellipsizeMode="tail" style={{ flex: 1 }}>
-            <Text style={styles.bubbleName}>{comment.user_name}</Text>
-            <Text style={styles.bubbleTime}>  {formatDate(comment.created_at)}</Text>
-          </Text>
+          <Text style={styles.bubbleName}>{comment.user_name}</Text>
+          <Text style={styles.bubbleTime}>{formatDate(comment.created_at)}</Text>
         </View>
         {isPinned && (
-          <MaterialCommunityIcons name="pin" size={16} color="#00DEAB" style={styles.pinIcon} />
+          <MaterialCommunityIcons
+            name="pin"
+            size={18}
+            color="#00DEAB"
+            style={styles.pinIcon}
+          />
         )}
       </View>
+
       <Text style={styles.bubbleText}>{comment.notes}</Text>
-      {(!isPinned || isOwn) && (
+
+      {/* {!isPinned && (
         <View style={styles.bubbleActions}>
-          {isOwn && (
+          <TouchableOpacity style={styles.actionBtn}>
+            <Ionicons name="thumbs-up-outline" size={15} color="#9CA3AF" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn}>
+            <Ionicons name="happy-outline" size={15} color="#9CA3AF" />
+          </TouchableOpacity>
+          {isSelected && (
             <>
-              <TouchableOpacity style={styles.actionBtn} onPress={() => onPin?.(comment)}>
-                <MaterialCommunityIcons name={isPinned ? "pin" : "pin-outline"} size={16} color="#9CA3AF" />
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={() => onPin?.(comment)}
+              >
+                <MaterialCommunityIcons
+                  name="pin-outline"
+                  size={15}
+                  color="#9CA3AF"
+                />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionBtn} onPress={() => onDelete?.(comment)}>
-                <Ionicons name="trash-outline" size={16} color="#9CA3AF" />
+              <TouchableOpacity style={styles.actionBtn}>
+                <Ionicons name="pencil-outline" size={15} color="#9CA3AF" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionBtn}>
+                <Ionicons name="arrow-undo-outline" size={15} color="#9CA3AF" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={() => onDelete?.(comment)}
+              >
+                <Ionicons
+                  name="ellipsis-vertical"
+                  size={15}
+                  color="#9CA3AF"
+                />
               </TouchableOpacity>
             </>
           )}
+        </View>
+      )} */}
+
+      {!isPinned && (
+        <View style={styles.bubbleActions}>
+          <TouchableOpacity style={styles.actionBtn}>
+            <Ionicons name="thumbs-up-outline" size={15} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionBtn}>
+            <Ionicons name="happy-outline" size={15} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => onPin?.(comment)}
+          >
+            <MaterialCommunityIcons
+              name="pin-outline"
+              size={15}
+              color="#9CA3AF"
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionBtn}>
+            <Ionicons name="pencil-outline" size={15} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionBtn}>
+            <Ionicons name="arrow-undo-outline" size={15} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => onDelete?.(comment)}
+          >
+            <Ionicons
+              name="ellipsis-vertical"
+              size={15}
+              color="#9CA3AF"
+            />
+          </TouchableOpacity>
         </View>
       )}
     </View>
   );
 }
+
+const SAMPLE_NOTES: TaskNote[] = [
+  {
+    id: 1,
+    task_id: 1,
+    company_id: 1,
+    user_id: 1,
+    user_name: "Muhammad Junaid",
+    notes:
+      "Lorem Ipsum is simply dummy text of the printing and typesetting...",
+    pin_top: 1,
+    created_at: "2026-04-25T10:00:00Z",
+  },
+  {
+    id: 2,
+    task_id: 1,
+    company_id: 1,
+    user_id: 2,
+    user_name: "Muhammad Haris",
+    notes:
+      "Lorem Ipsum is simply dummy text of the printing and typesetting...",
+    pin_top: 0,
+    created_at: "2026-04-25T10:00:00Z",
+  },
+  {
+    id: 3,
+    task_id: 1,
+    company_id: 1,
+    user_id: 1,
+    user_name: "Muhammad Junaid",
+    notes:
+      "Lorem Ipsum is simply dummy text of the printing and typesetting...",
+    pin_top: 0,
+    created_at: "2026-04-25T10:00:00Z",
+  },
+];
 
 export default function TaskDetailModal({ visible, onClose, task }: Props) {
   const { state: authState } = useAuth();
@@ -169,13 +293,10 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
 
   const [activeTab, setActiveTab] = useState<"details" | "comments">("details");
   const [commentText, setCommentText] = useState("");
-  const [focused, setFocused] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const [notes, setNotes] = useState<TaskNote[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [sendingNote, setSendingNote] = useState(false);
-
-  const floated = focused || !!commentText;
-  const labelAnim = useRef(new Animated.Value(floated ? 1 : 0)).current;
 
   const companyId = task?.companyId ?? authState.company?.company_id ?? 0;
   const companyIdentifier = authState.company?.company_identifier ?? "";
@@ -184,7 +305,11 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
     if (!task?.taskId) return;
     setNotesLoading(true);
     try {
-      const fetched = await fetchNotes(task.taskId, companyId, companyIdentifier);
+      const fetched = await fetchNotes(
+        task.taskId,
+        companyId,
+        companyIdentifier,
+      );
       setNotes(fetched);
     } catch {
       // silently fail
@@ -205,31 +330,6 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
     }
   }, [visible, activeTab, task?.taskId, loadNotes]);
 
-  const handleFocus = () => {
-    setFocused(true);
-    Animated.timing(labelAnim, { toValue: 1, duration: 150, useNativeDriver: false }).start();
-  };
-
-  const handleBlur = () => {
-    setFocused(false);
-    if (!commentText) {
-      Animated.timing(labelAnim, { toValue: 0, duration: 150, useNativeDriver: false }).start();
-    }
-  };
-
-  const labelTop = labelAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [10, -9],
-  });
-  const labelSize = labelAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [13, 11],
-  });
-  const labelColor = labelAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#C0C0C0", "#1D1D1D"],
-  });
-
   const handleSendComment = async () => {
     if (!commentText.trim() || !task?.taskId) return;
     setSendingNote(true);
@@ -241,7 +341,7 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
       });
       setCommentText("");
       await loadNotes();
-    } catch (error) {
+    } catch {
       // silently fail
     } finally {
       setSendingNote(false);
@@ -252,7 +352,7 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
     try {
       await deleteNote(note.id, companyId, companyIdentifier);
       await loadNotes();
-    } catch (error) {
+    } catch {
       // silently fail
     }
   };
@@ -261,7 +361,7 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
     try {
       await pinNote(note.id, note.pin_top !== 1, companyId, companyIdentifier);
       await loadNotes();
-    } catch (error) {
+    } catch {
       // silently fail
     }
   };
@@ -269,67 +369,145 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
   if (!task) return null;
 
   const statusStyle = STATUS_COLORS[task.status];
-  const priorityStyle = PRIORITY_COLORS[task.priority] ?? { bg: "#E5E7EB", text: "#374151" };
+  const priorityStyle = PRIORITY_COLORS[task.priority] ?? {
+    bg: "#E5E7EB",
+    text: "#374151",
+  };
   const currentUserId = authState.user?.id ?? 0;
+
+  const displayNotes = notes.length > 0 ? notes : SAMPLE_NOTES;
 
   const INFO_ROWS = [
     {
-      icon: "people-outline", label: "Assigned to:",
+      icon: "people-outline",
+      label: "Assigned to:",
       value: (
         <View style={styles.assignedRow}>
-          <View style={styles.initials}><Text style={styles.initialsText}>{task.assignedToInitials}</Text></View>
+          <View style={styles.initials}>
+            <Text style={styles.initialsText}>{task.assignedToInitials}</Text>
+          </View>
           <Text style={styles.infoValue}>{task.assignedTo}</Text>
         </View>
       ),
     },
-    { icon: "calendar-outline", label: "Due Date:", value: <Text style={styles.infoValue}>{task.dueDate}</Text> },
     {
-      icon: "star-outline", label: "Priority:",
-      value: <View style={[styles.badge, { backgroundColor: priorityStyle.bg }]}><Text style={[styles.badgeText, { color: priorityStyle.text }]}>{task.priority}</Text></View>,
-    },
-    { icon: "checkmark-done-outline", label: "Approval Required:", value: <Text style={styles.infoValue}>{task.approvalRequired}</Text> },
-    {
-      icon: "sync-circle-outline", label: "Task Status:",
-      value: <View style={[styles.badge, { backgroundColor: statusStyle.bg }]}><Text style={[styles.badgeText, { color: statusStyle.text }]}>{task.status}</Text></View>,
-    },
-    { icon: "camera-outline", label: "Recurring Task:", value: <Text style={styles.infoValue}>{task.recurringTask}</Text> },
-    {
-      icon: "git-branch-outline", label: "Subtask:",
-      value: task.subtasks.length > 0
-        ? <View style={styles.cntBadgeGray}><MaterialCommunityIcons name="file-tree-outline" size={14} color="#fff" /><Text style={styles.cntBadgeText}>+{task.subtasks.length}</Text></View>
-        : <Text style={styles.infoValue}>-</Text>,
+      icon: "calendar-outline",
+      label: "Due Date:",
+      value: <Text style={styles.infoValue}>{task.dueDate}</Text>,
     },
     {
-      icon: "git-compare-outline", label: "Dependencies:",
-      value: task.dependencies.length > 0
-        ? <Text style={styles.depLink}>{task.dependencies[0].title}</Text>
-        : <Text style={styles.infoValue}>-</Text>,
+      icon: "star-outline",
+      label: "Priority:",
+      value: (
+        <View
+          style={[styles.badge, { backgroundColor: priorityStyle.bg }]}
+        >
+          <Text style={[styles.badgeText, { color: priorityStyle.text }]}>
+            {task.priority}
+          </Text>
+        </View>
+      ),
+    },
+    {
+      icon: "checkmark-done-outline",
+      label: "Approval Required:",
+      value: <Text style={styles.infoValue}>{task.approvalRequired}</Text>,
+    },
+    {
+      icon: "sync-circle-outline",
+      label: "Task Status:",
+      value: (
+        <View style={[styles.badge, { backgroundColor: statusStyle.bg }]}>
+          <Text style={[styles.badgeText, { color: statusStyle.text }]}>
+            {task.status}
+          </Text>
+        </View>
+      ),
+    },
+    {
+      icon: "camera-outline",
+      label: "Recurring Task:",
+      value: <Text style={styles.infoValue}>{task.recurringTask}</Text>,
+    },
+    {
+      icon: "git-branch-outline",
+      label: "Subtask:",
+      value:
+        task.subtasks.length > 0 ? (
+          <View style={styles.cntBadgeGray}>
+            <MaterialCommunityIcons
+              name="file-tree-outline"
+              size={14}
+              color="#fff"
+            />
+            <Text style={styles.cntBadgeText}>+{task.subtasks.length}</Text>
+          </View>
+        ) : (
+          <Text style={styles.infoValue}>-</Text>
+        ),
+    },
+    {
+      icon: "git-compare-outline",
+      label: "Dependencies:",
+      value:
+        task.dependencies.length > 0 ? (
+          <Text style={styles.depLink}>{task.dependencies[0].title}</Text>
+        ) : (
+          <Text style={styles.infoValue}>-</Text>
+        ),
     },
   ];
 
   return (
-    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
         <View style={styles.overlay}>
           <View style={styles.sheet}>
             <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-              <Ionicons name="close" size={18} color="#fff" />
+              <Ionicons name="close" size={16} color="#fff" />
             </TouchableOpacity>
 
             <View style={styles.tabs}>
               <TouchableOpacity
-                style={[styles.tab, activeTab === "details" && styles.tabActive]}
+                style={[
+                  styles.tab,
+                  activeTab === "details" && styles.tabActive,
+                ]}
                 onPress={() => setActiveTab("details")}
               >
-                <Text style={activeTab === "details" ? styles.tabActiveText : styles.tabInactiveText}>
+                <Text
+                  style={
+                    activeTab === "details"
+                      ? styles.tabActiveText
+                      : styles.tabInactiveText
+                  }
+                >
                   Task Details
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.tab, activeTab === "comments" && styles.tabActive]}
+                style={[
+                  styles.tab,
+                  activeTab === "comments" && styles.tabActive,
+                ]}
                 onPress={() => setActiveTab("comments")}
               >
-                <Text style={activeTab === "comments" ? styles.tabActiveText : styles.tabInactiveText}>
+                <Text
+                  style={
+                    activeTab === "comments"
+                      ? styles.tabActiveText
+                      : styles.tabInactiveText
+                  }
+                >
                   Comments
                 </Text>
                 <View style={styles.tabDot} />
@@ -343,71 +521,121 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
                   contentContainerStyle={styles.detailsScroll}
                   keyboardShouldPersistTaps="handled"
                 >
-                {task.subtasks.length > 0 && (
-                  <View style={styles.cntBadge}>
-                    <MaterialCommunityIcons name="file-tree-outline" size={14} color="#fff" />
-                    <Text style={styles.cntBadgeText}>+{task.subtasks.length}</Text>
-                  </View>
-                )}
-                <Text style={styles.taskTitle}>{task.title}</Text>
-
-                {INFO_ROWS.map((row, i) => (
-                  <View key={i} style={styles.infoRow}>
-                    <View style={styles.infoLabelWrap}>
-                      <Ionicons name={row.icon as any} size={16} color="#AAAAAA" style={{ marginRight: 6 }} />
-                      <Text style={styles.infoLabel}>{row.label}</Text>
+                  {task.subtasks.length > 0 && (
+                    <View style={styles.cntBadge}>
+                      <MaterialCommunityIcons
+                        name="file-tree-outline"
+                        size={14}
+                        color="#fff"
+                      />
+                      <Text style={styles.cntBadgeText}>
+                        +{task.subtasks.length}
+                      </Text>
                     </View>
-                    <View style={styles.infoValueWrap}>{row.value}</View>
-                  </View>
-                ))}
+                  )}
+                  <Text style={styles.taskTitle}>{task.title}</Text>
 
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Description</Text>
-                  <Text style={styles.descText}>{task.description.replace(/<[^>]*>/g, "")}</Text>
-                  <View style={styles.descBadgesRow}>
-                    {task.subtasks.length > 0 && (
-                      <View style={styles.descBadge}>
-                        <MaterialCommunityIcons name="file-tree-outline" size={13} color="#00DFAB" />
-                        <Text style={[styles.descBadgeText, { color: "#00DFAB" }]}>+{task.subtasks.length}</Text>
+                  {INFO_ROWS.map((row, i) => (
+                    <View key={i} style={styles.infoRow}>
+                      <View style={styles.infoLabelWrap}>
+                        <Ionicons
+                          name={row.icon as any}
+                          size={16}
+                          color="#AAAAAA"
+                          style={{ marginRight: 6 }}
+                        />
+                        <Text style={styles.infoLabel}>{row.label}</Text>
                       </View>
-                    )}
-                    {task.attachments.length > 0 && (
-                      <View style={styles.descBadge}>
-                        <Ionicons name="link-outline" size={13} color="#fff" />
-                        <Text style={styles.descBadgeText}>+{task.attachments.length}</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
+                      <View style={styles.infoValueWrap}>{row.value}</View>
+                    </View>
+                  ))}
 
-                {task.subtasks.length > 0 && (
-                  <SectionTable title="Subtask" rows={task.subtasks} showAdd />
-                )}
-
-                {task.dependencies.length > 0 && (
-                  <SectionTable title="Dependencies" rows={task.dependencies} />
-                )}
-
-                {task.attachments.length > 0 && (
                   <View style={styles.section}>
-                    <View style={styles.attachHeader}>
-                      <Text style={styles.sectionTitle}>Attachments</Text>
-                      <View style={styles.cntBadgeGray}>
-                        <MaterialCommunityIcons name="file-tree-outline" size={13} color="#fff" />
-                        <Text style={styles.cntBadgeText}>+{task.attachments.length}</Text>
-                      </View>
-                    </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      {task.attachments.map((a, i) => (
-                        <View key={i} style={styles.attachTag}>
-                          <Ionicons name="download-outline" size={13} color="#00DEAB" />
-                          <Text style={styles.attachTagText}>{a}</Text>
-                          <Ionicons name="close" size={13} color="#00DEAB" />
+                    <Text style={styles.sectionTitle}>Description</Text>
+                    <Text style={styles.descText}>
+                      {task.description.replace(/<[^>]*>/g, "")}
+                    </Text>
+                    <View style={styles.descBadgesRow}>
+                      {task.subtasks.length > 0 && (
+                        <View style={styles.descBadge}>
+                          <MaterialCommunityIcons
+                            name="file-tree-outline"
+                            size={13}
+                            color="#00DFAB"
+                          />
+                          <Text
+                            style={[
+                              styles.descBadgeText,
+                              { color: "#00DFAB" },
+                            ]}
+                          >
+                            +{task.subtasks.length}
+                          </Text>
                         </View>
-                      ))}
-                    </ScrollView>
+                      )}
+                      {task.attachments.length > 0 && (
+                        <View style={styles.descBadge}>
+                          <Ionicons
+                            name="link-outline"
+                            size={13}
+                            color="#fff"
+                          />
+                          <Text style={styles.descBadgeText}>
+                            +{task.attachments.length}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                )}
+
+                  {task.subtasks.length > 0 && (
+                    <SectionTable
+                      title="Subtask"
+                      rows={task.subtasks}
+                      showAdd
+                    />
+                  )}
+
+                  {task.dependencies.length > 0 && (
+                    <SectionTable
+                      title="Dependencies"
+                      rows={task.dependencies}
+                    />
+                  )}
+
+                  {task.attachments.length > 0 && (
+                    <View style={styles.section}>
+                      <View style={styles.attachHeader}>
+                        <Text style={styles.sectionTitle}>Attachments</Text>
+                        <View style={styles.cntBadgeGray}>
+                          <MaterialCommunityIcons
+                            name="file-tree-outline"
+                            size={13}
+                            color="#fff"
+                          />
+                          <Text style={styles.cntBadgeText}>
+                            +{task.attachments.length}
+                          </Text>
+                        </View>
+                      </View>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                      >
+                        {task.attachments.map((a, i) => (
+                          <View key={i} style={styles.attachTag}>
+                            <Ionicons
+                              name="download-outline"
+                              size={13}
+                              color="#00DEAB"
+                            />
+                            <Text style={styles.attachTagText}>{a}</Text>
+                            <Ionicons name="close" size={13} color="#00DEAB" />
+                          </View>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
                 </ScrollView>
               </View>
             )}
@@ -421,50 +649,78 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
                   keyboardShouldPersistTaps="handled"
                 >
                   {notesLoading ? (
-                    <ActivityIndicator size="small" color="#00DEAB" style={{ marginTop: 20 }} />
-                  ) : notes.length === 0 ? (
-                    <Text style={{ textAlign: "center", color: "#9CA3AF", marginTop: 20, fontFamily: "SF_Pro_Regular" }}>
-                      No comments yet.
-                    </Text>
+                    <ActivityIndicator
+                      size="small"
+                      color="#00DEAB"
+                      style={{ marginTop: 20 }}
+                    />
                   ) : (
-                    notes.map((c) => (
+                    displayNotes.map((c, i) => (
                       <CommentBubble
-                        key={c.id}
+                        key={c.id ?? i}
                         comment={c}
                         currentUserId={currentUserId}
                         onPin={handlePinNote}
                         onDelete={handleDeleteNote}
+                        index={i}
                       />
                     ))
                   )}
                 </ScrollView>
 
-                <View style={styles.inputBox}>
-                  <Animated.Text
-                    style={[
-                      styles.inputLabel,
-                      {
-                        top: labelTop,
-                        fontSize: labelSize,
-                        color: labelColor,
-                      },
-                    ]}
-                  >
-                    Comment
-                  </Animated.Text>
+                <View style={[
+                  styles.inputBox,
+                  {
+                    borderColor: isFocused ? "#1D1D1D" : "#E5E7EB",
+                  },
+                ]}>
+                  {/* <View style={styles.inputLabelWrap}>
+                    <Text style={styles.inputLabelText}>Comment</Text>
+                  </View> */}
+                  {(isFocused || commentText.length > 0) && (
+                    <View style={styles.inputLabelWrap}>
+                      <Text style={styles.inputLabelText}>Comment</Text>
+                    </View>
+                  )}
                   <TextInput
                     style={styles.inputField}
                     value={commentText}
                     onChangeText={setCommentText}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
                     multiline
-                    placeholderTextColor="transparent"
+                    placeholder={!isFocused && commentText.length === 0 ? "Comment" : ""}
+                    placeholderTextColor="#9CA3AF"
+                    textAlignVertical="top"
                   />
                   <View style={styles.inputToolbar}>
                     <View style={styles.toolbarLeft}>
                       <TouchableOpacity style={styles.toolBtn}>
-                        <Ionicons name="at" size={16} color="#1D1D1D" />
+                        <Ionicons name="add" size={16} color="#374151" />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.toolBtn}>
+                        <Ionicons name="at" size={16} color="#374151" />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.toolBtn}>
+                        <Ionicons
+                          name="happy-outline"
+                          size={16}
+                          color="#374151"
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.toolBtn}>
+                        <Ionicons
+                          name="mic-outline"
+                          size={16}
+                          color="#374151"
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.toolBtn}>
+                        <Ionicons
+                          name="videocam-outline"
+                          size={16}
+                          color="#374151"
+                        />
                       </TouchableOpacity>
                     </View>
                     <TouchableOpacity
@@ -482,7 +738,6 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
                 </View>
               </View>
             )}
-
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -507,9 +762,12 @@ const styles = StyleSheet.create({
   },
   closeBtn: {
     alignSelf: "flex-end",
-    width: 32, height: 32, borderRadius: 16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "#1D1D1D",
-    justifyContent: "center", alignItems: "center",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 12,
   },
   tabs: {
@@ -518,9 +776,14 @@ const styles = StyleSheet.create({
     gap: 0,
   },
   tab: {
-    flex: 1, paddingVertical: 12, borderTopLeftRadius: 12, borderTopRightRadius: 12,
-    alignItems: "center", justifyContent: "center",
-    flexDirection: "row", gap: 4,
+    flex: 1,
+    paddingVertical: 12,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 4,
     backgroundColor: "transparent",
   },
   tabActive: { backgroundColor: "#F9F9F9" },
@@ -529,22 +792,40 @@ const styles = StyleSheet.create({
   tabDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#00DEAB" },
   detailsScroll: { paddingBottom: 40, paddingTop: 16 },
   cntBadge: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: "#00DFAB", borderRadius: 4,
-    paddingHorizontal: 8, paddingVertical: 5,
-    alignSelf: "flex-start", marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#00DFAB",
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    alignSelf: "flex-start",
+    marginBottom: 10,
   },
   cntBadgeGray: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: "#AAAAAA", borderRadius: 4,
-    paddingHorizontal: 8, paddingVertical: 5,
-    alignSelf: "flex-start", marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#AAAAAA",
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    alignSelf: "flex-start",
+    marginBottom: 10,
   },
   cntBadgeText: { fontSize: 12, color: "#fff", fontFamily: "SF_Pro_Regular" },
-  taskTitle: { fontSize: 18, fontFamily: "SF_Pro_Medium", color: "#1D1D1D", marginBottom: 20 },
+  taskTitle: {
+    fontSize: 18,
+    fontFamily: "SF_Pro_Medium",
+    color: "#1D1D1D",
+    marginBottom: 20,
+  },
   infoRow: {
-    flexDirection: "row", alignItems: "center",
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
   },
   infoLabelWrap: { flexDirection: "row", alignItems: "center", flex: 1.2 },
   infoLabel: { fontSize: 12, color: "#AAAAAA", fontFamily: "SF_Pro_Semibold" },
@@ -552,21 +833,54 @@ const styles = StyleSheet.create({
   infoValue: { fontSize: 13, color: "#AAAAAA", fontFamily: "SF_Pro_Regular" },
   assignedRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   initials: {
-    width: 24, height: 24, borderRadius: 5,
-    backgroundColor: "#00DEAB", alignItems: "center", justifyContent: "center",
+    width: 24,
+    height: 24,
+    borderRadius: 5,
+    backgroundColor: "#00DEAB",
+    alignItems: "center",
+    justifyContent: "center",
   },
   initialsText: { fontSize: 10, fontWeight: "700", color: "#fff" },
-  badge: { borderRadius: 5, paddingHorizontal: 12, paddingVertical: 4, alignSelf: "flex-start" },
+  badge: {
+    borderRadius: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    alignSelf: "flex-start",
+  },
   badgeText: { fontSize: 12, fontFamily: "SF_Pro_Medium" },
-  depLink: { fontSize: 13, backgroundColor: "#F0FFF8", maxWidth: 100, padding: 5, borderRadius: 5, textAlign: "center", color: "#00DEAB", fontFamily: "SF_Pro_Regular" },
+  depLink: {
+    fontSize: 13,
+    backgroundColor: "#F0FFF8",
+    maxWidth: 100,
+    padding: 5,
+    borderRadius: 5,
+    textAlign: "center",
+    color: "#00DEAB",
+    fontFamily: "SF_Pro_Regular",
+  },
   section: { marginTop: 24 },
-  sectionTitle: { fontSize: 18, fontFamily: "SF_Pro_Medium", color: "#1D1D1D", marginBottom: 12 },
-  descText: { fontSize: 12, color: "#1D1D1D", lineHeight: 22, fontFamily: "SF_Pro_Regular" },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: "SF_Pro_Medium",
+    color: "#1D1D1D",
+    marginBottom: 12,
+  },
+  descText: {
+    fontSize: 12,
+    color: "#1D1D1D",
+    lineHeight: 22,
+    fontFamily: "SF_Pro_Regular",
+  },
   descBadgesRow: { flexDirection: "row", gap: 8, marginTop: 14 },
   descBadge: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    borderWidth: 1, backgroundColor: "#1D1D1D", borderRadius: 5,
-    paddingHorizontal: 10, paddingVertical: 5,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    backgroundColor: "#1D1D1D",
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   descBadgeText: { fontSize: 12, color: "#fff" },
   tblHeader: {
@@ -578,31 +892,81 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     alignItems: "center",
   },
-  tblHeadCell: { fontSize: 12, fontFamily: "SF_Pro_Medium", color: "#1D1D1D", paddingRight: 8 },
+  tblHeadCell: {
+    fontSize: 12,
+    fontFamily: "SF_Pro_Medium",
+    color: "#1D1D1D",
+    paddingRight: 8,
+  },
   tblRow: {
-    flexDirection: "row", alignItems: "center",
+    flexDirection: "row",
+    alignItems: "center",
     minHeight: 52,
-    borderBottomWidth: 1, borderBottomColor: "#F3F4F6",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
     backgroundColor: "#fff",
   },
-  tblAccent: { width: 3, alignSelf: "stretch", borderRadius: 5, backgroundColor: "#EF4444", marginRight: 8 },
-  tblCell: { fontSize: 12, color: "#1D1D1D", fontFamily: "SF_Pro_Regular", paddingRight: 8 },
+  tblAccent: {
+    width: 3,
+    alignSelf: "stretch",
+    borderRadius: 5,
+    backgroundColor: "#EF4444",
+    marginRight: 8,
+  },
+  tblCell: {
+    fontSize: 12,
+    color: "#1D1D1D",
+    fontFamily: "SF_Pro_Regular",
+    paddingRight: 8,
+  },
   tblCreatedBy: { flexDirection: "row", alignItems: "center", gap: 6 },
-  tblAvatar: { width: 24, height: 24, borderRadius: 8, backgroundColor: "#D1D5DB" },
+  tblAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: "#D1D5DB",
+  },
   tblDueDate: { flexDirection: "row", alignItems: "center" },
-  addRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 12 },
+  addRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 12,
+  },
   addBtn: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: "#00DEAB", alignItems: "center", justifyContent: "center",
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#00DEAB",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  addRowText: { fontSize: 13, color: "#C0C0C0", fontFamily: "SF_Pro_Regular" },
-  attachHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
+  addRowText: {
+    fontSize: 13,
+    color: "#C0C0C0",
+    fontFamily: "SF_Pro_Regular",
+  },
+  attachHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
   attachTag: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: "#1D1D1D", borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 7, marginRight: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#1D1D1D",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    marginRight: 8,
   },
-  attachTagText: { fontSize: 12, color: "#00DEAB", fontFamily: "SF_Pro_Regular" },
+  attachTagText: {
+    fontSize: 12,
+    color: "#00DEAB",
+    fontFamily: "SF_Pro_Regular",
+  },
   tabContent: {
     flex: 1,
     backgroundColor: "#F9F9F9",
@@ -621,70 +985,130 @@ const styles = StyleSheet.create({
   commentsList: { flex: 1 },
   commentsListContent: { gap: 12, paddingBottom: 16 },
   bubble: {
-    borderWidth: 1, borderColor: "#E5E7EB",
-    borderRadius: 14, padding: 14,
-    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: "#FFFFFF",
   },
-  bubblePinned: { backgroundColor: "#E6FBF6", borderColor: "#E6FBF6" },
-  bubbleOwn: { borderColor: "#1D1D1D" },
+  bubblePinned: {
+    backgroundColor: "#E6FBF6",
+    borderColor: "#E6FBF6",
+  },
+  bubbleSelected: {
+    borderColor: "#374151",
+    borderWidth: 1.5,
+    backgroundColor: "#FFFFFF",
+  },
   bubbleHeader: {
-    flexDirection: "row", alignItems: "center",
-    marginBottom: 10, gap: 8, flexWrap: "nowrap",
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 8,
   },
   bubbleAvatar: {
-    width: 24, height: 24, borderRadius: 5,
-    backgroundColor: "#00DEAB", alignItems: "center", justifyContent: "center",
-    flexShrink: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 5,
+    backgroundColor: "#00DEAB",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  bubbleAvatarText: { fontSize: 11, fontWeight: "700", color: "#fff" },
+  bubbleAvatarText: { fontSize: 10, fontWeight: "700", color: "#fff" },
   bubbleNameRow: {
-    flex: 1, flexDirection: "row", alignItems: "center", gap: 6, overflow: "hidden",
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  bubbleName: { fontSize: 13, fontFamily: "SF_Pro_Semibold", color: "#1D1D1D", flexShrink: 0 },
-  bubbleTime: { fontSize: 11, color: "#9CA3AF", fontFamily: "SF_Pro_Regular", flexShrink: 1 },
-  pinIcon: { flexShrink: 0 },
-  bubbleText: { fontSize: 14, color: "#1D1D1D", lineHeight: 22, fontFamily: "SF_Pro_Regular" },
-  bubbleActions: {
-    flexDirection: "row", alignItems: "center",
-    marginTop: 10, paddingTop: 10,
-    borderTopWidth: 1, borderTopColor: "#F3F4F6",
-    gap: 4,
+  bubbleName: {
+    fontSize: 12,
+    fontFamily: "SF_Pro_Semibold",
+    color: "#1D1D1D",
   },
-  actionBtn: { padding: 4 },
-  inputBox: {
-    borderWidth: 1, borderColor: "#1D1D1D",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 10,
-    marginBottom: 20,
-    position: "relative",
-  },
-  inputLabel: {
-    position: "absolute", left: 12,
-    backgroundColor: "#F9F9F9", paddingHorizontal: 4,
+  bubbleTime: {
+    fontSize: 11,
+    color: "#D1D5DB",
     fontFamily: "SF_Pro_Regular",
+    marginLeft: 4,
+  },
+  pinIcon: { marginLeft: "auto" },
+  bubbleText: {
+    fontSize: 13,
+    color: "#1D1D1D",
+    lineHeight: 20,
+    fontFamily: "SF_Pro_Regular",
+  },
+  bubbleActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+    gap: 12,
+  },
+  actionBtn: { padding: 2 },
+  inputBox: {
+    borderWidth: 1,
+    // borderColor: "#1D1D1D",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 10,
+    marginBottom: 16,
+    position: "relative",
+    backgroundColor: "#FFFFFF",
+    marginTop: 8,
+  },
+  inputLabelWrap: {
+    position: "absolute",
+    top: -10,
+    left: 12,
+    backgroundColor: "#F9F9F9",
+    paddingHorizontal: 6,
+    zIndex: 10,
+  },
+  inputLabelText: {
+    fontSize: 12,
+    color: "#374151",
+    fontFamily: "SF_Pro_Medium",
   },
   inputField: {
-    fontSize: 13, color: "#1D1D1D",
+    fontSize: 13,
+    color: "#1D1D1D",
     fontFamily: "SF_Pro_Regular",
-    minHeight: 38, maxHeight: 80,
-    paddingTop: 2, paddingBottom: 2,
+    minHeight: 36,
+    maxHeight: 70,
+    paddingTop: 2,
+    paddingBottom: 2,
     textAlignVertical: "top",
   },
   inputToolbar: {
-    flexDirection: "row", alignItems: "center",
-    justifyContent: "space-between", marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
   },
-  toolbarLeft: { flexDirection: "row", alignItems: "center", gap: 5 },
+  toolbarLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   toolBtn: {
-    width: 28, height: 28, borderRadius: 4,
-    backgroundColor: "#E6E6E6",
-    alignItems: "center", justifyContent: "center",
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
   },
   sendBtn: {
-    width: 28, height: 28, borderRadius: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     backgroundColor: "#00DEAB",
-    alignItems: "center", justifyContent: "center",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

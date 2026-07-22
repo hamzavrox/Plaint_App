@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import CalendarPicker from "./CalendarPicker";
@@ -114,6 +115,7 @@ onApply,
 
   return (
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+      <TouchableWithoutFeedback onPress={onClose}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
           {/* Header row */}
@@ -410,6 +412,7 @@ onApply,
           </TouchableOpacity>
         </View>
       </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }

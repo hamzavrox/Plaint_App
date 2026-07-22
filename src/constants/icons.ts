@@ -25,6 +25,8 @@ import PEBlackIcon      from "@/assets/icons/tabicons/peblack";
 import PEWhiteIcon      from "@/assets/icons/tabicons/pewhite";
 import TaskBlackIcon    from "@/assets/icons/tabicons/taskblack";
 import TaskWhiteIcon    from "@/assets/icons/tabicons/taskwhite";
+import ChannelBtn from "@/assets/icons/channelsbtn";
+import IndoxBtn from "@/assets/icons/inboxbtn";
 
 // ─── Exports ──────────────────────────────────────────────────────────────────
 const Icons =   {
@@ -42,6 +44,8 @@ const Icons =   {
     RecurringIcon,
     SevenDayIcon,
     ChannelIcon,
+    ChannelBtn,
+    IndoxBtn,
 
     // Tab
     ChannelTabIcon,
@@ -55,6 +59,7 @@ const Icons =   {
     PEWhiteIcon,
     TaskBlackIcon,
     TaskWhiteIcon,
+   
 };
 
 export default Icons;

@@ -246,8 +246,8 @@ const DynamicRow = memo(function DynamicRow<T>({
     Animated.spring(translateX, {
       toValue: -currentRevealWidth,
       useNativeDriver: true,
-      speed: 22,
-      bounciness: 0,
+      tension: 100,
+      friction: 12,
     }).start();
   }, [canSwipe, currentRevealWidth, translateX]);
 
@@ -271,8 +271,8 @@ const DynamicRow = memo(function DynamicRow<T>({
           gesture: PanResponderGestureState,
         ) =>
           canSwipe &&
-          Math.abs(gesture.dx) > 10 &&
-          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.4,
+          Math.abs(gesture.dx) > 8 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.2,
         onMoveShouldSetPanResponderCapture: (
           _evt: GestureResponderEvent,
           gesture: PanResponderGestureState,
@@ -300,31 +300,32 @@ const DynamicRow = memo(function DynamicRow<T>({
           gesture: PanResponderGestureState,
         ) => {
           onSwipeDragStateChange(false);
-          const revealDistance = currentRevealWidth - gesture.dx;
+          const dx = gesture.dx;
+          const vx = gesture.vx;
 
-          if (
-            gesture.dx > swipeActionWidth * 0.55 ||
-            revealDistance < swipeActionWidth * 0.35
-          ) {
-            settleSwipe(null);
-            return;
+          if (swipeStage === null) {
+            if (dx < -swipeContentWidth * 0.45 || vx < -0.8) {
+              settleSwipe("details");
+            } else if (dx < -25 || vx < -0.25) {
+              settleSwipe("actions");
+            } else {
+              settleSwipe(null);
+            }
+          } else if (swipeStage === "actions") {
+            if (dx < -40 || vx < -0.5) {
+              settleSwipe("details");
+            } else if (dx > 35 || vx > 0.4) {
+              settleSwipe(null);
+            } else {
+              settleSwipe("actions");
+            }
+          } else if (swipeStage === "details") {
+            if (dx > 40 || vx > 0.4) {
+              settleSwipe(null);
+            } else {
+              settleSwipe("details");
+            }
           }
-
-          if (
-            revealDistance > swipeContentWidth * 0.58 ||
-            gesture.dx < -swipeContentWidth * 0.42 ||
-            gesture.vx < -0.85
-          ) {
-            settleSwipe("details");
-            return;
-          }
-
-          if (revealDistance > 38 || gesture.vx < -0.28) {
-            settleSwipe("actions");
-            return;
-          }
-
-          settleSwipe(null);
         },
         onPanResponderTerminate: () => {
           onSwipeDragStateChange(false);
@@ -475,6 +476,16 @@ const DynamicRow = memo(function DynamicRow<T>({
               </View>
             );
           })}
+
+          {canSwipe && !isSwipeOpen && (
+            <TouchableOpacity
+              style={styles.rightHandleContainer}
+              onPress={() => onSwipeOpenRequest("actions")}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chevron-back" size={14} color="#000000" />
+            </TouchableOpacity>
+          )}
         </RowComponent>
       </Animated.View>
 
@@ -528,6 +539,17 @@ function DynamicTable<T = any>({
     stage: SwipeStage;
   } | null>(null);
   const [isSwipeDragging, setIsSwipeDragging] = useState(false);
+  const [tableLayoutWidth, setTableLayoutWidth] = useState<number>(0);
+
+  const handleContainerLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const w = e.nativeEvent.layout.width;
+      if (w > 0 && Math.abs(w - tableLayoutWidth) > 2) {
+        setTableLayoutWidth(w);
+      }
+    },
+    [tableLayoutWidth],
+  );
 
   const handleToggleCollapse = useCallback(() => {
     setCollapsed((v) => !v);
@@ -805,6 +827,12 @@ function StickyHeaderTable<T>({
           keyboardShouldPersistTaps="always"
           nestedScrollEnabled
         >
+          {openSwipeRow != null && (
+            <Pressable
+              style={styles.backdropOverlay}
+              onPress={handleCloseSwipeRow}
+            />
+          )}
           {loading && (
             <View style={styles.centeredState}>
               <ActivityIndicator size="small" color="#00DEAB" />
@@ -980,5 +1008,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#9CA3AF",
     fontFamily: "SF_Pro_Regular",
+  },
+  rightHandleContainer: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 22,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  backdropOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 5000,
+    backgroundColor: "transparent",
   },
 });

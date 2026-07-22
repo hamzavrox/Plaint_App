@@ -6,20 +6,20 @@ import TaskDetailModal, { TaskDetail } from "@/components/TaskDetailModal";
 import { StatusType, TaskRowProps } from "@/components/TaskRow";
 import TaskTable from "@/components/TaskTable";
 import Icons from "@/constants/icons";
-import { Fontisto } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 import { getTaskDetail } from "@/services/api/tasks.service";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { uiStatusToApi } from "@/utils/statusMapper";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const { AllTaskIcon: AllTasksIcon, AssignIcon, CompletedIcon, CreatedIcon, DelayIcon, DueTodayIcon, RecurringIcon, SevenDayIcon: SevendayIcon } = Icons;
 
@@ -268,7 +268,7 @@ export default function TasksScreen() {
       </SafeAreaView>
 
       <TouchableOpacity style={styles.fab} activeOpacity={0.85} onPress={() => setCreateVisible(true)}>
-        <Fontisto name="plus-a" size={24} color="black" />
+        <MaterialIcons name="add" size={35} color="black" />
       </TouchableOpacity>
 
       <CreateTaskModal visible={createVisible} onClose={() => setCreateVisible(false)} />

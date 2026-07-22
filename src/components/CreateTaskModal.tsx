@@ -10,6 +10,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useAuth } from "@/hooks/useAuth";
@@ -184,6 +185,7 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+       <TouchableWithoutFeedback onPress={onClose}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
@@ -494,6 +496,7 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
           </TouchableOpacity>
         </View>
       </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }

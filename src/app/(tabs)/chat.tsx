@@ -7,30 +7,16 @@ import { useChat } from "@/hooks/useChat";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Icon, router } from "expo-router";
+import { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
-import { Room, RoomType } from "@/types/chat.types";
-import { TaskOwner } from "@/types/task.types";
-import {
-    getRoomDisplayName,
-    getRoomInitials,
-    isRoomUnread,
-    filterRoomsByType,
-    filterUnreadRooms,
-    filterReadRooms,
-    formatChatListTime,
-    getLastMessagePreview,
-} from "@/utils/chatHelpers";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // ─── Chip Config ──────────────────────────────────────────────────────────────
 
@@ -60,6 +46,10 @@ export default function ChatScreen() {
     const [isChannelMode, setIsChannelMode] = useState(false);
     const [activeChip, setActiveChip] = useState("all");
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+    const [selectedChannelKey, setSelectedChannelKey] = useState<string | null>(null);
+    const [chats, setChats] = useState<ChatUser[]>(ALL_USERS);
+    const [channels, setChannels] = useState<ChatUser[]>(CHANNELS_DATA);
+    const [projects, setProjects] = useState<ProjectData[]>(INITIAL_PROJECTS);
     const [newChannelName, setNewChannelName] = useState("");
     // Track which project we're adding a channel to (null = standalone channel)
     const [projectContext, setProjectContext] = useState<Room | null>(null);
@@ -470,52 +460,67 @@ export default function ChatScreen() {
                                                         </View>
                                                     )}
                                                 </View>
-                                            </TouchableOpacity>
-
-                                            {/* Child channels (expanded) */}
-                                            {isExpanded && childChannels.map((channel) => {
-                                                const chName = channel.name;
-                                                const chUnread = isRoomUnread(channel);
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={channel.id}
-                                                        style={[styles.chatRow, { paddingLeft: 44 }]}
-                                                        activeOpacity={0.7}
-                                                        onPress={() => handleRoomPress(channel)}
-                                                    >
-                                                        <View style={styles.avatarContainer}>
-                                                            <View style={[styles.avatarBox, { width: 28, height: 28, backgroundColor: "#F4F4F4" }]}>
-                                                                <Text style={[styles.avatarText, { fontSize: 12, color: "#1D1D1D" }]}>#</Text>
-                                                            </View>
-                                                            {chUnread && <View style={styles.onlineIndicator} />}
-                                                        </View>
-                                                        <View style={styles.chatInfo}>
-                                                            <Text style={[styles.chatName, { fontSize: 14 }]} numberOfLines={1}>
-                                                                {chName}
-                                                            </Text>
-                                                        </View>
-                                                        {chUnread && channel.unreadCount > 0 && (
-                                                            <View style={styles.unreadBubble}>
-                                                                <Text style={styles.unreadBubbleText}>+{channel.unreadCount}</Text>
-                                                            </View>
-                                                        )}
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
-
-                                            {/* Add channel button under expanded project */}
-                                            {isExpanded && (
+                                            )}
+                                            <Text style={styles.chatTime}>{project.time}</Text>
+                                            
+                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginLeft: 6 }}>
                                                 <TouchableOpacity
-                                                    style={[styles.chatRow, { paddingLeft: 44 }]}
                                                     activeOpacity={0.7}
-                                                    onPress={() => handleProjectAddChannel(project)}
+                                                    style={{ padding: 4 }}
+                                                    onPress={(e) => {
+                                                        e.stopPropagation();
+                                                        handleAddGroupPress(project.id);
+                                                    }}
+                                                >
+                                                <Ionicons name="add-circle-sharp" size={24} color="black" />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    activeOpacity={0.7}
+                                                    style={{ padding: 4 }}
+                                                    onPress={(e) => {
+                                                        e.stopPropagation();
+                                                        toggleProjectExpand(project.id);
+                                                    }}
+                                                >
+                                                    <Ionicons 
+                                                        name={project.expanded ? "chevron-up" : "chevron-down"} 
+                                                        size={20} 
+                                                        color="#1D1D1D" 
+                                                    />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+
+                                    {project.expanded && (
+                                        <View style={styles.channelsContainer}>
+                                            {project.channels.map((channel, cIdx) => {
+                                                const channelKey = `${project.id}_${cIdx}`;
+                                                const isChannelActive = selectedChannelKey === channelKey;
+                                                return (
+                                                <TouchableOpacity
+                                                    key={cIdx}
+                                                    style={[styles.channelRow, isChannelActive && styles.channelRowActive]}
+                                                    activeOpacity={0.7}
+                                                    onPress={() => {
+                                                        setSelectedChannelKey(channelKey);
+                                                        router.push({
+                                                            pathname: "/conversation",
+                                                            params: {
+                                                                name: channel,
+                                                                initials: channel.charAt(0).toUpperCase(),
+                                                                isChannel: "true",
+                                                            },
+                                                        });
+                                                    }}
                                                 >
                                                     <View style={[styles.avatarBox, { width: 28, height: 28, backgroundColor: "#F0FDF9" }]}>
                                                         <Ionicons name="add" size={16} color="#00DEAB" />
                                                     </View>
                                                     <Text style={[styles.chatSnippet, { marginLeft: 14, color: "#00DEAB", fontFamily: "SF_Pro_Medium" }]}>Add Channel</Text>
                                                 </TouchableOpacity>
-                                            )}
+                                                );
+                                            })}
                                         </View>
                                     );
                                 })
@@ -638,11 +643,13 @@ export default function ChatScreen() {
                             }
                         }}
                     >
-                        <MaterialCommunityIcons 
-                            name={activeChip === "channels" || activeChip === "projects" ? "account-multiple-plus" : "message-plus"} 
+                        {/* <MaterialCommunityIcons 
+                            name={activeChip === "channels" ? "account-multiple-plus" : "message-plus"} 
                             size={24} 
                             color="#000" 
-                        />
+                        /> */}
+                        {activeChip === "channels" ? <Icons.ChannelBtn/> : <Icons.IndoxBtn/>}
+                      
                     </TouchableOpacity>
                 )}
             </SafeAreaView>
@@ -888,5 +895,60 @@ const styles = StyleSheet.create({
         backgroundColor: "#00DEAB",
         alignItems: "center",
         justifyContent: "center",
+        // shadowColor: "#00DEAB",
+        // shadowOpacity: 0.3,
+        // shadowRadius: 8,
+        // shadowOffset: { width: 0, height: 4 },
+        // elevation: 6,
+    },
+    channelsContainer: {
+        backgroundColor: "#fff",
+        borderBottomWidth: 1,
+        borderBottomColor: "#F4F4F4",
+    },
+    channelRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingLeft: 16,
+        paddingRight: 16,
+        paddingVertical: 10,
+        backgroundColor: "#fff",
+    },
+    channelRowActive: {
+        backgroundColor: "#F4F4F4",
+        marginHorizontal: 3,
+        borderRadius: 6,
+    },
+    channelName: {
+        fontSize: 15,
+        fontFamily: "SF_Pro_Semibold",
+        color: "#1D1D1D",
+    },
+    subAvatarContainer: {
+        position: "relative",
+        marginRight: 12,
+    },
+    subAvatarBox: {
+        width: 36,
+        height: 36,
+        borderRadius: 5,
+        backgroundColor: "#00DEAB",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    subAvatarText: {
+        color: "#fff",
+        fontSize: 15,
+        fontFamily: "SF_Pro_Medium",
+    },
+    channelInfo: {
+        flex: 1,
+        justifyContent: "center",
+        gap: 2,
+    },
+    channelSnippet: {
+        fontSize: 13,
+        fontFamily: "SF_Pro_Regular",
+        color: "#4B5563",
     },
 });

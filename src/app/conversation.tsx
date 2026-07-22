@@ -1742,9 +1742,9 @@ const styles = StyleSheet.create({
 
     // ── Avatar (in message) ──
     avatar: {
-        width: 38,
-        height: 38,
-        borderRadius: 8,
+        width: 34,
+        height: 34,
+        borderRadius: 20,
         backgroundColor: TEAL,
         justifyContent: "center",
         alignItems: "center",
@@ -1752,8 +1752,8 @@ const styles = StyleSheet.create({
     },
     avatarText: {
         color: "#fff",
-        fontSize: 12,
-        fontFamily: "SF_Pro_Semibold",
+        fontSize: 14,
+        fontFamily: "SF_Pro_Regular",
         letterSpacing: 0.3,
     },
 

@@ -7,13 +7,13 @@ import LeaveDetailModal from "@/components/LeaveDetailModal";
 import { Fontisto, Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import {
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface LeaveItem {
     id: string;
@@ -219,9 +219,8 @@ export default function Dashboard() {
         []
     );
 
-    return (
-        <View style={styles.root}>
-            <SafeAreaView style={styles.safe}>
+    return (    
+            <SafeAreaView style={styles.root}>
                 <AppHeader
                     greeting="My Leaves"
                     subGreeting="View and apply for your leaves"
@@ -353,7 +352,6 @@ export default function Dashboard() {
                     leave={selectedLeave}
                 />
             </SafeAreaView>
-        </View>
     );
 }
 
@@ -363,9 +361,9 @@ const styles = StyleSheet.create({
         backgroundColor: "#fff",
         position: "relative",
     },
-    safe: {
-        flex: 1,
-    },
+    // safe: {
+    //     flex: 1,
+    // },
     scroll: {
         flex: 1,
     },

@@ -1061,8 +1061,9 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
     paddingRight: 10,
     backgroundColor: "#00DEAB",
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    // borderTopLeftRadius: 8,
+    // borderTopRightRadius: 8,
+    borderRadius:8,
   },
   detailsBackButton: {
     width: 26,
@@ -1072,7 +1073,7 @@ const styles = StyleSheet.create({
     marginRight: 2,
   },
   swipeHeaderText: {
-    fontSize: 13.5,
+    fontSize: 12.5,
     color: "#050505",
     fontFamily: "SF_Pro_Medium",
   },

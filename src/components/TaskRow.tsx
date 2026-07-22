@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     width: 3.5,
     height: 28,
     borderRadius: 4,
-    backgroundColor: "#CB5F00",
+    backgroundColor: "#00cb76ff",
   },
   checkCircle: {
     width: 17,
