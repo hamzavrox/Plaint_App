@@ -62,6 +62,7 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <AuthProvider>
       <TaskProvider>
         <ChatProvider>
@@ -71,5 +72,6 @@ export default function RootLayout() {
         </ChatProvider>
       </TaskProvider>
     </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
