@@ -13,7 +13,7 @@ function MainChatIcon(props) {
       {...props}
     >
       <Mask
-        id="a"
+        id="mask_chat"
         style={{
           maskType: "alpha"
         }}
@@ -25,7 +25,7 @@ function MainChatIcon(props) {
       >
         <Path fill="url(#pattern0_1612_2310)" d="M0 0H44.3384V44.3384H0z" />
       </Mask>
-      <G mask="url(#a)">
+      <G mask="url(#mask_chat)">
         <Path
           fill="#0DDFAB"
           d="M-8.24121 -7.62402H45.20039V45.81758H-8.24121z"

@@ -13,7 +13,7 @@ function FilterIconBlack(props) {
       {...props}
     >
       <Mask
-        id="a"
+        id="mask_filterblack"
         style={{
           maskType: "alpha"
         }}
@@ -25,7 +25,7 @@ function FilterIconBlack(props) {
       >
         <Path fill="url(#pattern0_1112_1002)" d="M0 0H12.2475V12.2475H0z" />
       </Mask>
-      <G mask="url(#a)">
+      <G mask="url(#mask_filterblack)">
         <Path
           fill="#1D1D1D"
           d="M0.886154 -1.49072H14.859753999999999V12.48288H0.886154z"

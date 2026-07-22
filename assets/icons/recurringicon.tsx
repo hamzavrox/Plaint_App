@@ -13,7 +13,7 @@ function RecurringIcon(props) {
       {...props}
     >
       <Mask
-        id="a"
+        id="mask_recurring"
         style={{
           maskType: "alpha"
         }}
@@ -25,7 +25,7 @@ function RecurringIcon(props) {
       >
         <Path fill="url(#pattern0_117_157)" d="M0 0H18.2097V18.2097H0z" />
       </Mask>
-      <G mask="url(#a)">
+      <G mask="url(#mask_recurring)">
         <Path fill="#0DDFAB" d="M0 0H20.4859V20.4859H0z" />
       </G>
       <Defs>

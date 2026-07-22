@@ -7,6 +7,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useContext, useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -35,16 +36,16 @@ function RootNavigator() {
     if (state.loading || !fontsLoaded) return;
 
     const inAuthGroup = segments[0] === "(auth)";
-    const inInitialReset = segments.includes("initial-reset");
+    const inInitialReset = (segments as string[]).includes("initial-reset");
 
     if (!state.isAuthenticated && !inAuthGroup) {
       router.replace("/(auth)/login");
     } else if (state.isAuthenticated && state.isDefaultPassword && !inInitialReset) {
-      router.replace("/(auth)/initial-reset");
+      router.replace("/(auth)/initial-reset" as never);
     } else if (state.isAuthenticated && !state.isDefaultPassword && inAuthGroup) {
       router.replace("/(tabs)/tasks");
     }
-  }, [state.isAuthenticated, state.isDefaultPassword, state.loading, segments, fontsLoaded]);
+  }, [state.isAuthenticated, state.isDefaultPassword, state.loading, segments, fontsLoaded, router]);
 
   if (state.loading || !fontsLoaded) {
     return (

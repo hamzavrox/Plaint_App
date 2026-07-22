@@ -15,8 +15,10 @@ export type TaskRowProps = {
   title: string;
   createdBy: string;
   createdByInitials: string;
+  createdByAvatar?: string;
   assignedTo: string;
   assignedToInitials: string;
+  assignedToAvatar?: string;
   dueDate: string;
   status: StatusType;
   comment?: string;
@@ -38,11 +40,16 @@ export const STATUS_COLORS: Record<StatusType, { bg: string; text: string }> = {
 };
 
 const ALL_STATUSES: StatusType[] = [
-  "Pending", "In-Progress", "Rejected", "Completed", "Pending-Approval", "Recurring",
+  "Pending",
+  "In-Progress",
+  "Rejected",
+  "Completed",
+  "Pending-Approval",
+  "Recurring",
 ];
 
 export const COL_WIDTHS = {
-  spacer: 35,
+  spacer: 28,
   title: 200,
   createdBy: 120,
   assignedTo: 120,
@@ -53,17 +60,31 @@ export const COL_WIDTHS = {
 };
 
 export default function TaskRow({
-  title, createdBy, createdByInitials, assignedTo, assignedToInitials,
-  dueDate, status: initialStatus, project, extraCount,
-  isOpen = false, onOpenRequest, onClose, onPress,
+  title,
+  createdBy,
+  createdByInitials,
+  assignedTo,
+  assignedToInitials,
+  dueDate,
+  status: initialStatus,
+  project,
+  extraCount,
+  isOpen = false,
+  onOpenRequest,
+  onClose,
+  onPress,
 }: TaskRowProps) {
   const [status, setStatus] = useState<StatusType>(initialStatus);
   const { bg, text } = STATUS_COLORS[status];
   const isCompleted = status === "Completed";
 
   // Left offset of the status cell inside the row
-  const statusLeft = COL_WIDTHS.spacer + COL_WIDTHS.title + COL_WIDTHS.createdBy +
-    COL_WIDTHS.assignedTo + COL_WIDTHS.dueDate;
+  const statusLeft =
+    COL_WIDTHS.spacer +
+    COL_WIDTHS.title +
+    COL_WIDTHS.createdBy +
+    COL_WIDTHS.assignedTo +
+    COL_WIDTHS.dueDate;
 
   return (
     <View style={styles.wrap}>
@@ -88,7 +109,10 @@ export default function TaskRow({
           onPress={onPress}
           activeOpacity={0.7}
         >
-          <Text style={[styles.titleText, isCompleted && styles.strikethrough]} numberOfLines={1}>
+          <Text
+            style={[styles.titleText, isCompleted && styles.strikethrough]}
+            numberOfLines={1}
+          >
             {title}
           </Text>
           {extraCount ? (
@@ -104,7 +128,9 @@ export default function TaskRow({
           <View style={styles.initials}>
             <Text style={styles.initialsText}>{createdByInitials}</Text>
           </View>
-          <Text style={styles.cellText} numberOfLines={1}>{createdBy}</Text>
+          <Text style={styles.cellText} numberOfLines={1}>
+            {createdBy}
+          </Text>
         </View>
 
         {/* Assigned To */}
@@ -112,18 +138,28 @@ export default function TaskRow({
           <View style={[styles.initials, styles.initialsAssigned]}>
             <Text style={styles.initialsText}>{assignedToInitials}</Text>
           </View>
-          <Text style={styles.cellText} numberOfLines={1}>{assignedTo}</Text>
+          <Text style={styles.cellText} numberOfLines={1}>
+            {assignedTo}
+          </Text>
         </View>
 
         {/* Due Date */}
         <View style={[styles.dateCell, { width: COL_WIDTHS.dueDate }]}>
-          <Ionicons name="calendar-outline" size={15} color="#00DEAB" style={{ marginRight: 4 }} />
+          <Ionicons
+            name="calendar-outline"
+            size={15}
+            color="#00DEAB"
+            style={{ marginRight: 4 }}
+          />
           <Text style={styles.cellText}>{dueDate}</Text>
         </View>
 
         {/* Status pill */}
         <TouchableOpacity
-          style={[styles.statusCell, { width: COL_WIDTHS.status, backgroundColor: bg }]}
+          style={[
+            styles.statusCell,
+            { width: COL_WIDTHS.status, backgroundColor: bg },
+          ]}
           onPress={(e) => {
             e.stopPropagation();
             if (isOpen) {
@@ -135,7 +171,11 @@ export default function TaskRow({
           activeOpacity={0.8}
         >
           <Text style={[styles.statusText, { color: text }]}>{status}</Text>
-          <Ionicons name={isOpen ? "chevron-up" : "chevron-down"} size={15} color={text} />
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={15}
+            color={text}
+          />
         </TouchableOpacity>
 
         {/* Comment */}
@@ -145,23 +185,51 @@ export default function TaskRow({
 
         {/* Project */}
         <View style={{ width: COL_WIDTHS.project }}>
-          <Text style={styles.cellText} numberOfLines={1}>{project ?? ""}</Text>
+          <Text style={styles.cellText} numberOfLines={1}>
+            {project ?? ""}
+          </Text>
         </View>
       </View>
 
       {/* ── Dropdown — absolutely above the row, aligned to status column ── */}
       {isOpen && (
-        <View style={[styles.dropdown, { left: statusLeft, width: COL_WIDTHS.status }]}>
+        <View
+          style={[
+            styles.dropdown,
+            { left: statusLeft, width: COL_WIDTHS.status },
+          ]}
+        >
           {ALL_STATUSES.map((s) => (
             <TouchableOpacity
               key={s}
-              style={[styles.dropdownItem, s === status && styles.dropdownItemActive]}
-              onPress={() => { setStatus(s); onClose?.(); }}
+              style={[
+                styles.dropdownItem,
+                s === status && styles.dropdownItemActive,
+              ]}
+              onPress={() => {
+                setStatus(s);
+                onClose?.();
+              }}
             >
-              <View style={[styles.dot, { backgroundColor: STATUS_COLORS[s].text }]} />
-              <Text style={{ fontSize: 12, fontFamily: "SF_Pro_Regular", flex: 1, color: STATUS_COLORS[s].text }}>{s}</Text>
+              <View
+                style={[styles.dot, { backgroundColor: STATUS_COLORS[s].text }]}
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontFamily: "SF_Pro_Regular",
+                  flex: 1,
+                  color: STATUS_COLORS[s].text,
+                }}
+              >
+                {s}
+              </Text>
               {s === status && (
-                <Ionicons name="checkmark" size={13} color={STATUS_COLORS[s].text} />
+                <Ionicons
+                  name="checkmark"
+                  size={13}
+                  color={STATUS_COLORS[s].text}
+                />
               )}
             </TouchableOpacity>
           ))}
@@ -181,32 +249,64 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F3F4F6",
     backgroundColor: "#fff",
   },
-  accent: { width: 3.5, height: 28, borderRadius: 4, backgroundColor: "#CB5F00" },
+  accent: {
+    width: 3.5,
+    height: 28,
+    borderRadius: 4,
+    backgroundColor: "#CB5F00",
+  },
   checkCircle: {
-    width: 17, height: 17, borderRadius: 4,
-    backgroundColor: "#00DEAB", alignItems: "center", justifyContent: "center",
+    width: 17,
+    height: 17,
+    borderRadius: 4,
+    backgroundColor: "#00DEAB",
+    alignItems: "center",
+    justifyContent: "center",
   },
   checkbox: {
-    width: 17, height: 17, borderRadius: 4,
-    borderWidth: 1.5, borderColor: "#D1D5DB", backgroundColor: "#fff",
+    width: 17,
+    height: 17,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: "#D1D5DB",
+    backgroundColor: "#fff",
   },
   titleCell: { flexDirection: "row", alignItems: "center", paddingRight: 8 },
-  titleText: { fontSize: 12.5, color: "#1F2937", flexShrink: 1, fontFamily: "SF_Pro_Medium" },
+  titleText: {
+    fontSize: 12.5,
+    color: "#1F2937",
+    flexShrink: 1,
+    fontFamily: "SF_Pro_Medium",
+  },
   strikethrough: { textDecorationLine: "line-through", color: "#9CA3AF" },
   extraBadge: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "#F3F4F6", borderRadius: 6,
-    paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 6,
   },
   extraText: { fontSize: 11, color: "#6B7280", marginLeft: 2 },
   userCell: { flexDirection: "row", alignItems: "center", paddingRight: 8 },
   initials: {
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: "#00DEAB", alignItems: "center", justifyContent: "center", marginRight: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#00DEAB",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 6,
   },
   initialsAssigned: { backgroundColor: "#00DEAB" },
   initialsText: { fontSize: 10, fontWeight: "700", color: "#fff" },
-  cellText: { fontSize: 12.5, color: "#1F2937", flexShrink: 1, fontFamily: "SF_Pro_Medium" },
+  cellText: {
+    fontSize: 12.5,
+    color: "#1F2937",
+    flexShrink: 1,
+    fontFamily: "SF_Pro_Medium",
+  },
   dateCell: { flexDirection: "row", alignItems: "center", paddingRight: 8 },
   statusCell: {
     flexDirection: "row",
@@ -223,7 +323,6 @@ const styles = StyleSheet.create({
     width: COL_WIDTHS.comment,
     justifyContent: "center",
     alignItems: "flex-start",
-
   },
   // Dropdown floats BELOW the row, overlays rows underneath
   dropdown: {
