@@ -12,11 +12,13 @@
 | Add/change task API endpoint | `src/services/api/tasks.service.ts` |
 | Add/change task type | `src/types/task.types.ts` |
 | Add/change task state/action | `src/context/TaskContext.tsx`, `src/hooks/useTasks.ts` |
+| Task socket real-time events | `src/hooks/useTaskSocket.ts`, `src/services/socket/socketService.ts` |
 | Add/change chat API endpoint | `src/services/api/chat.service.ts` |
 | Add/change chat type | `src/types/chat.types.ts` |
 | Add/change chat state/action | `src/context/ChatContext.tsx`, `src/hooks/useChat.ts` |
 | Chat helpers/utilities | `src/utils/chatHelpers.ts` |
 | Socket.io events/connection | `src/services/socket/socketService.ts` |
+| Socket lifecycle (app-level) | `src/app/_layout.tsx` (connect/disconnect), `src/context/ChatContext.tsx` (chat listeners) |
 | Notification API/context | `src/context/NotificationContext.tsx`, `src/hooks/useNotifications.ts` |
 | File upload with progress | `src/services/api/upload.service.ts` |
 | Modify login screen | `src/app/(auth)/login.tsx` |
@@ -84,6 +86,8 @@ src/app/
 - Not authenticated → redirect to `/(auth)/login`
 - Authenticated + `isDefaultPassword` → redirect to `/(auth)/initial-reset`
 - Authenticated + not default password + on auth screen → redirect to `/(tabs)/Tasks`
+- Authenticated → `connectSocket()` (app-level socket init, idempotent)
+- Logout → `disconnectSocket()` (tears down shared socket)
 
 ---
 
@@ -92,6 +96,7 @@ src/app/
 ### Provider Hierarchy (in `_layout.tsx`)
 
 ```
+<App-level socket lifecycle: connectSocket() on auth, disconnectSocket() on logout>
 <AuthProvider>
   <TaskProvider>
     <ChatProvider>
@@ -490,7 +495,7 @@ Integrated all 31 PLANIT Backend Chat Module APIs into the mobile app, plus Sock
 
 | File | Change |
 |------|--------|
-| `src/app/_layout.tsx` | Added `NotificationProvider` inside `ChatProvider` |
+| `src/app/_layout.tsx` | Added `NotificationProvider` inside `ChatProvider` + app-level socket lifecycle (`connectSocket` on auth, `disconnectSocket` on logout) |
 | `src/app/(tabs)/chat.tsx` | Replaced mock data with `useChat()` + Socket.io init on mount + initial user search on modal open |
 | `src/app/conversation.tsx` | Live API messaging + client-side search filtering + upload progress bar + wired `onSearch` callback + emoji picker modal + forward room picker modal + edit message overlay + three-dots action menu + sender name resolution from room members |
 | `src/components/InboxModal.tsx` | Replaced mock data with real `GET /notification/all` API |
@@ -536,214 +541,6 @@ Integrated all 31 PLANIT Backend Chat Module APIs into the mobile app, plus Sock
 4. **All 31 endpoints integrated** from `chat_apis_VERBATIM_MASTER.md` + `answers2.md`
 5. **Provider hierarchy:** `AuthProvider > TaskProvider > ChatProvider > NotificationProvider > RootNavigator`
 6. **All chat endpoints use `/chat/` prefix:** Backend routes are `GET /chat/rooms`, `GET /chat/search-users`, etc. Notification endpoints (`/notification/*`) are NOT under `/chat/`.
-```
-
----
-
-## Task Endpoints
-
-| Function | Endpoint | Method | Body |
-|----------|----------|--------|------|
-| `getAllTasks` | `/tasks/all` | GET | `?company_id=N` |
-| `getDueTodayTasks` | `/tasks/duetoday` | GET | `?company_id=N` |
-| `getFilteredTasks` | `/tasks/filter` | GET | `?company_id=N&filter=X` |
-| `getTaskDetail` | `/tasks/taskdetail/:id` | GET | — |
-| `createTask` | `/tasks/create` | POST | `CreateTaskRequest` |
-| `createSubtask` | `/tasks/createsubtask/:parentId` | POST | `CreateTaskRequest` |
-| `updateTask` | `/tasks/update/:id` | POST | `UpdateTaskRequest` |
-| `updateTaskStatus` | `/tasks/updatetaskstatus/:id` | POST | `{ status, company_id, company_identifier }` |
-| `reassignTask` | `/tasks/reassigntask/:id` | POST | `{ company_id, company_identifier, assignee }` |
-| `deleteTask` | `/tasks/delete/:id` | POST | — |
-| `approveTask` | `/tasks/approve/:id` | POST | — |
-| `rejectTask` | `/tasks/reject/:id` | POST | `{ rejection_reason }` |
-| `viewTask` | `/tasks/viewtask/:id` | POST | — |
-| `addNote` | `/tasks/addnote/:id` | POST | `{ notes, company_id, company_identifier }` or FormData |
-| `getTaskNotes` | `/tasks/showtasknote/:id` | POST | — |
-| `updateNote` | `/tasks/updatenote/:id` | POST | `{ notes, company_id, company_identifier }` |
-| `pinNote` | `/tasks/updatenotepin/:id` | POST | `{ pin_top: 0|1, company_id, company_identifier }` |
-| `deleteNote` | `/tasks/deletenote/:id` | POST | `{ company_id, company_identifier }` |
-| `updateNoteReaction` | `/tasks/updatenotereaction/:id` | POST | `{ reaction, company_id, company_identifier }` |
-| `uploadAttachment` | `/tasks/attachments/:id` | POST | FormData (multipart) |
-| `deleteAttachment` | `/tasks/attachmentdelete/:id` | POST | `{ company_id, company_identifier }` |
-| `updateTaskDueDate` | `/tasks/updatetaskduedate/:id` | POST | `{ duedate, company_id, company_identifier }` |
-| `updateTaskProject` | `/tasks/updatetaskproject/:id` | POST | `{ project_id, company_id, company_identifier }` |
-| `updateLeadSource` | `/tasks/updateleadsource/:id` | POST | `{ source, company_id, company_identifier }` |
-
----
-
-## Dependencies Installed
-
-```
-expo-secure-store         — JWT token persistence
-@react-native-async-storage/async-storage — fallback storage
-socket.io-client          — Socket.io real-time connection (chat module)
-expo-clipboard            — Copy-to-clipboard (message options menu)
-```
-
----
-
-## How To Verify Changes
-
-```bash
-npx tsc --noEmit          # TypeScript type check
-npx expo lint             # ESLint check
-```
-
-Only errors in files under `src/app/`, `src/components/`, `src/context/`, `src/hooks/`, `src/services/`, `src/types/`, `src/utils/` matter. Pre-existing errors in other files are ignored.
-
----
-
-## Environment Config
-
-`.env`:
-```
-EXPO_PUBLIC_API_BASE_URL=https://backend-planit.soulservices.com/api/v1
-```
-
----
-
-## Code Conventions
-
-- **No Axios** — use native `fetch` via `apiGet`/`apiPost`/`apiDelete`/`apiUpload`
-- **No Redux/Zustand** — use React Context + `useReducer`
-- **TypeScript strict** — all types in `src/types/`
-- **Path alias:** `@/` maps to `src/`
-- **Expo SDK 57** — read https://docs.expo.dev/versions/v57.0.0/ for API changes
-- **Expo Router** — file-based routing, `(auth)` and `(tabs)` are route groups
-- **Font families:** `SF_Pro_Regular`, `SF_Pro_Medium`, `SF_Pro_Semibold`, `SF_Pro_Bold`
-- **Primary color:** `#00DEAB` (mint green)
-- **Dark color:** `#1D1D1D`
-
----
-
-## Task Comments Feature Fixes (July 20, 2026)
-
-### Overview
-Resolved the issue where task comments/notes were not loading or displaying in the task details modal (`TaskDetailModal.tsx`).
-
-### Files Modified
-
-1. **`src/services/api/tasks.service.ts`**
-   - Modified `getTaskNotes` to accept optional `companyId` and `companyIdentifier` arguments and include them inside the body of the `POST /tasks/showtasknote/:id` request.
-
-2. **`src/context/TaskContext.tsx`**
-   - Updated `fetchNotes` interface and implementation signature to accept and forward the optional `companyId` and `companyIdentifier`.
-   - Updated `addNoteToTask`, `deleteNoteById`, and `pinNoteById` callbacks to check `res.Good` and throw an explicit error on failure instead of failing silently.
-
-3. **`src/components/TaskDetailModal.tsx`**
-   - Updated `loadNotes` to fetch notes passing the company details: `fetchNotes(task.taskId, companyId, companyIdentifier)`.
-   - Added a `useEffect` hook to reset `activeTab` back to `"details"` whenever the modal becomes visible (`visible === true`).
-   - Hardened `initials` extraction inside the `CommentBubble` component using a robust trim + regex-based split (`.trim().split(/\s+/)`) and a `.filter(Boolean)` filter.
-
----
-
-## Chat Module API Integration (July 22, 2026)
-
-### Overview
-Integrated all 31 PLANIT Backend Chat Module APIs into the mobile app, plus Socket.io real-time, notification center, message search, and file upload progress. Replaced all mock/hardcoded chat data with live API calls while preserving the existing UI design.
-
-### APIs Integrated (31 endpoints)
-
-> **Critical:** All chat endpoints are prefixed with `/chat/`. The base URL is `https://backend-planit.soulservices.com/api/v1`, so the full path is `/api/v1/chat/...`. Notification endpoints are NOT under `/chat/`.
-
-| Category | Endpoints |
-|----------|-----------|
-| Rooms | `GET /chat/rooms`, `GET /chat/search-users`, `POST /chat/get-or-create-room` |
-| Messages | `GET /chat/messages/:roomId`, `POST /chat/send-message`, `POST /chat/edit-message`, `POST /chat/delete-message` |
-| Reactions | `POST /chat/reaction` |
-| URL Preview | `GET /chat/url-preview` |
-| Members | `POST /chat/add-member`, `POST /chat/remove-member`, `POST /chat/leave-room` |
-| Room Management | `POST /chat/delete-room`, `POST /chat/clear-messages`, `POST /chat/hide-room`, `POST /chat/mute-room`, `POST /chat/mark-read`, `POST /chat/mark-unread` |
-| Pins | `POST /chat/toggle-pin`, `GET /chat/pins/:roomId` |
-| Post Types | `GET /chat/post-types/:roomId`, `POST /chat/post-types`, `POST /chat/post-types/delete` |
-| Invitations | `POST /chat/invite`, `POST /chat/generate-link`, `GET /chat/accept-invite/:token` |
-| Permissions | `POST /chat/update-permission`, `GET /chat/room-permissions/:roomId` |
-| Notifications | `GET /notification/all`, `POST /notification/readone/:id`, `GET /notification/readall` |
-
-### Socket.io Events (20+ events)
-
-**Client emits:** `registerUser`, `getOnlineUsers`, `joinChatRoom`, `messagesRead`, `typing`, `messageDelivered`, `messagePinned`, `messageUpdated`, `messageDeleted`, `messageReaction`, `chatCleared`, `roomDeleted`, `memberJoined`, `userLeftRoom`
-
-**Server emits:** `newRoom`, `receiveChatMessage`, `userOnline`, `userOffline`, `userTyping`, `messageReaction`, `messagePinned`, `messageUpdated`, `messageDeleted`, `memberJoined`, `messagesRead`, `chatCleared`, `roomDeleted`, `userLeftRoom`, `removedFromRoom`, `roomPermissionUpdated`, `chatRoomSettingUpdated`, `notification`
-
-### Files Created
-
-| File | Purpose |
-|------|---------|
-| `src/types/chat.types.ts` | All chat + notification TypeScript interfaces |
-| `src/services/api/chat.service.ts` | All 31 API functions (chat + notifications) |
-| `src/context/ChatContext.tsx` | Chat state management with Socket.io integration |
-| `src/context/NotificationContext.tsx` | Notification state management (inbox/bell icon) |
-| `src/hooks/useChat.ts` | Re-export hook |
-| `src/hooks/useNotifications.ts` | Re-export hook |
-| `src/utils/chatHelpers.ts` | Room display, message formatting, permission, upload, date, search utilities |
-| `src/services/socket/socketService.ts` | Socket.io connection, emit/listen, typing, reconnection |
-| `src/services/api/upload.service.ts` | XMLHttpRequest upload with progress tracking + file validation |
-| `CHAT_API_INTEGRATION.md` | Full integration documentation |
-
-### Files Modified
-
-| File | Change |
-|------|--------|
-| `src/app/_layout.tsx` | Added `NotificationProvider` inside `ChatProvider` |
-| `src/app/(tabs)/chat.tsx` | Replaced mock data with `useChat()` + Socket.io init on mount + initial user search on modal open |
-| `src/app/conversation.tsx` | Live API messaging + client-side search filtering + upload progress bar + wired `onSearch` callback + emoji picker modal + forward room picker modal + edit message overlay + three-dots action menu + sender name resolution from room members |
-| `src/components/InboxModal.tsx` | Replaced mock data with real `GET /notification/all` API |
-| `package.json` | Added `socket.io-client` dependency |
-
-### Features Implemented
-
-1. **Socket.io real-time** — Connection, registration, reconnection recovery, presence tracking, typing indicators, all message events
-2. **Notification center/inbox** — Real API data, All/Unread/Mentions tabs, unread badge, mark-read on tap, mark-all-read
-3. **Client-side message search** — Substring filter on text + sender name, result count, "no results" state
-4. **File upload progress** — XMLHttpRequest progress bar with percentage, cancel button, 10MB/20-file validation
-5. **Message action buttons** — All 6 buttons on each message bubble are functional:
-   - 👍 Quick react (thumbs-up toggle) → `POST /chat/reaction`
-   - 😊 Emoji picker (20 emojis in a grid modal) → `POST /chat/reaction`
-   - ➡️ Forward message (room picker modal) → `POST /chat/send-message` with `is_forwarded: true`
-   - ✏️ Edit message (input overlay) → `POST /chat/edit-message`
-   - ↩️ Reply (sets reply-to context in compose bar)
-   - ⋮ More options (Alert menu) → Copy Text (expo-clipboard), Pin/Unpin, Edit (own msgs), Delete (own msgs with confirmation)
-
-### Known Backend Bugs/limitations
-
-- `userTyping` event missing `room_id` — typing indicator only works for active room
-- `getOnlineUsers` is a no-op — no bulk presence snapshot on connect
-- No push notification backend — must be built from scratch with backend team
-- No server-side message search endpoint — client-side only
-
-### Known Bugs Fixed
-
-- **API path prefix (July 22, 2026):** All chat endpoints were missing the `/chat/` prefix (e.g., calling `/rooms` instead of `/chat/rooms`), causing every chat API request to hit a 404. Fixed by adding `/chat/` to all 28 chat endpoint paths in `chat.service.ts`.
-- **Upload path (July 22, 2026):** `ChatContext.tsx` hardcoded `/send-message` for progress uploads — fixed to `/chat/send-message`.
-- **Search users not loading (July 22, 2026):** `SearchUser` type had `first_name`/`last_name` but backend returns `full_name`. Fixed type to include `full_name` (optional) and updated component mappings. Also removed 2-char minimum on search (backend supports empty query for full list) and added initial fetch when modal opens.
-- **`room_id` must use MongoDB `_id`, not numeric `id` (July 22, 2026):** Backend expects `room_id` as a MongoDB ObjectId string (e.g., `"6a606754c3484d18150fb531"`), NOT the numeric `id` field (e.g., `"28"`). Passing numeric `id` causes a 500 Internal Server Error on `POST /chat/send-message`. The `Room` type has both `_id: string` (MongoDB ObjectId) and `id: number` (numeric). **Always use `room._id`** for: navigation params (`roomId`), API calls (`room_id`/`roomId`), socket `joinChatRoom`, and reducer room matching. `room.id` is only used for local UI state (e.g., selected-chat highlight).
-- **Missing `sender_name` in message responses (July 22, 2026):** Backend may return `sender_id` without `sender_name` on messages. `MessageBubble` in `conversation.tsx` resolves the name from `state.currentRoom?.members` by matching `sender_id`. `getMessageInitials()` in `chatHelpers.ts` handles `undefined`/`null` input gracefully (returns "??" instead of crashing). `ChatMessage.sender_name` and `sender_image` are now optional in the type.
-- **Duplicate messages from REST + socket (July 22, 2026):** When sending a message, the REST response dispatches `ADD_MESSAGE`, and the socket `receiveChatMessage` event fires for the same message, causing duplicate entries. Fixed by adding `_id`-based deduplication in the `ADD_MESSAGE` reducer — if a message with the same `_id` already exists, the dispatch is a no-op.
-- **`memberJoined` socket event crash (July 22, 2026):** The `memberJoined` socket event handler dispatched `UPDATE_ROOM` with `typed.room` which could be `undefined` if the server payload doesn't include the `room` field. Added a guard (`if (typed.room)`) before dispatching. Also added a safety guard in the `UPDATE_ROOM` reducer itself (`if (!action.room) return state`).
-- **React duplicate key crash (July 22, 2026):** Message list used `msg.id.toString()` as the React key, but numeric `id` values can collide across messages. Changed to `msg._id` (unique MongoDB ObjectId) to prevent "Encountered two children with the same key" errors.
-
-### Architectural Decisions
-
-1. **Followed existing patterns exactly:** React Context + useReducer, same API client, same error handling
-2. **Socket.io integrated:** Full real-time support with reconnection recovery
-3. **UI preserved:** Same visual design, same component structure, same styling
-4. **All 31 endpoints integrated** from `chat_apis_VERBATIM_MASTER.md` + `answers2.md`
-5. **Provider hierarchy:** `AuthProvider > TaskProvider > ChatProvider > NotificationProvider > RootNavigator`
-6. **All chat endpoints use `/chat/` prefix:** Backend routes are `GET /chat/rooms`, `GET /chat/search-users`, etc. Notification endpoints (`/notification/*`) are NOT under `/chat/`.
-7. **Search users API:** Backend returns `full_name` (not `first_name`/`last_name`). Empty `query=` returns full user list for pre-populating the "Add People" panel.
-8. **Room identifier convention:** Always use `room._id` (MongoDB ObjectId) for backend communication — API calls, socket `joinChatRoom`, navigation params, and reducer room matching. `room.id` (numeric) is only used for local UI state (e.g., selected-chat highlight). Socket room names follow `chat_<_id>` format.
-
-### Breaking Changes
-
-None. All changes are additive. Existing task and auth functionality unaffected.
-
-### Remaining Work
-
-- Push notifications (blocked on backend — needs device registration endpoint + FCM/APNs)
-- Server-side message search (when backend builds it)
-- Offline support with message queue
-- Image/file preview in conversation
 
 ---
 
@@ -826,5 +623,226 @@ Resolved the issue where inviting users to channels did not send email invitatio
      - Added `expandedProjects` state to allow expanding/collapsing project rooms under the "Projects" chip view.
      - Project rooms under the "Projects" chip display their child channels when expanded.
      - Added an **"+ Add Channel"** action under expanded project containers to easily create channels under specific project contexts.
-     - Updated Floating Action Button (FAB) to support creating channels under projects or standalone.
+      - Updated Floating Action Button (FAB) to support creating channels under projects or standalone.
+
+---
+
+## Task Module Socket.io Integration (July 23, 2026)
+
+### Date
+
+July 23, 2026
+
+### Purpose
+
+Integrated real-time Socket.io event handling for the Task module. Tasks ride on the same global socket connection as the chat module — no task-specific namespace or room-joining exists. Every task event is a company-wide broadcast; the client filters by `company_id`.
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `src/hooks/useTaskSocket.ts` | Central hook that listens for all task-related socket events (`task_update`, `priority_update`, `jobstatus_update`, `user_update`) and dispatches updates to TaskContext. Resilient to socket availability — awaits `connectSocket()` and retries on `connect` event. |
+
+### Files Modified
+
+| File | Why | What Changed | Architectural Reasoning |
+|------|-----|-------------|----------------------|
+| `src/services/socket/socketService.ts` | Add task socket type definitions | Added `TaskUpdateAction`, `TaskUpdatePayload`, `PriorityUpdatePayload`, `JobStatusUpdatePayload`, `UserUpdatePayload` types; added `task_update`, `priority_update`, `jobstatus_update`, `user_update` to `SocketEventMap` | Type-safe socket event handling; follows the existing pattern of typed event maps |
+| `src/context/TaskContext.tsx` | Extend state management for socket events | Added `companyId` getter, `applyPriorityUpdate`/`applyJobStatusUpdate` methods, `PRIORITY_CREATE`/`PRIORITY_UPDATE`/`PRIORITY_DELETE`/`JOBSTATUS_CREATE` reducer actions, imported `useAuth` | Priority and status dropdown lists are company-wide metadata that can be patched directly in state without refetching the entire task list |
+| `src/app/_layout.tsx` | App-level socket lifecycle | Added `connectSocket()` on authenticated state, `disconnectSocket()` on logout | **Critical fix:** Socket must be initialized at the app level, not inside ChatScreen. This ensures the socket is available to ALL screens (tasks, chat, etc.) regardless of which screen mounts first. |
+| `src/app/(tabs)/tasks.tsx` | Wire up socket listeners | Added `useTaskSocket()` call | Socket listeners are registered at the screen level where task data is consumed |
+| `src/components/TaskDetailModal.tsx` | Real-time note/attachment updates | Added socket listener for note-related `task_update` actions (`add_note`, `update_note`, `delete_note`, `update_note_pin`, `update_note_reaction`, `add_attachment`, `delete_attachment`) that refetches notes when the modal is open | Notes are local modal state — socket events trigger a targeted notes refetch for the currently viewed task |
+| `src/components/CreateTaskModal.tsx` | Keep assignee picker fresh | Added `user_update` socket listener that refetches the task list (which includes `task_owner` for the assignee dropdown) when the modal is open | Matches the web app's `CreateTask.jsx` pattern of re-fetching user list on `user_update` |
+| `src/context/ChatContext.tsx` | Fix stale closure bug + shared socket lifecycle | Refactored `initSocket` to use refs for all state values inside socket listeners (was closing over `state.rooms`, `state.messages`, `state.hasMore`, `state.roomCreator`). Split `cleanupSocket` into `cleanupChatListeners` (listener-only cleanup for screen unmount) and `cleanupSocket` (full disconnect for logout). Removed provider unmount effect that was destroying the shared socket. | **Critical fix:** The stale closure bug caused `initSocket` to be recreated on every state change, tearing down and re-registering ALL 20+ listeners, causing event drops. The unmount effect was destroying the shared socket when navigating away from Chat, breaking task socket listeners. |
+| `src/app/(tabs)/chat.tsx` | Use listener-only cleanup | Changed `cleanupSocket()` to `cleanupChatListeners()` in the unmount effect | ChatScreen unmount should only remove chat's listener subscriptions, NOT destroy the app-level socket that tasks also depend on |
+
+### Socket Architecture
+
+#### App-Level Socket Lifecycle (Critical)
+
+The socket singleton (`socketService.ts`) is managed at the **app level** in `src/app/_layout.tsx`:
+
+```
+RootLayout
+  ├─ authenticated → connectSocket()     // Creates socket + JWT handshake
+  ├─ logout        → disconnectSocket()  // Tears down socket
+  └─ children      → all screens share the same socket instance
+```
+
+**Why this matters:** Both Chat and Tasks screens share the same socket connection. If the socket was only initialized in ChatScreen, Tasks would never receive events. If ChatScreen destroyed the socket on unmount (navigating to Tasks), all listeners would break.
+
+#### Connection Flow
+- `connectSocket()` is called once in `_layout.tsx` when the user becomes authenticated
+- `connectSocket()` is **idempotent** — safe to call multiple times (returns existing socket if already connected)
+- Authentication uses the JWT handshake (`auth: { token }`)
+- ChatScreen registers chat-specific listeners via `initSocket(userId)`
+- TasksScreen registers task-specific listeners via `useTaskSocket()`
+- Both share the same underlying socket connection
+
+#### Event Registration — useTaskSocket (Resilient)
+
+`useTaskSocket` handles the race condition where the socket may not be connected yet:
+
+1. Calls `connectSocket()` to ensure socket exists (idempotent)
+2. Immediately tries to register listeners via `onSocketEvent`
+3. If socket wasn't ready, listens for the `connect` event and registers listeners then
+4. All listeners are cleaned up on effect cleanup
+
+This avoids the problem where `getSocket()` returns `null` because `connectSocket()` hasn't completed yet.
+
+#### Event Registration — ChatContext.initSocket (Ref-Based)
+
+`initSocket` was refactored to use refs instead of closing over state values:
+
+```typescript
+// BEFORE (stale closure bug):
+const initSocket = useCallback(async (userId) => {
+  // ...
+  socketService.onSocketEvent("receiveChatMessage", (msg) => {
+    dispatch({ type: "ADD_MESSAGE", message: msg });
+    if (msg.sender_id !== userId) { ... }  // userId from closure
+    // state.messages used in messagesRead handler — STALE on next render
+  });
+}, [state.rooms, state.messages, state.hasMore, state.roomCreator]); // recreated every state change!
+
+// AFTER (ref-based):
+const stateRef = useRef(state);
+stateRef.current = state;
+const userIdRef = useRef(0);
+
+const initSocket = useCallback(async (userId) => {
+  userIdRef.current = userId;
+  // ...
+  socketService.onSocketEvent("receiveChatMessage", (msg) => {
+    dispatch({ type: "ADD_MESSAGE", message: msg });
+    if (msg.sender_id !== userIdRef.current) { ... }  // always fresh
+    // stateRef.current.messages — always fresh
+  });
+}, []); // stable — never recreated
+```
+
+**Why this matters:** With the old approach, every state change (e.g., a new message arriving) would cause `initSocket` to be recreated, which would tear down ALL 20+ listeners and re-register them. During the teardown/setup window, events were dropped.
+
+#### Listener Cleanup — Two Functions
+
+| Function | What It Does | When Used |
+|----------|-------------|-----------|
+| `cleanupChatListeners()` | Removes only chat listener subscriptions from the socket | ChatScreen unmount (navigating away) |
+| `cleanupSocket()` | Removes listeners + disconnects socket + resets state | Logout only |
+
+**Why this matters:** If ChatScreen called `disconnectSocket()` on unmount, the socket would be destroyed while TasksScreen still needs it. The new `cleanupChatListeners()` only removes Chat's listener subscriptions, preserving the socket connection for other screens.
+
+#### Event Cleanup
+- Every `onSocketEvent` call returns an unsubscribe function
+- All cleanup functions are collected and called in the useEffect cleanup
+- No duplicate listeners — `initSocket` checks `socketCleanupRef.current.length > 0` before registering
+
+#### Reconnection Strategy
+- Built-in `socket.io-client` reconnection (`reconnectionDelay: 1000`, `reconnectionAttempts: Infinity`)
+- `useTaskSocket` listens for the `connect` event to re-register listeners after reconnect
+- `ChatContext.initSocket` rejoins all rooms on reconnect via the `connect` listener
+- Task data is refetched on initial mount via `fetchAllTasks`
+
+#### Error Handling
+- All socket event handlers guard against missing/invalid payloads
+- `company_id` filtering prevents processing events from other companies
+- No socket payload is trusted as sole source of truth — task data is re-fetched via REST
+- `connectSocket()` failures are caught and logged (non-blocking)
+
+#### Store Synchronization
+- `task_update` → triggers `fetchAllTasks()` (full task list refetch)
+- `priority_update` → patches `state.priorities` directly (create/update/delete)
+- `jobstatus_update` → patches `state.statusList` directly (create only; update/delete noted but not applied to avoid stale list)
+- `user_update` → triggers `fetchAllTasks()` (refreshes `task_owner` list)
+- Note events → triggers notes refetch in TaskDetailModal via `loadNotes()`
+
+### Events Implemented
+
+| Event | Direction | Purpose | Affected Screens | Affected Stores |
+|-------|-----------|---------|-----------------|----------------|
+| `task_update` (action: `create`) | Server → Client | New task created (manual or recurring cron) | TasksScreen | TaskContext (refetch) |
+| `task_update` (action: `create_subtask`) | Server → Client | Subtask created | TasksScreen | TaskContext (refetch) |
+| `task_update` (action: `update`) | Server → Client | Task fields edited (title, description, due date, etc.) | TasksScreen | TaskContext (refetch) |
+| `task_update` (action: `status_update`) | Server → Client | Task status changed | TasksScreen | TaskContext (refetch) |
+| `task_update` (action: `delete`) | Server → Client | Task deleted | TasksScreen | TaskContext (refetch) |
+| `task_update` (action: `sprint_assigned`) | Server → Client | Task moved to sprint/project | TasksScreen | TaskContext (refetch) |
+| `task_update` (action: `add_note`) | Server → Client | Note/comment added to task | TaskDetailModal | Notes (refetch) |
+| `task_update` (action: `update_note`) | Server → Client | Note/comment edited | TaskDetailModal | Notes (refetch) |
+| `task_update` (action: `delete_note`) | Server → Client | Note/comment deleted | TaskDetailModal | Notes (refetch) |
+| `task_update` (action: `update_note_pin`) | Server → Client | Note pin toggled | TaskDetailModal | Notes (refetch) |
+| `task_update` (action: `update_note_reaction`) | Server → Client | Note reaction updated | TaskDetailModal | Notes (refetch) |
+| `task_update` (action: `add_attachment`) | Server → Client | Attachment added to task | TaskDetailModal | Notes (refetch) |
+| `task_update` (action: `delete_attachment`) | Server → Client | Attachment deleted from task | TaskDetailModal | Notes (refetch) |
+| `priority_update` (action: `create`) | Server → Client | New priority level added | TasksScreen, CreateTaskModal | TaskContext.state.priorities |
+| `priority_update` (action: `update`) | Server → Client | Priority level edited | TasksScreen, CreateTaskModal | TaskContext.state.priorities |
+| `priority_update` (action: `delete`) | Server → Client | Priority level removed | TasksScreen, CreateTaskModal | TaskContext.state.priorities |
+| `jobstatus_update` (action: `create`) | Server → Client | New status label added | TasksScreen, CreateTaskModal | TaskContext.state.statusList |
+| `jobstatus_update` (action: `update`) | Server → Client | Status label edited | TasksScreen, CreateTaskModal | Noted (not applied) |
+| `jobstatus_update` (action: `delete`) | Server → Client | Status label removed | TasksScreen, CreateTaskModal | Noted (not applied) |
+| `user_update` (action: `create/update/delete`) | Server → Client | User added/edited/deactivated | CreateTaskModal | TaskContext (refetch for task_owner) |
+
+### State Management Changes
+
+**TaskContext new reducer actions:**
+- `PRIORITY_CREATE` — adds a new `TaskPriority` to `state.priorities`
+- `PRIORITY_UPDATE` — replaces a `TaskPriority` by `id` in `state.priorities`
+- `PRIORITY_DELETE` — removes a `TaskPriority` by `id` from `state.priorities`
+- `JOBSTATUS_CREATE` — appends a new status name string to `state.statusList`
+- `JOBSTATUS_UPDATE` / `JOBSTATUS_DELETE` — noted but not applied (would require list rebuild)
+
+**TaskContext new context values:**
+- `companyId: number | null` — derived from auth state, used by `useTaskSocket` for event filtering
+- `applyPriorityUpdate(action, data)` — dispatches priority create/update/delete
+- `applyJobStatusUpdate(action, data)` — dispatches job status create
+
+**ChatContext changes:**
+- `initSocket` — now uses refs (`stateRef`, `userIdRef`) for all state access inside listeners; dependency array is `[]` (stable)
+- `cleanupChatListeners()` — new function that only removes listener subscriptions without disconnecting the socket
+- `cleanupSocket()` — now calls `cleanupChatListeners()` then `disconnectSocket()`; used only for logout
+- Removed the provider unmount `useEffect` that was calling `cleanupSocket()` (was destroying the shared socket)
+
+### Navigation Changes
+
+None. Existing navigation preserved.
+
+### Performance Improvements
+
+1. **Socket event as trigger, not source of truth** — task data is re-fetched via REST after socket events, ensuring consistency with the authoritative backend state
+2. **Priority/status updates applied directly** — dropdown metadata is patched in state without refetching the entire task list, avoiding unnecessary network requests
+3. **Scoped socket listeners** — note and user_update listeners are only active when their respective modals are visible, preventing unnecessary processing
+4. **Ref-based stale closure prevention** — socket handlers use refs for `companyId`, `state`, and callbacks to avoid stale closures while maintaining stable listener references
+5. **Proper cleanup** — all socket listeners are unsubscribed on component unmount or dependency changes
+6. **Idempotent socket initialization** — `initSocket` checks if listeners are already registered before re-registering, preventing duplicate listeners
+
+### Known Limitations
+
+1. **No optimistic UI for task changes** — the mobile app refetches the full task list on every `task_update` event instead of applying optimistic patches. This is intentional per the reference doc's guidance ("use the socket as a signal to re-fetch")
+2. **`jobstatus_update` for update/delete not fully applied** — the status list is not rebuilt when statuses are updated or deleted because the current `statusList` is a flat `string[]` without IDs. Would require restructuring to `TaskStatusItem[]` with `{ id, name }` shape
+3. **No task detail socket listener** — the TaskDetailModal receives task data as props from the parent screen. When the parent refetches, fresh data flows down. There's no direct socket-to-detail-modal update path
+4. **No offline event queue** — socket events received while offline are lost; the app relies on the next full mount/refetch to restore state
+5. **`asigned_to` typo preserved** — the backend field name `asigned_to` (single "s") and `asignedd_to` (double "d") are preserved as-is per the reference doc's confirmation that these are the real field names
+
+### Future Improvements
+
+1. **Offline support with event queue** — buffer socket events received while offline and replay them on reconnection
+2. **Optimistic task list updates** — apply socket payloads directly to the task list for instant UI feedback, then reconcile on refetch
+3. **Task detail socket listener** — add a socket listener in TaskDetailModal that patches the displayed task in real-time without waiting for parent refetch
+4. **`jobstatus_update` full support** — restructure `statusList` from `string[]` to `TaskStatusItem[]` with `{ id, name }` to support update/delete operations
+5. **Push notification integration** — register FCM/APNs tokens and display push notifications for task assignments and status changes
+
+### Breaking Changes
+
+None. All changes are additive. Existing task REST API integration and UI are unaffected.
+
+### Architectural Decisions
+
+1. **App-level socket lifecycle** — socket is created in `_layout.tsx` on authentication and destroyed on logout. All screens share the same socket instance. This prevents the socket from being destroyed when navigating between screens.
+2. **Shared socket singleton** — tasks reuse the chat module's socket connection. No separate task socket or namespace.
+3. **Company-wide broadcast filtering** — every socket handler's first line is a `company_id` guard. The client is responsible for filtering.
+4. **Re-fetch strategy over optimistic patches** — the reference doc explicitly recommends re-fetching after `update`/`status_update` events. The mobile app follows this pattern.
+5. **Priority/status metadata patched directly** — company-wide dropdown data is small and changes infrequently; direct state patching avoids unnecessary refetches.
+6. **Scoped modal listeners** — note and user socket listeners are only active when their modals are visible, minimizing overhead.
+7. **No duplicate socket instances** — all socket access goes through the single `socketService.ts` singleton.
+8. **Refs for socket listener state** — socket event handlers use refs (`stateRef`, `userIdRef`, `companyIdRef`) instead of closing over React state. This prevents stale closures without causing listener teardown/re-registration on every state change.
+9. **Listener cleanup vs socket disconnect** — screen unmount only cleans up that screen's listeners. The socket connection persists until logout. This allows multiple screens to independently manage their socket subscriptions.
 

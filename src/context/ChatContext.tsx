@@ -324,6 +324,7 @@ export type ChatContextValue = {
 
   // Socket actions
   initSocket: (userId: number) => Promise<void>;
+  cleanupChatListeners: () => void;
   cleanupSocket: () => void;
 
   logout: () => void;
@@ -340,6 +341,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
   const [typingUsers, setTypingUsers] = useState<Map<string, Map<number, string>>>(new Map());
   const socketCleanupRef = useRef<Array<() => void>>([]);
+
+  // ── State refs for socket listeners (avoid stale closures) ──────────────
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const userIdRef = useRef(0);
 
   // ── Room Actions ──────────────────────────────────────────────────────────
 
@@ -834,17 +840,23 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // ── Socket Actions ──────────────────────────────────────────────────────
 
   const initSocket = useCallback(async (userId: number) => {
+    userIdRef.current = userId;
     const socket = await socketService.connectSocket();
 
-    // Clear previous listeners
-    socketCleanupRef.current.forEach((cleanup) => cleanup());
-    socketCleanupRef.current = [];
+    // Idempotent: if listeners already registered, skip
+    if (socketCleanupRef.current.length > 0) {
+      // Just ensure user is registered on current socket
+      if (socket.connected) {
+        socketService.registerUser(userId);
+      }
+      return;
+    }
 
     const cleanupConnect = socketService.onSocketEvent("connect", () => {
       setSocketConnected(true);
       socketService.registerUser(userId);
       // Rejoin all rooms on reconnect
-      state.rooms.forEach((room) => {
+      stateRef.current.rooms.forEach((room) => {
         socketService.joinChatRoom(room._id);
       });
     });
@@ -868,8 +880,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       (messageData) => {
         const message = messageData as ChatMessage;
         dispatch({ type: "ADD_MESSAGE", message });
-        // Auto-emit delivery ack if not own message
-        if (message.sender_id !== userId) {
+        if (message.sender_id !== userIdRef.current) {
           socketService.emitMessageDelivered(
             message._id,
             message.sender_id,
@@ -894,20 +905,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     const cleanupUserTyping = socketService.onSocketEvent("userTyping", (data) => {
       const typed = data as { user_id: number; user_name: string; isTyping: boolean };
-      if (typed.user_id === userId) return;
-      // Note: userTyping event does not include room_id (backend bug)
-      // Only works for the currently active room
+      if (typed.user_id === userIdRef.current) return;
       setTypingUsers((prev) => {
         const next = new Map(prev);
-        // Apply to current room if set
-        if (state.currentRoom) {
-          const roomMap = new Map(next.get(state.currentRoom.id.toString()) || []);
+        const cur = stateRef.current.currentRoom;
+        if (cur) {
+          const roomMap = new Map(next.get(cur.id.toString()) || []);
           if (typed.isTyping) {
             roomMap.set(typed.user_id, typed.user_name);
           } else {
             roomMap.delete(typed.user_id);
           }
-          next.set(state.currentRoom.id.toString(), roomMap);
+          next.set(cur.id.toString(), roomMap);
         }
         return next;
       });
@@ -937,8 +946,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       "messageUpdated",
       (data) => {
         const typed = data as { messageId: string; text: string };
-        // Find and update message in state
-        const msg = state.messages.find((m) => m._id === typed.messageId);
+        const msg = stateRef.current.messages.find((m) => m._id === typed.messageId);
         if (msg) {
           dispatch({
             type: "UPDATE_MESSAGE",
@@ -970,11 +978,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       "messagesRead",
       (data) => {
         const typed = data as { room_id: string; user_id: string };
-        if (String(userId) === typed.user_id) return;
-        // Mark messages as read by this user
+        if (String(userIdRef.current) === typed.user_id) return;
+        const cur = stateRef.current;
         dispatch({
           type: "LOAD_MESSAGES",
-          messages: state.messages.map((m) =>
+          messages: cur.messages.map((m) =>
             m.room_id === typed.room_id
               ? {
                   ...m,
@@ -985,7 +993,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                 }
               : m
           ),
-          hasMore: state.hasMore,
+          hasMore: cur.hasMore,
           append: false,
         });
       }
@@ -995,7 +1003,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       "chatCleared",
       (data) => {
         const typed = data as { roomId: string };
-        if (state.currentRoom?.id.toString() === typed.roomId) {
+        if (stateRef.current.currentRoom?.id.toString() === typed.roomId) {
           dispatch({
             type: "LOAD_MESSAGES",
             messages: [],
@@ -1018,8 +1026,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       "userLeftRoom",
       (data) => {
         const typed = data as { roomId: string; userId: string };
-        // Remove member from room
-        const room = state.rooms.find(
+        const room = stateRef.current.rooms.find(
           (r) => r._id === typed.roomId
         );
         if (room) {
@@ -1056,7 +1063,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         dispatch({
           type: "SET_ROOM_PERMISSIONS",
           permissions: typed.memberPermissions,
-          createdBy: state.roomCreator ?? 0,
+          createdBy: stateRef.current.roomCreator ?? 0,
         });
       }
     );
@@ -1070,7 +1077,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           is_muted?: boolean;
         };
         if (typed.type === "mute" && typed.is_muted !== undefined) {
-          const room = state.rooms.find(
+          const room = stateRef.current.rooms.find(
             (r) => r._id === typed.roomId
           );
           if (room) {
@@ -1110,20 +1117,24 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (socket.connected) {
       setSocketConnected(true);
       socketService.registerUser(userId);
-      state.rooms.forEach((room) => {
+      stateRef.current.rooms.forEach((room) => {
         socketService.joinChatRoom(room._id);
       });
     }
-  }, [state.rooms, state.currentRoom, state.messages, state.hasMore, state.roomCreator]);
+  }, []);
 
-  const cleanupSocket = useCallback(() => {
+  const cleanupChatListeners = useCallback(() => {
     socketCleanupRef.current.forEach((cleanup) => cleanup());
     socketCleanupRef.current = [];
+  }, []);
+
+  const cleanupSocket = useCallback(() => {
+    cleanupChatListeners();
     socketService.disconnectSocket();
     setSocketConnected(false);
     setOnlineUserIds([]);
     setTypingUsers(new Map());
-  }, []);
+  }, [cleanupChatListeners]);
 
   // ── Logout ──────────────────────────────────────────────────────────────
 
@@ -1139,13 +1150,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       // Socket init is triggered from the component that has access to userId
     }
   }, [state.rooms]);
-
-  // Cleanup socket on unmount
-  useEffect(() => {
-    return () => {
-      cleanupSocket();
-    };
-  }, [cleanupSocket]);
 
   // ── Memoized Value ──────────────────────────────────────────────────────
 
@@ -1189,6 +1193,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       getUrlPreview: getUrlPreviewAction,
       createProjectWithChannels: createProjectWithChannelsAction,
       initSocket,
+      cleanupChatListeners,
       cleanupSocket,
       logout,
     }),
@@ -1231,6 +1236,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       getUrlPreviewAction,
       createProjectWithChannelsAction,
       initSocket,
+      cleanupChatListeners,
       cleanupSocket,
       logout,
     ]

@@ -8,8 +8,53 @@ const SOCKET_URL =
 let socket: Socket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
+// ─── Task Socket Types ───────────────────────────────────────────────────────
+
+export type TaskUpdateAction =
+  | "create"
+  | "create_subtask"
+  | "update"
+  | "status_update"
+  | "delete"
+  | "sprint_assigned"
+  | "add_note"
+  | "update_note"
+  | "delete_note"
+  | "update_note_pin"
+  | "update_note_reaction"
+  | "add_attachment"
+  | "delete_attachment";
+
+export type TaskUpdatePayload = {
+  company_id: number;
+  action: TaskUpdateAction;
+  data: Record<string, unknown>;
+  assignee?: number;
+  asigned_to?: number;
+};
+
+export type PriorityUpdatePayload = {
+  company_id: number;
+  action: "create" | "update" | "delete";
+  data: { id: number; name?: string; color?: string; order?: number; company_id?: number };
+};
+
+export type JobStatusUpdatePayload = {
+  company_id: number;
+  action: "create" | "update" | "delete";
+  data: { id: number; name?: string; company_id?: number; status?: number };
+};
+
+export type UserUpdatePayload = {
+  company_id: number;
+  action: "create" | "update" | "delete";
+  data: Record<string, unknown>;
+};
+
+// ─── Socket Event Map ────────────────────────────────────────────────────────
+
 type SocketEventMap = {
-  // Server → Client
+  // Server → Client — Chat
   newRoom: (room: unknown) => void;
   receiveChatMessage: (message: unknown) => void;
   project_update: (data: { action: string }) => void;
@@ -53,11 +98,21 @@ type SocketEventMap = {
     memberPermissions: Array<{ userId: number; permission: string }>;
   }) => void;
   removedFromRoom: (data: { roomId: string }) => void;
+
+  // Server → Client — Tasks
+  task_update: (payload: TaskUpdatePayload) => void;
+  priority_update: (payload: PriorityUpdatePayload) => void;
+  jobstatus_update: (payload: JobStatusUpdatePayload) => void;
+  user_update: (payload: UserUpdatePayload) => void;
+
+  // Server → Client — Shared
   notification: (data: {
     company_id: number;
     assigned_to: number;
     data: unknown;
   }) => void;
+
+  // Internal
   connect: () => void;
   disconnect: (reason: string) => void;
   connect_error: (error: Error) => void;

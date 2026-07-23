@@ -1,7 +1,7 @@
 import CalendarPicker from "@/components/CalendarPicker";
 import RichTextEditor, { RichTextEditorRef } from "@/components/texteditor";
 import { Ionicons } from "@expo/vector-icons";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   Alert,
   Modal,
@@ -18,6 +18,7 @@ import { useTasks } from "@/hooks/useTasks";
 import { extractErrorMessage } from "@/utils/errorHandler";
 import { uiStatusToApi } from "@/utils/statusMapper";
 import type { UiTaskStatus, RecurringPeriod } from "@/types/task.types";
+import { getSocket, onSocketEvent, type UserUpdatePayload } from "@/services/socket/socketService";
 
 type Props = { visible: boolean; onClose: () => void };
 
@@ -29,7 +30,26 @@ const TOP_CHIPS = [
 
 export default function CreateTaskModal({ visible, onClose }: Props) {
   const { state: authState } = useAuth();
-  const { state: taskState, createTask } = useTasks();
+  const { state: taskState, createTask, fetchAllTasks } = useTasks();
+
+  const companyIdRef = useRef(authState.company?.company_id ?? 0);
+  companyIdRef.current = authState.company?.company_id ?? 0;
+
+  const fetchRef = useRef(fetchAllTasks);
+  fetchRef.current = fetchAllTasks;
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !visible) return;
+
+    const cleanup = onSocketEvent("user_update", (payload: unknown) => {
+      const p = payload as UserUpdatePayload;
+      if (String(p?.company_id) !== String(companyIdRef.current)) return;
+      fetchRef.current(companyIdRef.current);
+    });
+
+    return cleanup;
+  }, [visible]);
 
   const [title, setTitle] = useState("");
   const [titleFocused, setTitleFocused] = useState(false);

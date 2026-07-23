@@ -3,6 +3,7 @@ import { ChatProvider } from "@/context/ChatContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { TaskProvider } from "@/context/TaskContext";
 import useAppFonts from "@/theme/useAppFonts";
+import { connectSocket, disconnectSocket } from "@/services/socket/socketService";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useContext, useEffect } from "react";
@@ -46,6 +47,20 @@ function RootNavigator() {
       router.replace("/(tabs)/tasks");
     }
   }, [state.isAuthenticated, state.isDefaultPassword, state.loading, segments, fontsLoaded, router]);
+
+  // ── App-level socket lifecycle ────────────────────────────────────────────
+  // Connect when authenticated, disconnect on logout.
+  // connectSocket() is idempotent — safe to call multiple times.
+  useEffect(() => {
+    if (state.isAuthenticated && !state.isDefaultPassword && !state.loading) {
+      connectSocket().catch((err) => {
+        console.warn("[Socket] Initial connect failed:", err);
+      });
+    }
+    if (!state.isAuthenticated && !state.loading) {
+      disconnectSocket();
+    }
+  }, [state.isAuthenticated, state.isDefaultPassword, state.loading]);
 
   if (state.loading || !fontsLoaded) {
     return (

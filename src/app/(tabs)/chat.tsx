@@ -45,7 +45,7 @@ const CHIP_DATA = [
 export default function ChatScreen() {
     const {
         state, fetchRooms, getOrCreateRoom, markRead, searchUsers,
-        setSearchQuery, initSocket, cleanupSocket, inviteUser, addMember,
+        setSearchQuery, initSocket, cleanupChatListeners, inviteUser, addMember,
         createProjectWithChannels,
     } = useChat();
     const authState = useAuth();
@@ -76,9 +76,9 @@ export default function ChatScreen() {
             initSocket(currentUserId);
         }
         return () => {
-            cleanupSocket();
+            cleanupChatListeners();
         };
-    }, [currentUserId, initSocket, cleanupSocket]);
+    }, [currentUserId, initSocket, cleanupChatListeners]);
 
     // Reset search query when modal closes
     useEffect(() => {

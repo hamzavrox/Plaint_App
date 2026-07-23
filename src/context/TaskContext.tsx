@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import * as tasksService from "@/services/api/tasks.service";
+import { useAuth } from "@/hooks/useAuth";
 import {
   TaskListItem,
   TaskListResponse,
@@ -40,7 +41,32 @@ type TaskAction =
   | { type: "SET_LOADING"; loading: boolean }
   | { type: "SET_ERROR"; error: string | null }
   | { type: "SET_FILTER"; filter: TaskFilter | null }
-  | { type: "LOGOUT" };
+  | { type: "LOGOUT" }
+  | {
+      type: "PRIORITY_CREATE";
+      priority: TaskPriority;
+    }
+  | {
+      type: "PRIORITY_UPDATE";
+      priority: TaskPriority;
+    }
+  | {
+      type: "PRIORITY_DELETE";
+      priorityId: number;
+    }
+  | {
+      type: "JOBSTATUS_CREATE";
+      statusName: string;
+    }
+  | {
+      type: "JOBSTATUS_UPDATE";
+      statusId: number;
+      statusName: string;
+    }
+  | {
+      type: "JOBSTATUS_DELETE";
+      statusId: number;
+    };
 
 const initialState: TaskState = {
   assignedToMe: [],
@@ -76,6 +102,32 @@ function taskReducer(state: TaskState, action: TaskAction): TaskState {
       return { ...state, activeFilter: action.filter };
     case "LOGOUT":
       return initialState;
+    case "PRIORITY_CREATE":
+      return {
+        ...state,
+        priorities: [...state.priorities, action.priority],
+      };
+    case "PRIORITY_UPDATE":
+      return {
+        ...state,
+        priorities: state.priorities.map((p) =>
+          p.id === action.priority.id ? action.priority : p
+        ),
+      };
+    case "PRIORITY_DELETE":
+      return {
+        ...state,
+        priorities: state.priorities.filter((p) => p.id !== action.priorityId),
+      };
+    case "JOBSTATUS_CREATE":
+      return {
+        ...state,
+        statusList: [...state.statusList, action.statusName],
+      };
+    case "JOBSTATUS_UPDATE":
+      return state;
+    case "JOBSTATUS_DELETE":
+      return state;
     default:
       return state;
   }
@@ -83,6 +135,7 @@ function taskReducer(state: TaskState, action: TaskAction): TaskState {
 
 export type TaskContextValue = {
   state: TaskState;
+  companyId: number | null;
   mappedAssignedToMe: MappedTaskRow[];
   mappedCreatedByMe: MappedTaskRow[];
   mappedAllOtherTasks: MappedTaskRow[];
@@ -121,6 +174,14 @@ export type TaskContextValue = {
   approveTask: (taskId: number) => Promise<void>;
   rejectTask: (taskId: number, reason: string) => Promise<void>;
   deleteTask: (taskId: number) => Promise<void>;
+  applyPriorityUpdate: (
+    action: "create" | "update" | "delete",
+    data: { id: number; name?: string; color?: string; order?: number; company_id?: number }
+  ) => void;
+  applyJobStatusUpdate: (
+    action: "create" | "update" | "delete",
+    data: { id: number; name?: string; company_id?: number; status?: number }
+  ) => void;
   logout: () => void;
 };
 
@@ -130,6 +191,9 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(taskReducer, initialState);
   const [dueTodayCount, setDueTodayCount] = useState(0);
   const [filteredMappedTasks, setFilteredMappedTasks] = useState<MappedTaskRow[]>([]);
+
+  const { state: authState } = useAuth();
+  const companyId = authState.company?.company_id ?? null;
 
   const mappedAssignedToMe = useMemo(
     () => mapTaskListResponse({ tasks_assigned_to_me: state.assignedToMe, tasksByme: [], all_other_tasks: [], task_owner: [], priority: [], status: [] }).assignedToMe,
@@ -342,6 +406,61 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const applyPriorityUpdate = useCallback(
+    (
+      action: "create" | "update" | "delete",
+      data: { id: number; name?: string; color?: string; order?: number; company_id?: number }
+    ) => {
+      switch (action) {
+        case "create":
+          dispatch({
+            type: "PRIORITY_CREATE",
+            priority: {
+              id: data.id,
+              name: data.name ?? "",
+              color: data.color ?? "#999999",
+              company_id: data.company_id ?? 0,
+            },
+          });
+          break;
+        case "update":
+          dispatch({
+            type: "PRIORITY_UPDATE",
+            priority: {
+              id: data.id,
+              name: data.name ?? "",
+              color: data.color ?? "#999999",
+              company_id: data.company_id ?? 0,
+            },
+          });
+          break;
+        case "delete":
+          dispatch({ type: "PRIORITY_DELETE", priorityId: data.id });
+          break;
+      }
+    },
+    []
+  );
+
+  const applyJobStatusUpdate = useCallback(
+    (
+      action: "create" | "update" | "delete",
+      data: { id: number; name?: string; company_id?: number; status?: number }
+    ) => {
+      switch (action) {
+        case "create":
+          if (data.name) {
+            dispatch({ type: "JOBSTATUS_CREATE", statusName: data.name });
+          }
+          break;
+        case "update":
+        case "delete":
+          break;
+      }
+    },
+    []
+  );
+
   const updateTaskStatusApi = useCallback(
     async (taskId: number, data: UpdateTaskStatusRequest) => {
       const res = await tasksService.updateTaskStatus(taskId, data);
@@ -360,6 +479,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const value: TaskContextValue = useMemo(
     () => ({
       state,
+      companyId,
       mappedAssignedToMe,
       mappedCreatedByMe,
       mappedAllOtherTasks,
@@ -381,10 +501,13 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       approveTask: approveTaskById,
       rejectTask: rejectTaskById,
       deleteTask: deleteTaskById,
+      applyPriorityUpdate,
+      applyJobStatusUpdate,
       logout,
     }),
     [
       state,
+      companyId,
       mappedAssignedToMe,
       mappedCreatedByMe,
       mappedAllOtherTasks,
@@ -406,6 +529,8 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       approveTaskById,
       rejectTaskById,
       deleteTaskById,
+      applyPriorityUpdate,
+      applyJobStatusUpdate,
       logout,
     ]
   );

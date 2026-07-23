@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { TaskNote } from "@/types/task.types";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -16,6 +16,7 @@ import {
   View
 } from "react-native";
 import { STATUS_COLORS, StatusType } from "./TaskRow";
+import { getSocket, onSocketEvent, type TaskUpdatePayload } from "@/services/socket/socketService";
 
 export type SubTask = { title: string; createdBy: string; dueDate: string };
 
@@ -329,6 +330,42 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
       loadNotes();
     }
   }, [visible, activeTab, task?.taskId, loadNotes]);
+
+  const taskIdRef = useRef(task?.taskId);
+  taskIdRef.current = task?.taskId;
+
+  const companyIdRef = useRef(companyId);
+  companyIdRef.current = companyId;
+
+  const loadNotesRef = useRef(loadNotes);
+  loadNotesRef.current = loadNotes;
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !visible) return;
+
+    const NOTE_ACTIONS = new Set([
+      "add_note",
+      "update_note",
+      "delete_note",
+      "update_note_pin",
+      "update_note_reaction",
+      "add_attachment",
+      "delete_attachment",
+    ]);
+
+    const cleanup = onSocketEvent("task_update", (payload: unknown) => {
+      const p = payload as TaskUpdatePayload;
+      if (String(p?.company_id) !== String(companyIdRef.current)) return;
+      if (!p?.action || !NOTE_ACTIONS.has(p.action)) return;
+      const eventTaskId = (p.data as Record<string, unknown>)?.task_id ?? (p.data as Record<string, unknown>)?.id;
+      if (eventTaskId != null && Number(eventTaskId) === taskIdRef.current) {
+        loadNotesRef.current();
+      }
+    });
+
+    return cleanup;
+  }, [visible]);
 
   const handleSendComment = async () => {
     if (!commentText.trim() || !task?.taskId) return;

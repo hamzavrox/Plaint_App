@@ -10,6 +10,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { getTaskDetail } from "@/services/api/tasks.service";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
+import { useTaskSocket } from "@/hooks/useTaskSocket";
 import { uiStatusToApi } from "@/utils/statusMapper";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -36,6 +37,8 @@ export default function TasksScreen() {
     mappedCreatedByMe,
     updateTaskStatusApi,
   } = useTasks();
+
+  useTaskSocket();
 
   const [activeTab, setActiveTab] = useState("all");
   const [filterVisible, setFilterVisible] = useState(false);
