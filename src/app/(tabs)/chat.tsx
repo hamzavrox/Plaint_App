@@ -6,10 +6,22 @@ import AppHeader from "@/components/headerapp";
 import { useChat } from "@/hooks/useChat";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
+import { Room } from "@/types/chat.types";
+import {
+    filterReadRooms,
+    filterRoomsByType,
+    filterUnreadRooms,
+    formatChatListTime,
+    getRoomDisplayName,
+    getRoomInitials,
+    isRoomUnread,
+} from "@/utils/chatHelpers";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Icon, router } from "expo-router";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+    ActivityIndicator,
+    Alert,
     ScrollView,
     StyleSheet,
     Text,
@@ -47,9 +59,6 @@ export default function ChatScreen() {
     const [activeChip, setActiveChip] = useState("all");
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
     const [selectedChannelKey, setSelectedChannelKey] = useState<string | null>(null);
-    const [chats, setChats] = useState<ChatUser[]>(ALL_USERS);
-    const [channels, setChannels] = useState<ChatUser[]>(CHANNELS_DATA);
-    const [projects, setProjects] = useState<ProjectData[]>(INITIAL_PROJECTS);
     const [newChannelName, setNewChannelName] = useState("");
     // Track which project we're adding a channel to (null = standalone channel)
     const [projectContext, setProjectContext] = useState<Room | null>(null);
@@ -94,7 +103,7 @@ export default function ChatScreen() {
             }
         }
         // From task owners
-        for (const owner of (taskState?.taskOwners ?? []) as TaskOwner[]) {
+        for (const owner of (taskState?.taskOwners ?? []) as any[]) {
             if (!owner?.id) continue;
             if (owner.id === currentUserId) continue;
             const key = String(owner.id);
@@ -404,7 +413,7 @@ export default function ChatScreen() {
                         <View style={styles.chatListContainer}>
                             {activeChip === "projects" ? (
                                 /* ── Projects view with expandable child channels ── */
-                                displayRooms.map((project) => {
+                                displayRooms.map((project: Room) => {
                                     const displayName = getRoomDisplayName(project, currentUserId);
                                     const initials = getRoomInitials(project, currentUserId);
                                     const unread = isRoomUnread(project);
@@ -460,72 +469,76 @@ export default function ChatScreen() {
                                                         </View>
                                                     )}
                                                 </View>
-                                            )}
-                                            <Text style={styles.chatTime}>{project.time}</Text>
-                                            
-                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginLeft: 6 }}>
-                                                <TouchableOpacity
-                                                    activeOpacity={0.7}
-                                                    style={{ padding: 4 }}
-                                                    onPress={(e) => {
-                                                        e.stopPropagation();
-                                                        handleAddGroupPress(project.id);
-                                                    }}
-                                                >
-                                                <Ionicons name="add-circle-sharp" size={24} color="black" />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    activeOpacity={0.7}
-                                                    style={{ padding: 4 }}
-                                                    onPress={(e) => {
-                                                        e.stopPropagation();
-                                                        toggleProjectExpand(project.id);
-                                                    }}
-                                                >
-                                                    <Ionicons 
-                                                        name={project.expanded ? "chevron-up" : "chevron-down"} 
-                                                        size={20} 
-                                                        color="#1D1D1D" 
-                                                    />
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
-                                    </TouchableOpacity>
+                                                <Text style={styles.chatTime}>{(project as any).time ?? ""}</Text>
+                                                
+                                                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginLeft: 6 }}>
+                                                    <TouchableOpacity
+                                                        activeOpacity={0.7}
+                                                        style={{ padding: 4 }}
+                                                        onPress={(e) => {
+                                                            e.stopPropagation();
+                                                            handleProjectAddChannel(project);
+                                                        }}
+                                                    >
+                                                        <Ionicons name="add-circle-sharp" size={24} color="black" />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity
+                                                        activeOpacity={0.7}
+                                                        style={{ padding: 4 }}
+                                                        onPress={(e) => {
+                                                            e.stopPropagation();
+                                                            toggleProjectExpand(project.id);
+                                                        }}
+                                                    >
+                                                        <Ionicons 
+                                                            name={isExpanded ? "chevron-up" : "chevron-down"} 
+                                                            size={20} 
+                                                            color="#1D1D1D" 
+                                                        />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </TouchableOpacity>
 
-                                    {project.expanded && (
-                                        <View style={styles.channelsContainer}>
-                                            {project.channels.map((channel, cIdx) => {
-                                                const channelKey = `${project.id}_${cIdx}`;
-                                                const isChannelActive = selectedChannelKey === channelKey;
-                                                return (
-                                                <TouchableOpacity
-                                                    key={cIdx}
-                                                    style={[styles.channelRow, isChannelActive && styles.channelRowActive]}
-                                                    activeOpacity={0.7}
-                                                    onPress={() => {
-                                                        setSelectedChannelKey(channelKey);
-                                                        router.push({
-                                                            pathname: "/conversation",
-                                                            params: {
-                                                                name: channel,
-                                                                initials: channel.charAt(0).toUpperCase(),
-                                                                isChannel: "true",
-                                                            },
-                                                        });
-                                                    }}
-                                                >
-                                                    <View style={[styles.avatarBox, { width: 28, height: 28, backgroundColor: "#F0FDF9" }]}>
-                                                        <Ionicons name="add" size={16} color="#00DEAB" />
-                                                    </View>
-                                                    <Text style={[styles.chatSnippet, { marginLeft: 14, color: "#00DEAB", fontFamily: "SF_Pro_Medium" }]}>Add Channel</Text>
-                                                </TouchableOpacity>
-                                                );
-                                            })}
+                                            {isExpanded && (
+                                                <View style={styles.channelsContainer}>
+                                                    {childChannels.map((channel: Room) => {
+                                                        const isChannelActive = selectedChatId === channel.id.toString();
+                                                        const channelName = getRoomDisplayName(channel, currentUserId);
+                                                        return (
+                                                            <TouchableOpacity
+                                                                key={channel.id}
+                                                                style={[styles.channelRow, isChannelActive && styles.channelRowActive]}
+                                                                activeOpacity={0.7}
+                                                                onPress={() => handleRoomPress(channel)}
+                                                            >
+                                                                <View style={[styles.avatarBox, { width: 28, height: 28, backgroundColor: "#F0FDF9" }]}>
+                                                                    <Ionicons name="chatbubbles-outline" size={16} color="#00DEAB" />
+                                                                </View>
+                                                                <Text style={[styles.chatSnippet, { marginLeft: 14, color: "#1D1D1D", fontFamily: "SF_Pro_Medium" }]}>
+                                                                    {channelName}
+                                                                </Text>
+                                                            </TouchableOpacity>
+                                                        );
+                                                    })}
+                                                    <TouchableOpacity
+                                                        style={styles.channelRow}
+                                                        activeOpacity={0.7}
+                                                        onPress={() => handleProjectAddChannel(project)}
+                                                    >
+                                                        <View style={[styles.avatarBox, { width: 28, height: 28, backgroundColor: "#F0FDF9" }]}>
+                                                            <Ionicons name="add" size={16} color="#00DEAB" />
+                                                        </View>
+                                                        <Text style={[styles.chatSnippet, { marginLeft: 14, color: "#00DEAB", fontFamily: "SF_Pro_Medium" }]}>
+                                                            Add Channel
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                            )}
                                         </View>
                                     );
                                 })
                             ) : (
-                                displayRooms.map((room) => {
+                                displayRooms.map((room: Room) => {
                                     const displayName = getRoomDisplayName(room, currentUserId);
                                     const initials = getRoomInitials(room, currentUserId);
                                     const unread = isRoomUnread(room);
