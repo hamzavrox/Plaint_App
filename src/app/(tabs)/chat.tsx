@@ -1,10 +1,9 @@
-import Icons from "@/constants/icons";
-const { ChatIcon: MainChatIcon, ChannelTabIcon } = Icons;
 import AddPeopleModal from "@/components/AddPeopleModal";
 import CreateChannelModal from "@/components/CreateChannelModal";
 import AppHeader from "@/components/headerapp";
-import { useChat } from "@/hooks/useChat";
+import Icons from "@/constants/icons";
 import { useAuth } from "@/hooks/useAuth";
+import { useChat } from "@/hooks/useChat";
 import { useTasks } from "@/hooks/useTasks";
 import { Room } from "@/types/chat.types";
 import {
@@ -20,8 +19,8 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Icon, router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
     Alert,
+    ActivityIndicator,
     ScrollView,
     StyleSheet,
     Text,
@@ -29,6 +28,7 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+const { ChatIcon: MainChatIcon, ChannelTabIcon } = Icons;
 
 // ─── Chip Config ──────────────────────────────────────────────────────────────
 
@@ -189,7 +189,7 @@ export default function ChatScreen() {
             console.log("[Chat] Room pressed:", { id: room.id, _id: room._id, type: room.type, name: room.name });
             setSelectedChatId(room.id.toString());
             if (isRoomUnread(room)) {
-                markRead(room._id).catch(() => {});
+                markRead(room._id).catch(() => { });
             }
             router.push({
                 pathname: "/conversation",
@@ -374,9 +374,9 @@ export default function ChatScreen() {
                     showsVerticalScrollIndicator={false}
                 >
                     {/* ── Category Chips ── */}
-                    <ScrollView 
-                        horizontal 
-                        showsHorizontalScrollIndicator={false} 
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.chipsContainer}
                     >
                         {CHIP_DATA.map((chip, index) => {
@@ -640,12 +640,12 @@ export default function ChatScreen() {
                         </View>
                     )}
                 </ScrollView>
-                
+
                 {/* FAB */}
                 {displayRooms.length > 0 && (
-                    <TouchableOpacity 
-                        style={styles.fab} 
-                        activeOpacity={0.8}  
+                    <TouchableOpacity
+                        style={styles.fab}
+                        activeOpacity={0.8}
                         onPress={() => {
                             if (activeChip === "channels" || activeChip === "projects") {
                                 setProjectContext(null);
@@ -661,8 +661,8 @@ export default function ChatScreen() {
                             size={24} 
                             color="#000" 
                         /> */}
-                        {activeChip === "channels" ? <Icons.ChannelBtn/> : <Icons.IndoxBtn/>}
-                      
+                        {activeChip === "channels" ? <Icons.ChannelBtn /> : <Icons.IndoxBtn />}
+
                     </TouchableOpacity>
                 )}
             </SafeAreaView>
@@ -901,7 +901,7 @@ const styles = StyleSheet.create({
     fab: {
         position: "absolute",
         bottom: 100,
-        right: 24,  
+        right: 24,
         width: 56,
         height: 56,
         borderRadius: 28,
