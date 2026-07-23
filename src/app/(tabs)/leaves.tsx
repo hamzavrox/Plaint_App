@@ -1,7 +1,5 @@
-import CreateTaskModal from "@/components/CreateTaskModal";
 import DynamicTable, { Column } from "@/components/DynamicTable";
 import FilterModal from "@/components/FilterModal";
-import AppHeader from "@/components/headerapp";
 import StatCard from "@/components/StatCard";
 import LeaveDetailModal from "@/components/LeaveDetailModal";
 import { Fontisto, Ionicons } from "@expo/vector-icons";
@@ -13,7 +11,6 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 interface LeaveItem {
     id: string;
@@ -220,16 +217,7 @@ export default function Dashboard() {
     );
 
     return (    
-            <SafeAreaView style={styles.root}>
-                <AppHeader
-                    greeting="My Leaves"
-                    subGreeting="View and apply for your leaves"
-                    initials="JD"
-                    showSearch
-                    placeholder="Search Leaves..."
-                    onFilterPress={() => setSearchFilterVisible(true)}
-                />
-
+            <View style={styles.root}>
                 <ScrollView
                     style={styles.scroll}
                     contentContainerStyle={styles.scrollContent}
@@ -351,7 +339,7 @@ export default function Dashboard() {
                     onClose={() => setDetailVisible(false)}
                     leave={selectedLeave}
                 />
-            </SafeAreaView>
+            </View>
     );
 }
 

@@ -414,7 +414,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
     const isMuted = res.data?.is_muted ?? false;
     // Update room in state
-      const room = state.rooms.find((r) => r._id === roomId);
+    const room = state.rooms.find((r) => r._id === roomId);
     if (room) {
       dispatch({
         type: "UPDATE_ROOM",
@@ -818,7 +818,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         if (res.Good) {
           dispatch({ type: "SET_SEARCH_RESULTS", results: res.users });
         }
-      }).catch(() => {});
+      }).catch(() => { });
     }, delay);
     searchDebounceRef.current = timeout;
   }, []);
@@ -837,20 +837,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // ── Socket Actions ──────────────────────────────────────────────────────
+  // ── Socket Actions ───────────────────────────────────────────────────────
 
   const initSocket = useCallback(async (userId: number) => {
     userIdRef.current = userId;
     const socket = await socketService.connectSocket();
-
-    // Idempotent: if listeners already registered, skip
-    if (socketCleanupRef.current.length > 0) {
-      // Just ensure user is registered on current socket
-      if (socket.connected) {
-        socketService.registerUser(userId);
-      }
-      return;
-    }
 
     const cleanupConnect = socketService.onSocketEvent("connect", () => {
       setSocketConnected(true);
@@ -880,6 +871,33 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       (messageData) => {
         const message = messageData as ChatMessage;
         dispatch({ type: "ADD_MESSAGE", message });
+
+        // Update the room's last_message + unreadCount for real-time chat list updates
+        const room = stateRef.current.rooms.find((r) => r._id === message.room_id);
+        if (room) {
+          // Only increment unreadCount when the message is from someone else
+          // AND the user is not currently viewing that room
+          const isFromOther = message.sender_id !== userIdRef.current;
+          const isCurrentRoom = stateRef.current.currentRoom?._id === message.room_id;
+          const newUnreadCount = (isFromOther && !isCurrentRoom)
+            ? (room.unreadCount ?? 0) + 1
+            : room.unreadCount;
+
+          dispatch({
+            type: "UPDATE_ROOM",
+            room: {
+              ...room,
+              unreadCount: newUnreadCount,
+              last_message: {
+                text: message.text,
+                sender_name: message.sender_name,
+                createdAt: message.createdAt,
+                attachments: message.attachments,
+              },
+            },
+          });
+        }
+
         if (message.sender_id !== userIdRef.current) {
           socketService.emitMessageDelivered(
             message._id,
@@ -890,359 +908,359 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    const cleanupUserOnline = socketService.onSocketEvent("userOnline", (userIdData) => {
-      const uid = userIdData as string;
-      setOnlineUserIds((prev) => {
-        if (prev.includes(uid)) return prev;
-        return [...prev, uid];
+const cleanupUserOnline = socketService.onSocketEvent("userOnline", (userIdData) => {
+  const uid = userIdData as string;
+  setOnlineUserIds((prev) => {
+    if (prev.includes(uid)) return prev;
+    return [...prev, uid];
+  });
+});
+
+const cleanupUserOffline = socketService.onSocketEvent("userOffline", (userIdData) => {
+  const uid = userIdData as string;
+  setOnlineUserIds((prev) => prev.filter((id) => id !== uid));
+});
+
+const cleanupUserTyping = socketService.onSocketEvent("userTyping", (data) => {
+  const typed = data as { user_id: number; user_name: string; isTyping: boolean };
+  if (typed.user_id === userIdRef.current) return;
+  setTypingUsers((prev) => {
+    const next = new Map(prev);
+    const cur = stateRef.current.currentRoom;
+    if (cur) {
+      const roomMap = new Map(next.get(cur.id.toString()) || []);
+      if (typed.isTyping) {
+        roomMap.set(typed.user_id, typed.user_name);
+      } else {
+        roomMap.delete(typed.user_id);
+      }
+      next.set(cur.id.toString(), roomMap);
+    }
+    return next;
+  });
+});
+
+const cleanupMessageReaction = socketService.onSocketEvent(
+  "messageReaction",
+  (data) => {
+    const typed = data as { messageId: string; reactions: MessageReaction[] };
+    dispatch({
+      type: "SET_REACTIONS",
+      messageId: typed.messageId,
+      reactions: typed.reactions,
+    });
+  }
+);
+
+const cleanupMessagePinned = socketService.onSocketEvent(
+  "messagePinned",
+  (data) => {
+    const typed = data as { messageId: string; isPinned: boolean; message: ChatMessage };
+    dispatch({ type: "UPDATE_MESSAGE", message: typed.message });
+  }
+);
+
+const cleanupMessageUpdated = socketService.onSocketEvent(
+  "messageUpdated",
+  (data) => {
+    const typed = data as { messageId: string; text: string };
+    const msg = stateRef.current.messages.find((m) => m._id === typed.messageId);
+    if (msg) {
+      dispatch({
+        type: "UPDATE_MESSAGE",
+        message: { ...msg, text: typed.text, is_edited: true },
       });
-    });
+    }
+  }
+);
 
-    const cleanupUserOffline = socketService.onSocketEvent("userOffline", (userIdData) => {
-      const uid = userIdData as string;
-      setOnlineUserIds((prev) => prev.filter((id) => id !== uid));
-    });
+const cleanupMessageDeleted = socketService.onSocketEvent(
+  "messageDeleted",
+  (data) => {
+    const typed = data as { messageId: string };
+    dispatch({ type: "REMOVE_MESSAGE", messageId: typed.messageId });
+  }
+);
 
-    const cleanupUserTyping = socketService.onSocketEvent("userTyping", (data) => {
-      const typed = data as { user_id: number; user_name: string; isTyping: boolean };
-      if (typed.user_id === userIdRef.current) return;
-      setTypingUsers((prev) => {
-        const next = new Map(prev);
-        const cur = stateRef.current.currentRoom;
-        if (cur) {
-          const roomMap = new Map(next.get(cur.id.toString()) || []);
-          if (typed.isTyping) {
-            roomMap.set(typed.user_id, typed.user_name);
-          } else {
-            roomMap.delete(typed.user_id);
+const cleanupMemberJoined = socketService.onSocketEvent(
+  "memberJoined",
+  (data) => {
+    const typed = data as { room?: Room };
+    if (typed.room) {
+      dispatch({ type: "UPDATE_ROOM", room: typed.room });
+    }
+  }
+);
+
+const cleanupMessagesRead = socketService.onSocketEvent(
+  "messagesRead",
+  (data) => {
+    const typed = data as { room_id: string; user_id: string };
+    if (String(userIdRef.current) === typed.user_id) return;
+    const cur = stateRef.current;
+    dispatch({
+      type: "LOAD_MESSAGES",
+      messages: cur.messages.map((m) =>
+        m.room_id === typed.room_id
+          ? {
+            ...m,
+            is_read: [
+              ...(m.is_read || []),
+              parseInt(typed.user_id, 10),
+            ],
           }
-          next.set(cur.id.toString(), roomMap);
-        }
-        return next;
-      });
+          : m
+      ),
+      hasMore: cur.hasMore,
+      append: false,
     });
+  }
+);
 
-    const cleanupMessageReaction = socketService.onSocketEvent(
-      "messageReaction",
-      (data) => {
-        const typed = data as { messageId: string; reactions: MessageReaction[] };
-        dispatch({
-          type: "SET_REACTIONS",
-          messageId: typed.messageId,
-          reactions: typed.reactions,
-        });
-      }
+const cleanupChatCleared = socketService.onSocketEvent(
+  "chatCleared",
+  (data) => {
+    const typed = data as { roomId: string };
+    if (stateRef.current.currentRoom?.id.toString() === typed.roomId) {
+      dispatch({
+        type: "LOAD_MESSAGES",
+        messages: [],
+        hasMore: false,
+        append: false,
+      });
+    }
+  }
+);
+
+const cleanupRoomDeleted = socketService.onSocketEvent(
+  "roomDeleted",
+  (data) => {
+    const typed = data as { roomId: string };
+    dispatch({ type: "REMOVE_ROOM", roomId: typed.roomId });
+  }
+);
+
+const cleanupUserLeftRoom = socketService.onSocketEvent(
+  "userLeftRoom",
+  (data) => {
+    const typed = data as { roomId: string; userId: string };
+    const room = stateRef.current.rooms.find(
+      (r) => r._id === typed.roomId
     );
-
-    const cleanupMessagePinned = socketService.onSocketEvent(
-      "messagePinned",
-      (data) => {
-        const typed = data as { messageId: string; isPinned: boolean; message: ChatMessage };
-        dispatch({ type: "UPDATE_MESSAGE", message: typed.message });
-      }
-    );
-
-    const cleanupMessageUpdated = socketService.onSocketEvent(
-      "messageUpdated",
-      (data) => {
-        const typed = data as { messageId: string; text: string };
-        const msg = stateRef.current.messages.find((m) => m._id === typed.messageId);
-        if (msg) {
-          dispatch({
-            type: "UPDATE_MESSAGE",
-            message: { ...msg, text: typed.text, is_edited: true },
-          });
-        }
-      }
-    );
-
-    const cleanupMessageDeleted = socketService.onSocketEvent(
-      "messageDeleted",
-      (data) => {
-        const typed = data as { messageId: string };
-        dispatch({ type: "REMOVE_MESSAGE", messageId: typed.messageId });
-      }
-    );
-
-    const cleanupMemberJoined = socketService.onSocketEvent(
-      "memberJoined",
-      (data) => {
-        const typed = data as { room?: Room };
-        if (typed.room) {
-          dispatch({ type: "UPDATE_ROOM", room: typed.room });
-        }
-      }
-    );
-
-    const cleanupMessagesRead = socketService.onSocketEvent(
-      "messagesRead",
-      (data) => {
-        const typed = data as { room_id: string; user_id: string };
-        if (String(userIdRef.current) === typed.user_id) return;
-        const cur = stateRef.current;
-        dispatch({
-          type: "LOAD_MESSAGES",
-          messages: cur.messages.map((m) =>
-            m.room_id === typed.room_id
-              ? {
-                  ...m,
-                  is_read: [
-                    ...(m.is_read || []),
-                    parseInt(typed.user_id, 10),
-                  ],
-                }
-              : m
+    if (room) {
+      dispatch({
+        type: "UPDATE_ROOM",
+        room: {
+          ...room,
+          members: room.members.filter(
+            (m) => String(m.id) !== typed.userId
           ),
-          hasMore: cur.hasMore,
-          append: false,
-        });
-      }
-    );
-
-    const cleanupChatCleared = socketService.onSocketEvent(
-      "chatCleared",
-      (data) => {
-        const typed = data as { roomId: string };
-        if (stateRef.current.currentRoom?.id.toString() === typed.roomId) {
-          dispatch({
-            type: "LOAD_MESSAGES",
-            messages: [],
-            hasMore: false,
-            append: false,
-          });
-        }
-      }
-    );
-
-    const cleanupRoomDeleted = socketService.onSocketEvent(
-      "roomDeleted",
-      (data) => {
-        const typed = data as { roomId: string };
-        dispatch({ type: "REMOVE_ROOM", roomId: typed.roomId });
-      }
-    );
-
-    const cleanupUserLeftRoom = socketService.onSocketEvent(
-      "userLeftRoom",
-      (data) => {
-        const typed = data as { roomId: string; userId: string };
-        const room = stateRef.current.rooms.find(
-          (r) => r._id === typed.roomId
-        );
-        if (room) {
-          dispatch({
-            type: "UPDATE_ROOM",
-            room: {
-              ...room,
-              members: room.members.filter(
-                (m) => String(m.id) !== typed.userId
-              ),
-            },
-          });
-        }
-      }
-    );
-
-    const cleanupRemovedFromRoom = socketService.onSocketEvent(
-      "removedFromRoom",
-      (data) => {
-        const typed = data as { roomId: string };
-        dispatch({ type: "REMOVE_ROOM", roomId: typed.roomId });
-      }
-    );
-
-    const cleanupRoomPermissionUpdated = socketService.onSocketEvent(
-      "roomPermissionUpdated",
-      (data) => {
-        const typed = data as {
-          room_id: string;
-          userId: number;
-          permission: string;
-          memberPermissions: MemberPermission[];
-        };
-        dispatch({
-          type: "SET_ROOM_PERMISSIONS",
-          permissions: typed.memberPermissions,
-          createdBy: stateRef.current.roomCreator ?? 0,
-        });
-      }
-    );
-
-    const cleanupChatRoomSettingUpdated = socketService.onSocketEvent(
-      "chatRoomSettingUpdated",
-      (data) => {
-        const typed = data as {
-          roomId: string;
-          type: string;
-          is_muted?: boolean;
-        };
-        if (typed.type === "mute" && typed.is_muted !== undefined) {
-          const room = stateRef.current.rooms.find(
-            (r) => r._id === typed.roomId
-          );
-          if (room) {
-            dispatch({
-              type: "UPDATE_ROOM",
-              room: { ...room, is_muted: typed.is_muted },
-            });
-          }
-        }
-      }
-    );
-
-    socketCleanupRef.current = [
-      cleanupConnect,
-      cleanupDisconnect,
-      cleanupConnectError,
-      cleanupNewRoom,
-      cleanupReceiveMessage,
-      cleanupUserOnline,
-      cleanupUserOffline,
-      cleanupUserTyping,
-      cleanupMessageReaction,
-      cleanupMessagePinned,
-      cleanupMessageUpdated,
-      cleanupMessageDeleted,
-      cleanupMemberJoined,
-      cleanupMessagesRead,
-      cleanupChatCleared,
-      cleanupRoomDeleted,
-      cleanupUserLeftRoom,
-      cleanupRemovedFromRoom,
-      cleanupRoomPermissionUpdated,
-      cleanupChatRoomSettingUpdated,
-    ];
-
-    // If already connected, register immediately
-    if (socket.connected) {
-      setSocketConnected(true);
-      socketService.registerUser(userId);
-      stateRef.current.rooms.forEach((room) => {
-        socketService.joinChatRoom(room._id);
+        },
       });
     }
-  }, []);
+  }
+);
 
-  const cleanupChatListeners = useCallback(() => {
-    socketCleanupRef.current.forEach((cleanup) => cleanup());
-    socketCleanupRef.current = [];
-  }, []);
+const cleanupRemovedFromRoom = socketService.onSocketEvent(
+  "removedFromRoom",
+  (data) => {
+    const typed = data as { roomId: string };
+    dispatch({ type: "REMOVE_ROOM", roomId: typed.roomId });
+  }
+);
 
-  const cleanupSocket = useCallback(() => {
-    cleanupChatListeners();
-    socketService.disconnectSocket();
-    setSocketConnected(false);
-    setOnlineUserIds([]);
-    setTypingUsers(new Map());
-  }, [cleanupChatListeners]);
+const cleanupRoomPermissionUpdated = socketService.onSocketEvent(
+  "roomPermissionUpdated",
+  (data) => {
+    const typed = data as {
+      room_id: string;
+      userId: number;
+      permission: string;
+      memberPermissions: MemberPermission[];
+    };
+    dispatch({
+      type: "SET_ROOM_PERMISSIONS",
+      permissions: typed.memberPermissions,
+      createdBy: stateRef.current.roomCreator ?? 0,
+    });
+  }
+);
 
-  // ── Logout ──────────────────────────────────────────────────────────────
-
-  const logout = useCallback(() => {
-    dispatch({ type: "LOGOUT" });
-  }, []);
-
-  // ── Socket Lifecycle ────────────────────────────────────────────────────
-
-  // Initialize socket when rooms are loaded
-  useEffect(() => {
-    if (state.rooms.length > 0) {
-      // Socket init is triggered from the component that has access to userId
+const cleanupChatRoomSettingUpdated = socketService.onSocketEvent(
+  "chatRoomSettingUpdated",
+  (data) => {
+    const typed = data as {
+      roomId: string;
+      type: string;
+      is_muted?: boolean;
+    };
+    if (typed.type === "mute" && typed.is_muted !== undefined) {
+      const room = stateRef.current.rooms.find(
+        (r) => r._id === typed.roomId
+      );
+      if (room) {
+        dispatch({
+          type: "UPDATE_ROOM",
+          room: { ...room, is_muted: typed.is_muted },
+        });
+      }
     }
-  }, [state.rooms]);
+  }
+);
 
-  // ── Memoized Value ──────────────────────────────────────────────────────
+socketCleanupRef.current = [
+  cleanupConnect,
+  cleanupDisconnect,
+  cleanupConnectError,
+  cleanupNewRoom,
+  cleanupReceiveMessage,
+  cleanupUserOnline,
+  cleanupUserOffline,
+  cleanupUserTyping,
+  cleanupMessageReaction,
+  cleanupMessagePinned,
+  cleanupMessageUpdated,
+  cleanupMessageDeleted,
+  cleanupMemberJoined,
+  cleanupMessagesRead,
+  cleanupChatCleared,
+  cleanupRoomDeleted,
+  cleanupUserLeftRoom,
+  cleanupRemovedFromRoom,
+  cleanupRoomPermissionUpdated,
+  cleanupChatRoomSettingUpdated,
+];
 
-  const value: ChatContextValue = useMemo(
-    () => ({
-      state,
-      postTypes: state.postTypes,
-      roomPermissions: state.roomPermissions,
-      roomCreator: state.roomCreator,
-      socketConnected,
-      onlineUserIds,
-      typingUsers,
-      fetchRooms,
-      getOrCreateRoom,
-      setCurrentRoom,
-      deleteRoom,
-      leaveRoom,
-      hideRoom,
-      muteRoom,
-      clearMessages,
-      fetchMessages,
-      sendMessage: sendChatMessage,
-      editMessage: editChatMessage,
-      deleteMessage: deleteChatMessage,
-      toggleReaction: toggleReactionAction,
-      togglePin: togglePinAction,
-      fetchPinnedMessages,
-      addMember: addMemberAction,
-      removeMember: removeMemberAction,
-      fetchPostTypes,
-      createPostType: createPostTypeAction,
-      deletePostType: deletePostTypeAction,
-      fetchRoomPermissions,
-      updatePermission: updatePermissionAction,
-      markRead: markReadAction,
-      markUnread: markUnreadAction,
-      inviteUser: inviteUserAction,
-      generateLink: generateLinkAction,
-      searchUsers: searchUsersAction,
-      setSearchQuery,
-      getUrlPreview: getUrlPreviewAction,
-      createProjectWithChannels: createProjectWithChannelsAction,
-      initSocket,
-      cleanupChatListeners,
-      cleanupSocket,
-      logout,
-    }),
-    [
-      state,
-      state.postTypes,
-      state.roomPermissions,
-      state.roomCreator,
-      socketConnected,
-      onlineUserIds,
-      typingUsers,
-      fetchRooms,
-      getOrCreateRoom,
-      setCurrentRoom,
-      deleteRoom,
-      leaveRoom,
-      hideRoom,
-      muteRoom,
-      clearMessages,
-      fetchMessages,
-      sendChatMessage,
-      editChatMessage,
-      deleteChatMessage,
-      toggleReactionAction,
-      togglePinAction,
-      fetchPinnedMessages,
-      addMemberAction,
-      removeMemberAction,
-      fetchPostTypes,
-      createPostTypeAction,
-      deletePostTypeAction,
-      fetchRoomPermissions,
-      updatePermissionAction,
-      markReadAction,
-      markUnreadAction,
-      inviteUserAction,
-      generateLinkAction,
-      searchUsersAction,
-      setSearchQuery,
-      getUrlPreviewAction,
-      createProjectWithChannelsAction,
-      initSocket,
-      cleanupChatListeners,
-      cleanupSocket,
-      logout,
-    ]
-  );
+// If already connected, register immediately
+if (socket.connected) {
+  setSocketConnected(true);
+  socketService.registerUser(userId);
+  stateRef.current.rooms.forEach((room) => {
+    socketService.joinChatRoom(room._id);
+  });
+}
+  }, []);
 
-  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
+const cleanupChatListeners = useCallback(() => {
+  socketCleanupRef.current.forEach((cleanup) => cleanup());
+  socketCleanupRef.current = [];
+}, []);
+
+const cleanupSocket = useCallback(() => {
+  cleanupChatListeners();
+  socketService.disconnectSocket();
+  setSocketConnected(false);
+  setOnlineUserIds([]);
+  setTypingUsers(new Map());
+}, [cleanupChatListeners]);
+
+// ── Logout ──────────────────────────────────────────────────────────────
+
+const logout = useCallback(() => {
+  dispatch({ type: "LOGOUT" });
+}, []);
+
+// ── Socket Lifecycle ────────────────────────────────────────────────────
+
+// Initialize socket when rooms are loaded
+useEffect(() => {
+  if (state.rooms.length > 0) {
+    // Socket init is triggered from the component that has access to userId
+  }
+}, [state.rooms]);
+
+// ── Memoized Value ──────────────────────────────────────────────────────
+
+const value: ChatContextValue = useMemo(
+  () => ({
+    state,
+    postTypes: state.postTypes,
+    roomPermissions: state.roomPermissions,
+    roomCreator: state.roomCreator,
+    socketConnected,
+    onlineUserIds,
+    typingUsers,
+    fetchRooms,
+    getOrCreateRoom,
+    setCurrentRoom,
+    deleteRoom,
+    leaveRoom,
+    hideRoom,
+    muteRoom,
+    clearMessages,
+    fetchMessages,
+    sendMessage: sendChatMessage,
+    editMessage: editChatMessage,
+    deleteMessage: deleteChatMessage,
+    toggleReaction: toggleReactionAction,
+    togglePin: togglePinAction,
+    fetchPinnedMessages,
+    addMember: addMemberAction,
+    removeMember: removeMemberAction,
+    fetchPostTypes,
+    createPostType: createPostTypeAction,
+    deletePostType: deletePostTypeAction,
+    fetchRoomPermissions,
+    updatePermission: updatePermissionAction,
+    markRead: markReadAction,
+    markUnread: markUnreadAction,
+    inviteUser: inviteUserAction,
+    generateLink: generateLinkAction,
+    searchUsers: searchUsersAction,
+    setSearchQuery,
+    getUrlPreview: getUrlPreviewAction,
+    createProjectWithChannels: createProjectWithChannelsAction,
+    initSocket,
+    cleanupChatListeners,
+    cleanupSocket,
+    logout,
+  }),
+  [
+    state,
+    state.postTypes,
+    state.roomPermissions,
+    state.roomCreator,
+    socketConnected,
+    onlineUserIds,
+    typingUsers,
+    fetchRooms,
+    getOrCreateRoom,
+    setCurrentRoom,
+    deleteRoom,
+    leaveRoom,
+    hideRoom,
+    muteRoom,
+    clearMessages,
+    fetchMessages,
+    sendChatMessage,
+    editChatMessage,
+    deleteChatMessage,
+    toggleReactionAction,
+    togglePinAction,
+    fetchPinnedMessages,
+    addMemberAction,
+    removeMemberAction,
+    fetchPostTypes,
+    createPostTypeAction,
+    deletePostTypeAction,
+    fetchRoomPermissions,
+    updatePermissionAction,
+    markReadAction,
+    markUnreadAction,
+    inviteUserAction,
+    generateLinkAction,
+    searchUsersAction,
+    setSearchQuery,
+    getUrlPreviewAction,
+    createProjectWithChannelsAction,
+    initSocket,
+    cleanupChatListeners,
+    cleanupSocket,
+    logout,
+  ]
+);
+
+return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────

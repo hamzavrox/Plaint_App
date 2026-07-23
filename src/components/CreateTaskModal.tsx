@@ -224,6 +224,7 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                 onFocus={() => setTitleFocused(true)}
                 onBlur={() => setTitleFocused(false)}
                 placeholderTextColor="transparent"
+                autoFocus={false}
               />
             </View>
 
@@ -237,7 +238,7 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
                 onBlur={() => setDescFocused(false)}
                 editorHeight={160}
                 containerStyle={styles.descEditor}
-                autoFocus
+                autoFocus={false}
               />
             ) : (
               <TouchableOpacity style={styles.descIdle} onPress={() => setDescFocused(true)} activeOpacity={0.7}>

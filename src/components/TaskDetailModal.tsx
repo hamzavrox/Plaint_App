@@ -252,41 +252,41 @@ function CommentBubble({
   );
 }
 
-const SAMPLE_NOTES: TaskNote[] = [
-  {
-    id: 1,
-    task_id: 1,
-    company_id: 1,
-    user_id: 1,
-    user_name: "Muhammad Junaid",
-    notes:
-      "Lorem Ipsum is simply dummy text of the printing and typesetting...",
-    pin_top: 1,
-    created_at: "2026-04-25T10:00:00Z",
-  },
-  {
-    id: 2,
-    task_id: 1,
-    company_id: 1,
-    user_id: 2,
-    user_name: "Muhammad Haris",
-    notes:
-      "Lorem Ipsum is simply dummy text of the printing and typesetting...",
-    pin_top: 0,
-    created_at: "2026-04-25T10:00:00Z",
-  },
-  {
-    id: 3,
-    task_id: 1,
-    company_id: 1,
-    user_id: 1,
-    user_name: "Muhammad Junaid",
-    notes:
-      "Lorem Ipsum is simply dummy text of the printing and typesetting...",
-    pin_top: 0,
-    created_at: "2026-04-25T10:00:00Z",
-  },
-];
+// const SAMPLE_NOTES: TaskNote[] = [
+//   {
+//     id: 1,
+//     task_id: 1,
+//     company_id: 1,
+//     user_id: 1,
+//     user_name: "Muhammad Junaid",
+//     notes:
+//       "Lorem Ipsum is simply dummy text of the printing and typesetting...",
+//     pin_top: 1,
+//     created_at: "2026-04-25T10:00:00Z",
+//   },
+//   {
+//     id: 2,
+//     task_id: 1,
+//     company_id: 1,
+//     user_id: 2,
+//     user_name: "Muhammad Haris",
+//     notes:
+//       "Lorem Ipsum is simply dummy text of the printing and typesetting...",
+//     pin_top: 0,
+//     created_at: "2026-04-25T10:00:00Z",
+//   },
+//   {
+//     id: 3,
+//     task_id: 1,
+//     company_id: 1,
+//     user_id: 1,
+//     user_name: "Muhammad Junaid",
+//     notes:
+//       "Lorem Ipsum is simply dummy text of the printing and typesetting...",
+//     pin_top: 0,
+//     created_at: "2026-04-25T10:00:00Z",
+//   },
+// ];
 
 export default function TaskDetailModal({ visible, onClose, task }: Props) {
   const { state: authState } = useAuth();
@@ -412,7 +412,8 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
   };
   const currentUserId = authState.user?.id ?? 0;
 
-  const displayNotes = notes.length > 0 ? notes : SAMPLE_NOTES;
+  // const displayNotes = notes.length > 0 ? notes : SAMPLE_NOTES;
+  const displayNotes = notes;
 
   const INFO_ROWS = [
     {
@@ -685,7 +686,7 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                 >
-                  {notesLoading ? (
+                  {/* {notesLoading ? (
                     <ActivityIndicator
                       size="small"
                       color="#00DEAB"
@@ -693,6 +694,29 @@ export default function TaskDetailModal({ visible, onClose, task }: Props) {
                     />
                   ) : (
                     displayNotes.map((c, i) => (
+                      <CommentBubble
+                        key={c.id ?? i}
+                        comment={c}
+                        currentUserId={currentUserId}
+                        onPin={handlePinNote}
+                        onDelete={handleDeleteNote}
+                        index={i}
+                      />
+                    ))
+                  )} */}
+
+                  {notesLoading ? (
+                    <ActivityIndicator
+                      size="small"
+                      color="#00DEAB"
+                      style={{ marginTop: 20 }}
+                    />
+                  ) : notes.length === 0 ? (
+                    <View style={styles.emptyComments}>
+                      <Text style={styles.emptyCommentsText}>No Comments</Text>
+                    </View>
+                  ) : (
+                    notes.map((c, i) => (
                       <CommentBubble
                         key={c.id ?? i}
                         comment={c}
@@ -1041,11 +1065,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 8,
-    gap: 8,
+    gap: 5,
   },
   bubbleAvatar: {
-    width: 24,
-    height: 24,
+    width: 20,
+    height: 20,
     borderRadius: 5,
     backgroundColor: "#00DEAB",
     alignItems: "center",
@@ -1064,10 +1088,10 @@ const styles = StyleSheet.create({
     color: "#1D1D1D",
   },
   bubbleTime: {
-    fontSize: 11,
+    fontSize: 9,
     color: "#D1D5DB",
     fontFamily: "SF_Pro_Regular",
-    marginLeft: 4,
+    // marginLeft: 4,
   },
   pinIcon: { marginLeft: "auto" },
   bubbleText: {
@@ -1147,5 +1171,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#00DEAB",
     alignItems: "center",
     justifyContent: "center",
+  },
+  emptyComments: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 100,
+  },
+
+  emptyCommentsText: {
+    fontSize: 16,
+    fontFamily: "SF_Pro_Regular",
+    color: "#9CA3AF",
   },
 });

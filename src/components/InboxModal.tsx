@@ -205,7 +205,7 @@ export default function InboxModal({ visible, onClose }: InboxModalProps) {
                                     color="#D1D5DB"
                                 />
                                 <Text style={styles.emptyText}>
-                                    No notifications found.
+                                    {activeTab === "unread" ? "No Unread Message" : "No notifications found."}
                                 </Text>
                             </View>
                         ) : (
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(0, 0, 0, 0.15)",
     },
     popup: {
-        width: 270,
+        width: 280,
         maxWidth: "80%",
         backgroundColor: "#fff",
         borderRadius: 12,
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 4 },
         elevation: 6,
-        maxHeight: 350,
+        maxHeight: 250,
     },
     header: {
         flexDirection: "row",

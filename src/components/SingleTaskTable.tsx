@@ -865,9 +865,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 5,
+    width: 17,
+    height: 17,
+    borderRadius: 3,
     backgroundColor: "#00DEAB",
     alignItems: "center",
     justifyContent: "center",
@@ -875,7 +875,7 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 17,
     height: 17,
-    borderRadius: 4,
+    borderRadius: 3,
     borderWidth: 1,
     borderColor: "#F0F0F0",
     backgroundColor: "#fff",
@@ -921,7 +921,7 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: 21,
     height: 21,
-    borderRadius: 6,
+    borderRadius: 2,
     marginRight: 6,
     backgroundColor: "#E5E7EB",
   },
@@ -937,7 +937,7 @@ const styles = StyleSheet.create({
   initialsAssignee: {
     width: 24,
     height: 24,
-    borderRadius: 6,
+    borderRadius: 2,
     backgroundColor: "#00DEAB",
     alignItems: "center",
     justifyContent: "center",

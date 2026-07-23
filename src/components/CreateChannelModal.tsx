@@ -118,6 +118,15 @@ export default function CreateChannelModal({
 }: CreateChannelModalProps) {
   const [channelName, setChannelName] = useState("");
 
+  let mainTitle = title;
+  let projectName = "";
+
+  if (title.includes(' to "')) {
+    const parts = title.split(' to "');
+    mainTitle = parts[0];
+    projectName = parts[1]?.replace(/"$/, "") || "";
+  }
+
   const handleClose = () => {
     Keyboard.dismiss();
     setChannelName("");
@@ -148,29 +157,40 @@ export default function CreateChannelModal({
       >
         <View style={modalStyles.kavWrapper}>
           <View style={modalStyles.sheet}>
-          <TouchableOpacity
-            style={modalStyles.closeBtn}
-            onPress={handleClose}
-            activeOpacity={0.8}
-            hitSlop={8}
-          >
-            <Ionicons name="close" size={17} color="#fff" />
-          </TouchableOpacity>
+            <View style={modalStyles.header}>
+              <View style={modalStyles.headerTitleCol}>
+                <Text style={modalStyles.mainTitle}>{mainTitle}</Text>
+                {projectName ? (
+                  <View style={modalStyles.projectBadge}>
+                    <Ionicons name="folder-outline" size={13} color="#00DEAB" style={{ marginRight: 5 }} />
+                    <Text style={modalStyles.projectBadgeText} numberOfLines={1}>
+                      {projectName}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <TouchableOpacity
+                style={modalStyles.closeBtn}
+                onPress={handleClose}
+                activeOpacity={0.7}
+                hitSlop={8}
+              >
+                <Ionicons name="close" size={18} color="#1D1D1D" />
+              </TouchableOpacity>
+            </View>
 
-          <Text style={modalStyles.title}>{title}</Text>
+            <FloatingInput
+              label={placeholder}
+              value={channelName}
+              onChangeText={setChannelName}
+            />
 
-          <FloatingInput
-            label={placeholder}
-            value={channelName}
-            onChangeText={setChannelName}
-          />
-
-          <TouchableOpacity
-            style={modalStyles.nextBtn}
-            activeOpacity={0.8}
-            onPress={handleNext}
-          >
-            <Text style={modalStyles.nextBtnText}>Next</Text>
+            <TouchableOpacity
+              style={modalStyles.nextBtn}
+              activeOpacity={0.85}
+              onPress={handleNext}
+            >
+              <Text style={modalStyles.nextBtnText}>Next</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -182,7 +202,7 @@ export default function CreateChannelModal({
 const modalStyles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.38)",
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
   kavWrapper: {
     flex: 1,
@@ -191,43 +211,59 @@ const modalStyles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: "#fff",
-    borderRadius: 28,
+    borderRadius: 24,
     width: "90%",
-    paddingTop: 32,
-    paddingBottom: 40,
+    paddingTop: 24,
+    paddingBottom: 24,
     shadowColor: "#000",
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.15,
     shadowRadius: 20,
-    shadowOffset: { width: 0, height: -4 },
+    shadowOffset: { width: 0, height: 4 },
     elevation: 12,
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  headerTitleCol: {
+    flex: 1,
+    marginRight: 12,
+  },
+  mainTitle: {
+    fontSize: 20,
+    fontFamily: "SF_Pro_Semibold",
+    color: "#1D1D1D",
+  },
+  projectBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E6FBF5",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 6,
+    alignSelf: "flex-start",
+  },
+  projectBadgeText: {
+    fontSize: 12,
+    fontFamily: "SF_Pro_Medium",
+    color: "#00DEAB",
+    maxWidth: 200,
+  },
   closeBtn: {
-    position: "absolute",
-    top: 18,
-    right: 20,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#1D1D1D",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F3F4F6",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 5,
-  },
-  title: {
-    fontSize: 26,
-    fontFamily: "SF_Pro_Regular",
-    color: "#1D1D1D",
-    marginHorizontal: 20,
-    marginBottom: 26,
   },
   nextBtn: {
     backgroundColor: "#00DEAB",
-    borderRadius: 8,
+    borderRadius: 10,
     marginHorizontal: 20,
     paddingVertical: 14,
     alignItems: "center",
@@ -236,6 +272,6 @@ const modalStyles = StyleSheet.create({
   nextBtnText: {
     color: "#fff",
     fontSize: 15,
-    fontFamily: "SF_Pro_Medium",
+    fontFamily: "SF_Pro_Semibold",
   },
 });

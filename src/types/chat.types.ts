@@ -14,6 +14,13 @@ export type RoomMember = {
   email?: string;
 };
 
+export type RoomLastMessage = {
+  text?: string;
+  sender_name?: string;
+  createdAt?: string;
+  attachments?: { name: string; url: string }[];
+};
+
 export type Room = {
   _id: string;
   id: number;
@@ -26,6 +33,7 @@ export type Room = {
   members: RoomMember[];
   parent_id?: number;
   created_by?: number;
+  last_message?: RoomLastMessage;
 };
 
 export type GetRoomsResponse = {

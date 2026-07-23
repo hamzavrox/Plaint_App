@@ -1,6 +1,5 @@
 import AddPeopleModal from "@/components/AddPeopleModal";
 import CreateChannelModal from "@/components/CreateChannelModal";
-import AppHeader from "@/components/headerapp";
 import Icons from "@/constants/icons";
 import { useAuth } from "@/hooks/useAuth";
 import { useChat } from "@/hooks/useChat";
@@ -15,19 +14,18 @@ import {
     getRoomInitials,
     isRoomUnread,
 } from "@/utils/chatHelpers";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Icon, router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    Alert,
     ActivityIndicator,
+    Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 const { ChatIcon: MainChatIcon, ChannelTabIcon } = Icons;
 
 // ─── Chip Config ──────────────────────────────────────────────────────────────
@@ -132,10 +130,11 @@ export default function ChatScreen() {
     // Compute unread counts per chip
     const chipUnread = useMemo(() => {
         const rooms = state.rooms;
-        const hasUnread = (rooms: Room[]) => rooms.some((r) => r.unreadCount > 0 || r.force_unread);
+        const directRooms = rooms.filter((r) => r.type === "direct");
+        const hasUnread = (rms: Room[]) => rms.some((r) => r.unreadCount > 0 || r.force_unread);
         return {
-            all: hasUnread(rooms),
-            unread: hasUnread(rooms),
+            all: hasUnread(directRooms),
+            unread: hasUnread(directRooms),
             read: false,
             channels: hasUnread(rooms.filter((r) => r.type === "channel")),
             projects: hasUnread(rooms.filter((r) => r.type === "project")),
@@ -145,20 +144,21 @@ export default function ChatScreen() {
     // Categorize rooms based on active chip
     const displayRooms = useMemo(() => {
         const rooms = state.rooms;
+        // All, Unread, Read → show only direct (inbox) messages, not channels/projects
+        const directRooms = rooms.filter((r) => r.type === "direct");
 
         switch (activeChip) {
             case "channels":
-                // Show standalone channels (no parent_id) and channels under projects
                 return filterRoomsByType(rooms, "channel");
             case "projects":
                 return filterRoomsByType(rooms, "project");
             case "unread":
-                return filterUnreadRooms(rooms);
+                return filterUnreadRooms(directRooms);
             case "read":
-                return filterReadRooms(rooms);
+                return filterReadRooms(directRooms);
             case "all":
             default:
-                return rooms;
+                return directRooms;
         }
     }, [state.rooms, activeChip]);
 
@@ -340,34 +340,18 @@ export default function ChatScreen() {
     if (state.loading && state.rooms.length === 0) {
         return (
             <View style={styles.root}>
-                <SafeAreaView style={styles.safe}>
-                    <AppHeader
-                        greeting="Good morning!"
-                        subGreeting="Loading your chats..."
-                        initials="..."
-                        placeholder="Search Task"
-                        showSearch
-                    />
+                <View style={styles.safe}>
                     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
                         <ActivityIndicator size="large" color="#00DEAB" />
                     </View>
-                </SafeAreaView>
+                </View>
             </View>
         );
     }
 
     return (
         <View style={styles.root}>
-            <SafeAreaView style={styles.safe}>
-                {/* Header */}
-                <AppHeader
-                    greeting="Good morning!"
-                    subGreeting="Let's make today productive!"
-                    initials={currentUserId ? String(currentUserId).slice(0, 2) : "U"}
-                    placeholder="Search Task"
-                    showSearch
-                />
-
+            <View style={styles.safe}>
                 <ScrollView
                     style={styles.scroll}
                     contentContainerStyle={styles.scrollContent}
@@ -417,11 +401,18 @@ export default function ChatScreen() {
                                     const displayName = getRoomDisplayName(project, currentUserId);
                                     const initials = getRoomInitials(project, currentUserId);
                                     const unread = isRoomUnread(project);
-                                    const lastPreview = project.members.length > 0
-                                        ? `${project.members.length} member${project.members.length > 1 ? "s" : ""}`
-                                        : "No messages yet";
+                                    const lastPreview = project.last_message
+                                        ? (project.last_message.attachments && project.last_message.attachments.length > 0
+                                            ? `📎 ${project.last_message.attachments.length} attachment${project.last_message.attachments.length > 1 ? "s" : ""}`
+                                            : project.last_message.text || `${project.members.length} member${project.members.length > 1 ? "s" : ""}`)
+                                        : (project.members.length > 0
+                                            ? `${project.members.length} member${project.members.length > 1 ? "s" : ""}`
+                                            : "No messages yet");
                                     const isExpanded = expandedProjects.has(project.id);
                                     const childChannels = projectChannelMap.get(project.id) ?? [];
+                                    const projectTime = project.last_message?.createdAt
+                                        ? formatChatListTime(project.last_message.createdAt)
+                                        : (project as any).time ?? "";
 
                                     return (
                                         <View key={project.id}>
@@ -429,15 +420,15 @@ export default function ChatScreen() {
                                             <TouchableOpacity
                                                 style={[
                                                     styles.chatRow,
-                                                    selectedChatId === project.id.toString() && styles.chatRowSelected,
+                                                    (isExpanded || selectedChatId === project.id.toString()) && { backgroundColor: "#F3F4F6" },
                                                 ]}
                                                 activeOpacity={0.7}
                                                 onPress={() => handleRoomPress(project)}
                                                 onLongPress={() => toggleProjectExpand(project.id)}
                                             >
                                                 <View style={styles.avatarContainer}>
-                                                    <View style={[styles.avatarBox, { backgroundColor: "#1D1D1D" }]}>
-                                                        <Ionicons name="folder-outline" size={18} color="#00DEAB" />
+                                                    <View style={styles.avatarBox}>
+                                                        <Text style={styles.avatarText}>{initials}</Text>
                                                     </View>
                                                     {unread && (
                                                         <View style={styles.onlineIndicator} />
@@ -448,19 +439,10 @@ export default function ChatScreen() {
                                                         {displayName}
                                                     </Text>
                                                     <Text style={styles.chatSnippet} numberOfLines={1}>
-                                                        {lastPreview}{childChannels.length > 0 ? ` · ${childChannels.length} channel${childChannels.length > 1 ? "s" : ""}` : ""}
+                                                        {lastPreview}
                                                     </Text>
                                                 </View>
                                                 <View style={styles.chatMeta}>
-                                                    {childChannels.length > 0 && (
-                                                        <TouchableOpacity onPress={() => toggleProjectExpand(project.id)} hitSlop={8}>
-                                                            <Ionicons
-                                                                name={isExpanded ? "chevron-up" : "chevron-down"}
-                                                                size={18}
-                                                                color="#9CA3AF"
-                                                            />
-                                                        </TouchableOpacity>
-                                                    )}
                                                     {unread && project.unreadCount > 0 && (
                                                         <View style={styles.unreadBubble}>
                                                             <Text style={styles.unreadBubbleText}>
@@ -468,34 +450,35 @@ export default function ChatScreen() {
                                                             </Text>
                                                         </View>
                                                     )}
-                                                </View>
-                                                <Text style={styles.chatTime}>{(project as any).time ?? ""}</Text>
-                                                
-                                                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginLeft: 6 }}>
-                                                    <TouchableOpacity
-                                                        activeOpacity={0.7}
-                                                        style={{ padding: 4 }}
-                                                        onPress={(e) => {
-                                                            e.stopPropagation();
-                                                            handleProjectAddChannel(project);
-                                                        }}
-                                                    >
-                                                        <Ionicons name="add-circle-sharp" size={24} color="black" />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        activeOpacity={0.7}
-                                                        style={{ padding: 4 }}
-                                                        onPress={(e) => {
-                                                            e.stopPropagation();
-                                                            toggleProjectExpand(project.id);
-                                                        }}
-                                                    >
-                                                        <Ionicons 
-                                                            name={isExpanded ? "chevron-up" : "chevron-down"} 
-                                                            size={20} 
-                                                            color="#1D1D1D" 
-                                                        />
-                                                    </TouchableOpacity>
+                                                    {projectTime !== "" && (
+                                                        <Text style={styles.chatTime}>{projectTime}</Text>
+                                                    )}
+                                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 4 }}>
+                                                        <TouchableOpacity
+                                                            activeOpacity={0.7}
+                                                            style={{ padding: 4 }}
+                                                            onPress={(e) => {
+                                                                e.stopPropagation();
+                                                                handleProjectAddChannel(project);
+                                                            }}
+                                                        >
+                                                            <Ionicons name="add-circle-sharp" size={22} color="#1D1D1D" />
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            activeOpacity={0.7}
+                                                            style={{ padding: 4 }}
+                                                            onPress={(e) => {
+                                                                e.stopPropagation();
+                                                                toggleProjectExpand(project.id);
+                                                            }}
+                                                        >
+                                                            <Ionicons
+                                                                name={isExpanded ? "chevron-up" : "chevron-down"}
+                                                                size={20}
+                                                                color="#1D1D1D"
+                                                            />
+                                                        </TouchableOpacity>
+                                                    </View>
                                                 </View>
                                             </TouchableOpacity>
 
@@ -504,31 +487,68 @@ export default function ChatScreen() {
                                                     {childChannels.map((channel: Room) => {
                                                         const isChannelActive = selectedChatId === channel.id.toString();
                                                         const channelName = getRoomDisplayName(channel, currentUserId);
+                                                        const channelInitials = getRoomInitials(channel, currentUserId);
+                                                        const channelUnread = isRoomUnread(channel);
+                                                        const channelPreview = channel.last_message
+                                                            ? (channel.last_message.attachments && channel.last_message.attachments.length > 0
+                                                                ? `📎 ${channel.last_message.attachments.length} attachment${channel.last_message.attachments.length > 1 ? "s" : ""}`
+                                                                : channel.last_message.text || "No messages yet")
+                                                            : "No messages yet";
+                                                        const channelTime = channel.last_message?.createdAt
+                                                            ? formatChatListTime(channel.last_message.createdAt)
+                                                            : "";
+
                                                         return (
                                                             <TouchableOpacity
                                                                 key={channel.id}
-                                                                style={[styles.channelRow, isChannelActive && styles.channelRowActive]}
+                                                                style={[
+                                                                    styles.chatRow,
+                                                                    { paddingLeft: 40, backgroundColor: "#fff" },
+                                                                    isChannelActive && styles.chatRowSelected,
+                                                                ]}
                                                                 activeOpacity={0.7}
                                                                 onPress={() => handleRoomPress(channel)}
                                                             >
-                                                                <View style={[styles.avatarBox, { width: 28, height: 28, backgroundColor: "#F0FDF9" }]}>
-                                                                    <Ionicons name="chatbubbles-outline" size={16} color="#00DEAB" />
+                                                                <View style={styles.avatarContainer}>
+                                                                    <View style={[styles.avatarBox, { width: 32, height: 32 }]}>
+                                                                        <Text style={[styles.avatarText, { fontSize: 13 }]}>{channelInitials}</Text>
+                                                                    </View>
+                                                                    {channelUnread && (
+                                                                        <View style={styles.onlineIndicator} />
+                                                                    )}
                                                                 </View>
-                                                                <Text style={[styles.chatSnippet, { marginLeft: 14, color: "#1D1D1D", fontFamily: "SF_Pro_Medium" }]}>
-                                                                    {channelName}
-                                                                </Text>
+                                                                <View style={styles.chatInfo}>
+                                                                    <Text style={styles.chatName} numberOfLines={1}>
+                                                                        {channelName}
+                                                                    </Text>
+                                                                    <Text style={styles.chatSnippet} numberOfLines={1}>
+                                                                        {channelPreview}
+                                                                    </Text>
+                                                                </View>
+                                                                <View style={styles.chatMeta}>
+                                                                    {channelUnread && channel.unreadCount > 0 && (
+                                                                        <View style={styles.unreadBubble}>
+                                                                            <Text style={styles.unreadBubbleText}>
+                                                                                +{channel.unreadCount}
+                                                                            </Text>
+                                                                        </View>
+                                                                    )}
+                                                                    {channelTime !== "" && (
+                                                                        <Text style={styles.chatTime}>{channelTime}</Text>
+                                                                    )}
+                                                                </View>
                                                             </TouchableOpacity>
                                                         );
                                                     })}
                                                     <TouchableOpacity
-                                                        style={styles.channelRow}
+                                                        style={[styles.channelRow, { paddingLeft: 40 }]}
                                                         activeOpacity={0.7}
                                                         onPress={() => handleProjectAddChannel(project)}
                                                     >
-                                                        <View style={[styles.avatarBox, { width: 28, height: 28, backgroundColor: "#F0FDF9" }]}>
-                                                            <Ionicons name="add" size={16} color="#00DEAB" />
+                                                        <View style={[styles.avatarBox, { width: 32, height: 32, backgroundColor: "#E6FBF5" }]}>
+                                                            <Ionicons name="add" size={18} color="#00DEAB" />
                                                         </View>
-                                                        <Text style={[styles.chatSnippet, { marginLeft: 14, color: "#00DEAB", fontFamily: "SF_Pro_Medium" }]}>
+                                                        <Text style={[styles.chatSnippet, { marginLeft: 14, color: "#00DEAB", fontFamily: "SF_Pro_Semibold" }]}>
                                                             Add Channel
                                                         </Text>
                                                     </TouchableOpacity>
@@ -542,8 +562,10 @@ export default function ChatScreen() {
                                     const displayName = getRoomDisplayName(room, currentUserId);
                                     const initials = getRoomInitials(room, currentUserId);
                                     const unread = isRoomUnread(room);
-                                    const lastPreview = room.members.length > 0
-                                        ? `${room.members.length} member${room.members.length > 1 ? "s" : ""}`
+                                    const lastPreview = room.last_message
+                                        ? (room.last_message.attachments && room.last_message.attachments.length > 0
+                                            ? `📎 ${room.last_message.attachments.length} attachment${room.last_message.attachments.length > 1 ? "s" : ""}`
+                                            : room.last_message.text || "No messages yet")
                                         : "No messages yet";
 
                                     return (
@@ -581,15 +603,24 @@ export default function ChatScreen() {
                                                     </View>
                                                 )}
                                                 <Text style={styles.chatTime}>
-                                                    {room.my_visible_from
-                                                        ? formatChatListTime(room.my_visible_from)
-                                                        : ""}
+                                                    {room.last_message?.createdAt
+                                                        ? formatChatListTime(room.last_message.createdAt)
+                                                        : room.my_visible_from
+                                                            ? formatChatListTime(room.my_visible_from)
+                                                            : ""}
                                                 </Text>
                                             </View>
                                         </TouchableOpacity>
                                     );
                                 })
                             )}
+                        </View>
+                    ) : activeChip === "unread" ? (
+                        <View style={styles.workspaceContainer}>
+                            <View style={styles.iconStack}>
+                                <Ionicons name="chatbubble-ellipses-outline" size={48} color="#00DEAB" />
+                            </View>
+                            <Text style={styles.workspaceTitle}>No Unread Message</Text>
                         </View>
                     ) : activeChip === "channels" ? (
                         <View style={styles.workspaceContainer}>
@@ -661,11 +692,11 @@ export default function ChatScreen() {
                             size={24} 
                             color="#000" 
                         /> */}
-                        {activeChip === "channels" ? <Icons.ChannelBtn /> : <Icons.IndoxBtn />}
+                        {activeChip === "channels" || activeChip === "projects" ? <Icons.ChannelBtn /> : <Icons.IndoxBtn />}
 
                     </TouchableOpacity>
                 )}
-            </SafeAreaView>
+            </View>
 
             <AddPeopleModal
                 visible={addPeopleOpen}

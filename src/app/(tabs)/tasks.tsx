@@ -1,6 +1,5 @@
 import CreateTaskModal from "@/components/CreateTaskModal";
 import FilterModal from "@/components/FilterModal";
-import AppHeader from "@/components/headerapp";
 import StatCard from "@/components/StatCard";
 import TaskDetailModal, { TaskDetail } from "@/components/TaskDetailModal";
 import { StatusType, TaskRowProps } from "@/components/TaskRow";
@@ -20,7 +19,6 @@ import {
   View,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 const { AllTaskIcon: AllTasksIcon, AssignIcon, CompletedIcon, CreatedIcon, DelayIcon, DueTodayIcon, RecurringIcon, SevenDayIcon: SevendayIcon } = Icons;
 
@@ -153,32 +151,65 @@ export default function TasksScreen() {
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
-    const weekEnd = new Date(todayStart);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    const weekEnd = new Date(tomorrowStart);
     weekEnd.setDate(weekEnd.getDate() + 7);
 
+    const sortByDueDate = (tasks: (TaskRowProps & { _raw: import("@/types/task.types").TaskListItem })[]) =>
+      [...tasks].sort((a, b) => {
+        if (!a._raw?.due_date) return 1;
+        if (!b._raw?.due_date) return -1;
+        return new Date(a._raw.due_date).getTime() - new Date(b._raw.due_date).getTime();
+      });
+
     return {
-      all,
-      today: all.filter((t) => {
-        if (!t._raw?.due_date) return false;
-        const d = new Date(t._raw.due_date);
-        return d >= todayStart && d < todayEnd;
+      all: sortByDueDate(all.filter((t) => t.status !== "Completed")),
+      today: all
+        .filter((t) => {
+          if (t.status === "Completed") return false;
+          if (!t._raw?.due_date) return false;
+          const d = new Date(t._raw.due_date);
+          return d >= todayStart && d < tomorrowStart;
+        })
+        .sort((a, b) => {
+          const timeA = new Date(a._raw.due_date).getTime() % 86400000;
+          const timeB = new Date(b._raw.due_date).getTime() % 86400000;
+          if (timeA !== timeB) return timeA - timeB;
+          const createdA = new Date(a._raw.createdAt || 0).getTime();
+          const createdB = new Date(b._raw.createdAt || 0).getTime();
+          return createdA - createdB;
+        }),
+      week: sortByDueDate(
+        all.filter((t) => {
+          if (t.status === "Completed") return false;
+          if (!t._raw?.due_date) return false;
+          const d = new Date(t._raw.due_date);
+          return d >= tomorrowStart && d < weekEnd;
+        })
+      ),
+      overdue: all
+        .filter((t) => {
+          if (t.status === "Completed") return false;
+          if (!t._raw?.due_date) return false;
+          const d = new Date(t._raw.due_date);
+          return d < todayStart;
+        })
+        .sort((a, b) => {
+          const dateA = new Date(a._raw.due_date).getTime();
+          const dateB = new Date(b._raw.due_date).getTime();
+          return dateA - dateB;
+        }),
+      created: sortByDueDate(mappedCreatedByMe.map(mapRowWithRaw).filter((t) => t.status !== "Completed")),
+      assigned: sortByDueDate(mappedAssignedToMe.map(mapRowWithRaw).filter((t) => t.status !== "Completed")),
+      recurring: sortByDueDate(
+        all.filter((t) => t._raw?.is_recurring === true && t.status !== "Completed")
+      ),
+      completed: [...all.filter((t) => t.status === "Completed")].sort((a, b) => {
+        const timeA = new Date(a._raw.updatedAt || a._raw.createdAt || 0).getTime();
+        const timeB = new Date(b._raw.updatedAt || b._raw.createdAt || 0).getTime();
+        return timeB - timeA;
       }),
-      week: all.filter((t) => {
-        if (!t._raw?.due_date) return false;
-        const d = new Date(t._raw.due_date);
-        return d >= todayStart && d <= weekEnd;
-      }),
-      overdue: all.filter((t) => {
-        if (!t._raw?.due_date) return false;
-        const d = new Date(t._raw.due_date);
-        return d < todayStart && t.status !== "Completed";
-      }),
-      created: mappedCreatedByMe.map(mapRowWithRaw),
-      assigned: mappedAssignedToMe.map(mapRowWithRaw),
-      recurring: all.filter((t) => t._raw?.is_recurring === true),
-      completed: all.filter((t) => t.status === "Completed"),
     };
   }, [allMappedTasks, mappedCreatedByMe, mappedAssignedToMe, mapRowWithRaw]);
 
@@ -188,7 +219,7 @@ export default function TasksScreen() {
 
   const statsList = useMemo(() => {
     return [
-      { label: "All Tasks", count: pad(taskState.loading ? 0 : totalCount), iconName: <AllTasksIcon />, id: "all" },
+      { label: "All Tasks", count: pad(taskState.loading ? 0 : tasksMap.all.length), iconName: <AllTasksIcon />, id: "all" },
       { label: "Due Today", count: pad(tasksMap.today.length), iconName: <DueTodayIcon />, id: "today" },
       { label: "Due in 7 days", count: pad(tasksMap.week.length), iconName: <SevendayIcon />, id: "week" },
       { label: "Delayed", count: pad(tasksMap.overdue.length), iconName: <DelayIcon />, id: "overdue" },
@@ -202,34 +233,18 @@ export default function TasksScreen() {
   if (taskState.loading && totalCount === 0) {
     return (
       <View style={styles.root}>
-        <SafeAreaView style={styles.safe}>
-          <AppHeader
-            greeting="Tasks"
-            subGreeting="Assign tasks, track progress, and boost productivity."
-            placeholder="Search Tasks..."
-            showSearch
-            showFilter={false}
-          />
+        <View style={styles.safe}>
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
             <ActivityIndicator size="large" color="#00DEAB" />
           </View>
-        </SafeAreaView>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={styles.safe}>
-        <AppHeader
-          greeting="Tasks"
-          subGreeting="Assign tasks, track progress, and boost productivity."
-          placeholder="Search Tasks..."
-          showSearch
-          showFilter={false}
-          forceSearchOpen
-          onFilterPress={() => setFilterVisible(true)}
-        />
+      <View style={styles.safe}>
         <FilterModal
           visible={filterVisible}
           onClose={() => setFilterVisible(false)}
@@ -268,7 +283,7 @@ export default function TasksScreen() {
             loading={taskState.loading}
           />
         </View>
-      </SafeAreaView>
+      </View>
 
       <TouchableOpacity style={styles.fab} activeOpacity={0.85} onPress={() => setCreateVisible(true)}>
         <MaterialIcons name="add" size={35} color="black" />

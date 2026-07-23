@@ -18,19 +18,16 @@ const { BellIcon, FilterIcon, FilterIconBlack } = Icons;
 type AppHeaderProps = {
   greeting: string;
   subGreeting: string;
-  initials?: string;
   placeholder?: string;
   showSearch?: boolean;
   showFilter?: boolean;
   forceSearchOpen?: boolean;
-  onNotificationPress?: () => void;
   onFilterPress?: () => void;
 };
 
 export default function AppHeader({
   greeting,
   subGreeting,
-  initials,
   showSearch = false,
   showFilter = false,
   placeholder = "Search...",
@@ -40,14 +37,11 @@ export default function AppHeader({
   const { state: authState, logout } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const isSearchVisible = forceSearchOpen || searchOpen;
-  const prevForce = useState(forceSearchOpen);
-  if (forceSearchOpen && searchOpen) setSearchOpen(false);
   const [search, setSearch] = useState("");
   const [inboxOpen, setInboxOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const userInitials = (() => {
-    if (initials) return initials;
     const user = authState.user;
     if (!user) return "U";
     return ((user.first_name?.[0] ?? "") + (user.last_name?.[0] ?? "")).toUpperCase();
@@ -154,6 +148,8 @@ export default function AppHeader({
 const styles = StyleSheet.create({
   headerContainer: {
     zIndex: 99999,
+    backgroundColor: "#fff",
+    overflow: "visible",
   },
   searchRow: {
     flexDirection: "row",
@@ -262,7 +258,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 8,
-    zIndex: 9999999,
+    zIndex: 999,
   },
   menuItem: {
     flexDirection: "row",

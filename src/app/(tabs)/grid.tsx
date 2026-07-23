@@ -1,15 +1,4 @@
-import AppHeader from "@/components/headerapp";
 import { View } from "react-native";
-export default function GridScreen() { 
-     return (
-            <>
-                <View style={{ flex: 1, backgroundColor: "#fff" }} >
-                    <AppHeader
-                        greeting="Good morning, Junaid!"
-                        subGreeting="Let's make today productive!"
-                        initials="JD"
-                    />
-                </View>;
-            </>
-        )
+export default function GridScreen() {
+  return <View style={{ flex: 1, backgroundColor: "#fff" }} />;
 }
