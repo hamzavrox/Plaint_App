@@ -31,6 +31,8 @@ export default function TasksScreen() {
     allMappedTasks,
     totalCount,
     fetchAllTasks,
+    fetchDueToday,
+    fetchFiltered,
     mappedAssignedToMe,
     mappedCreatedByMe,
     updateTaskStatusApi,
@@ -42,6 +44,10 @@ export default function TasksScreen() {
   const [filterVisible, setFilterVisible] = useState(false);
   const [createVisible, setCreateVisible] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskDetail | null>(null);
+  const [activeStatusFilter, setActiveStatusFilter] = useState<string | null>(null);
+  const [activePriorityFilter, setActivePriorityFilter] = useState<string | null>(null);
+  const [activeStartDateFilter, setActiveStartDateFilter] = useState<Date | null>(null);
+  const [activeEndDateFilter, setActiveEndDateFilter] = useState<Date | null>(null);
 
   const companyId = authState.company?.company_id;
 
@@ -55,7 +61,7 @@ export default function TasksScreen() {
   const handleTabPress = useCallback(
     (tabId: string) => {
       setActiveTab(tabId);
-      if (companyId && tabId === "all") {
+      if (companyId) {
         fetchAllTasks(companyId);
       }
     },
@@ -81,6 +87,43 @@ export default function TasksScreen() {
     },
     [companyId, companyIdentifier, updateTaskStatusApi, fetchAllTasks]
   );
+
+  const handleFilterApply = useCallback(
+    (filters: {
+      status: string | null;
+      priority: string | null;
+      startDate?: Date | null;
+      endDate?: Date | null;
+    }) => {
+      console.log("[TasksScreen] Filter Applied:", {
+        status: filters.status,
+        priority: filters.priority,
+        startDate: filters.startDate ? filters.startDate.toISOString() : null,
+        endDate: filters.endDate ? filters.endDate.toISOString() : null,
+      });
+      setActiveStatusFilter(filters.status);
+      setActivePriorityFilter(filters.priority);
+      setActiveStartDateFilter(filters.startDate ?? null);
+      setActiveEndDateFilter(filters.endDate ?? null);
+    },
+    []
+  );
+
+  const handleFilterReset = useCallback(() => {
+    console.log("[TasksScreen] Filter Reset");
+    setActiveStatusFilter(null);
+    setActivePriorityFilter(null);
+    setActiveStartDateFilter(null);
+    setActiveEndDateFilter(null);
+  }, []);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (activeStatusFilter) count++;
+    if (activePriorityFilter) count++;
+    if (activeStartDateFilter || activeEndDateFilter) count++;
+    return count;
+  }, [activeStatusFilter, activePriorityFilter, activeStartDateFilter, activeEndDateFilter]);
 
   const handleTaskPress = useCallback(async (task: TaskRowProps) => {
     const raw = (task as any)._raw;
@@ -213,9 +256,129 @@ export default function TasksScreen() {
     };
   }, [allMappedTasks, mappedCreatedByMe, mappedAssignedToMe, mapRowWithRaw]);
 
+  const getTabCategoryScope = useCallback(
+    (tabId: string) => {
+      const all = allMappedTasks.map(mapRowWithRaw);
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const tomorrowStart = new Date(todayStart);
+      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+      const weekEnd = new Date(tomorrowStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+
+      const sortByDueDate = (tasks: (TaskRowProps & { _raw: import("@/types/task.types").TaskListItem })[]) =>
+        [...tasks].sort((a, b) => {
+          if (!a._raw?.due_date) return 1;
+          if (!b._raw?.due_date) return -1;
+          return new Date(a._raw.due_date).getTime() - new Date(b._raw.due_date).getTime();
+        });
+
+      switch (tabId) {
+        case "today":
+          return all.filter((t) => {
+            if (!t._raw?.due_date) return false;
+            const d = new Date(t._raw.due_date);
+            return d >= todayStart && d < tomorrowStart;
+          });
+        case "week":
+          return sortByDueDate(
+            all.filter((t) => {
+              if (!t._raw?.due_date) return false;
+              const d = new Date(t._raw.due_date);
+              return d >= tomorrowStart && d < weekEnd;
+            })
+          );
+        case "overdue":
+          return all.filter((t) => {
+            if (!t._raw?.due_date) return false;
+            const d = new Date(t._raw.due_date);
+            return d < todayStart;
+          });
+        case "created":
+          return sortByDueDate(mappedCreatedByMe.map(mapRowWithRaw));
+        case "assigned":
+          return sortByDueDate(mappedAssignedToMe.map(mapRowWithRaw));
+        case "recurring":
+          return sortByDueDate(all.filter((t) => t._raw?.is_recurring === true));
+        case "completed":
+          return all.filter((t) => t.status === "Completed");
+        case "all":
+        default:
+          return all;
+      }
+    },
+    [allMappedTasks, mappedCreatedByMe, mappedAssignedToMe, mapRowWithRaw]
+  );
+
   const displayedTasks = useMemo(() => {
-    return tasksMap[activeTab] ?? tasksMap.all;
-  }, [activeTab, tasksMap]);
+    let tasks = getTabCategoryScope(activeTab);
+    console.log(`[TasksScreen] Calculating displayedTasks for activeTab="${activeTab}". Base category tasks count:`, tasks.length);
+
+    if (activeStatusFilter) {
+      if (activeStatusFilter === "Recurring") {
+        tasks = tasks.filter((t) => t._raw?.is_recurring === true || t.status === "Recurring");
+      } else {
+        tasks = tasks.filter((t) => t.status === activeStatusFilter);
+      }
+      console.log(`[TasksScreen] After status filter ("${activeStatusFilter}"):`, tasks.length);
+    } else {
+      if (activeTab === "completed") {
+        tasks = tasks.filter((t) => t.status === "Completed");
+      } else {
+        tasks = tasks.filter((t) => t.status !== "Completed");
+      }
+    }
+
+    if (activePriorityFilter) {
+      tasks = tasks.filter(
+        (t) => t._raw?.priority_name?.toLowerCase() === activePriorityFilter.toLowerCase()
+      );
+      console.log(`[TasksScreen] After priority filter ("${activePriorityFilter}"):`, tasks.length);
+    }
+
+    if (activeStartDateFilter || activeEndDateFilter) {
+      const startMs = activeStartDateFilter ? new Date(activeStartDateFilter).setHours(0, 0, 0, 0) : null;
+      const endMs = activeEndDateFilter ? new Date(activeEndDateFilter).setHours(23, 59, 59, 999) : null;
+
+      console.log(`[TasksScreen] Applying Date Filter: Start=${startMs ? new Date(startMs).toISOString() : "None"}, End=${endMs ? new Date(endMs).toISOString() : "None"}`);
+
+      tasks = tasks.filter((t) => {
+        if (!t._raw?.due_date) {
+          console.log(`[TasksScreen] Skipping "${t.title}": due_date is missing`);
+          return false;
+        }
+        const taskDate = new Date(t._raw.due_date);
+        const taskMs = taskDate.getTime();
+        if (isNaN(taskMs)) {
+          console.log(`[TasksScreen] Skipping "${t.title}": invalid due_date "${t._raw.due_date}"`);
+          return false;
+        }
+
+        if (startMs !== null && taskMs < startMs) {
+          console.log(`[TasksScreen] Skipping "${t.title}" (${t._raw.due_date}): before start date`);
+          return false;
+        }
+
+        if (endMs !== null && taskMs > endMs) {
+          console.log(`[TasksScreen] Skipping "${t.title}" (${t._raw.due_date}): after end date`);
+          return false;
+        }
+
+        return true;
+      });
+
+      console.log(`[TasksScreen] After date range filter:`, tasks.length);
+    }
+
+    return tasks;
+  }, [
+    activeTab,
+    getTabCategoryScope,
+    activeStatusFilter,
+    activePriorityFilter,
+    activeStartDateFilter,
+    activeEndDateFilter,
+  ]);
 
   const statsList = useMemo(() => {
     return [
@@ -253,6 +416,12 @@ export default function TasksScreen() {
           priorities={priorities}
           priorityColors={priorityColors}
           showPriority={true}
+          initialStatus={activeStatusFilter}
+          initialPriority={activePriorityFilter}
+          initialStartDate={activeStartDateFilter}
+          initialEndDate={activeEndDateFilter}
+          onApply={handleFilterApply}
+          onReset={handleFilterReset}
         />
 
         <ScrollView
@@ -281,6 +450,7 @@ export default function TasksScreen() {
             onStatusChange={handleStatusChange}
             onFilterPress={() => setFilterVisible(true)}
             loading={taskState.loading}
+            activeFilterCount={activeFilterCount}
           />
         </View>
       </View>

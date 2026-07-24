@@ -2,6 +2,7 @@ import TopMintGlow from "@/components/gradientheader";
 import { Colors } from "@/theme/root";
 import useAppFonts from "@/theme/useAppFonts";
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
@@ -150,7 +151,10 @@ export default function OnboardingScreen() {
         <TouchableOpacity
           style={styles.ctaGradient}
           activeOpacity={0.85}
-          onPress={() => router.replace("/login")}
+          onPress={async () => {
+            await SecureStore.setItemAsync("hasCompletedOnboarding", "true");
+            router.replace("/(auth)/login");
+          }}
         >
           <Text style={styles.ctaText}>Get Started</Text>
         </TouchableOpacity>

@@ -26,24 +26,29 @@ function RootNavigator() {
   }, [fontError]);
 
   useEffect(() => {
-    if (fontsLoaded && !state.loading) {
+    if (fontsLoaded) {
       SplashScreen.hideAsync().catch((err) => {
         console.warn("Error hiding splash screen:", err);
       });
     }
-  }, [fontsLoaded, state.loading]);
+  }, [fontsLoaded]);
 
   useEffect(() => {
     if (state.loading || !fontsLoaded) return;
 
     const inAuthGroup = segments[0] === "(auth)";
     const inInitialReset = (segments as string[]).includes("initial-reset");
+    const inTabGroup = segments[0] === "(tabs)";
+    const isFirstRoute = (segments[0] as string) === "" || (segments[0] as string) === "index";
+    const isOnboarding = (segments[0] as string) === "splashscreem";
+
+    if (isFirstRoute || isOnboarding) return;
 
     if (!state.isAuthenticated && !inAuthGroup) {
       router.replace("/(auth)/login");
     } else if (state.isAuthenticated && state.isDefaultPassword && !inInitialReset) {
       router.replace("/(auth)/initial-reset" as never);
-    } else if (state.isAuthenticated && !state.isDefaultPassword && inAuthGroup) {
+    } else if (state.isAuthenticated && !state.isDefaultPassword && !inTabGroup) {
       router.replace("/(tabs)/tasks");
     }
   }, [state.isAuthenticated, state.isDefaultPassword, state.loading, segments, fontsLoaded, router]);
@@ -62,12 +67,8 @@ function RootNavigator() {
     }
   }, [state.isAuthenticated, state.isDefaultPassword, state.loading]);
 
-  if (state.loading || !fontsLoaded) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
-        <ActivityIndicator size="large" color="#00DEAB" />
-      </View>
-    );
+  if (!fontsLoaded) {
+    return null;
   }
 
   return (

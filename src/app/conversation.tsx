@@ -454,6 +454,7 @@ function MessageBubble({
     onEdit,
     onReply,
     onMore,
+    onReactionPress,
 }: {
     message: ChatMessage;
     currentUserId: number;
@@ -464,12 +465,17 @@ function MessageBubble({
     onEdit?: () => void;
     onReply?: () => void;
     onMore?: () => void;
+    onReactionPress?: (emoji: string) => void;
 }) {
     const own = isOwnMessage(message, currentUserId);
     const senderMember = members?.find((m) => m.id === message.sender_id);
     const senderName = message.sender_name || (senderMember ? `${senderMember.first_name} ${senderMember.last_name}` : "");
     const initials = getMessageInitials(senderName);
     const time = formatMessageTime(message.createdAt);
+
+    const likedByMe = new Set(
+        (message.reactions ?? []).filter((r) => r.users.includes(currentUserId)).map((r) => r.emoji)
+    );
 
     const audioAtt = message.attachments?.find((a) => {
         const str = (a.url || a.name || "").toLowerCase();
@@ -496,11 +502,16 @@ function MessageBubble({
                         {message.reactions && message.reactions.length > 0 && (
                             <View style={styles.reactionsRow}>
                                 {message.reactions.map((r, idx) => (
-                                    <View key={idx} style={styles.reactionBadge}>
-                                        <Text style={styles.reactionText}>
+                                    <TouchableOpacity
+                                        key={idx}
+                                        activeOpacity={0.7}
+                                        style={[styles.reactionBadge, likedByMe.has(r.emoji) && styles.reactionBadgeActive]}
+                                        onPress={() => onReactionPress?.(r.emoji)}
+                                    >
+                                        <Text style={[styles.reactionText, likedByMe.has(r.emoji) && styles.reactionTextActive]}>
                                             {r.emoji} {r.users.length}
                                         </Text>
-                                    </View>
+                                    </TouchableOpacity>
                                 ))}
                             </View>
                         )}
@@ -536,11 +547,16 @@ function MessageBubble({
                     {message.reactions && message.reactions.length > 0 && (
                         <View style={styles.reactionsRow}>
                             {message.reactions.map((r, idx) => (
-                                <View key={idx} style={styles.reactionBadge}>
-                                    <Text style={styles.reactionText}>
+                                <TouchableOpacity
+                                    key={idx}
+                                    activeOpacity={0.7}
+                                    style={[styles.reactionBadge, likedByMe.has(r.emoji) && styles.reactionBadgeActive]}
+                                    onPress={() => onReactionPress?.(r.emoji)}
+                                >
+                                    <Text style={[styles.reactionText, likedByMe.has(r.emoji) && styles.reactionTextActive]}>
                                         {r.emoji} {r.users.length}
                                     </Text>
-                                </View>
+                                </TouchableOpacity>
                             ))}
                         </View>
                     )}
@@ -781,7 +797,19 @@ export default function ConversationScreen() {
         async (msg: ChatMessage) => {
             if (!roomId) return;
             try {
-                await toggleReaction(msg.id.toString(), "👍");
+                await toggleReaction(msg._id, "👍");
+            } catch {
+                // Silent fail
+            }
+        },
+        [roomId, toggleReaction]
+    );
+
+    const handleReactEmoji = useCallback(
+        async (msg: ChatMessage, emoji: string) => {
+            if (!roomId) return;
+            try {
+                await toggleReaction(msg._id, emoji);
             } catch {
                 // Silent fail
             }
@@ -809,7 +837,7 @@ export default function ConversationScreen() {
             setEmojiPickerOpen(false);
             setEmojiPickerMsg(null);
             try {
-                await toggleReaction(msg.id.toString(), emoji);
+                await toggleReaction(msg._id, emoji);
             } catch {}
         },
         [toggleReaction]
@@ -1149,6 +1177,7 @@ export default function ConversationScreen() {
                                         onEdit={() => { setEditingMsg(msg); setEditText(msg.text); }}
                                         onReply={() => setReplyTo(msg)}
                                         onMore={() => handleMore(msg)}
+                                        onReactionPress={(emoji) => handleReactEmoji(msg, emoji)}
                                     />
                                 ))}
                                 {filteredMessages.length === 0 && state.messages.length === 0 && (
@@ -1724,10 +1753,18 @@ const styles = StyleSheet.create({
         paddingHorizontal: 6,
         paddingVertical: 2,
     },
+    reactionBadgeActive: {
+        backgroundColor: "#FEF9C3",
+        borderWidth: 1,
+        borderColor: "#FACC15",
+    },
     reactionText: {
         fontSize: 11,
         fontFamily: "SF_Pro_Regular",
         color: TEXT_PRIMARY,
+    },
+    reactionTextActive: {
+        color: "#CA8A04",
     },
 
     // ── Message Actions ──

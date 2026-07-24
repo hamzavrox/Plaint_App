@@ -144,6 +144,7 @@ export type TaskContextValue = {
   dueTodayCount: number;
   totalCount: number;
   fetchAllTasks: (companyId: number) => Promise<void>;
+  fetchDueToday: (companyId: number) => Promise<void>;
   fetchFiltered: (companyId: number, filter: TaskFilter) => Promise<void>;
   setActiveFilter: (filter: TaskFilter | null) => void;
   createTask: (data: CreateTaskRequest) => Promise<number>;
@@ -249,6 +250,20 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const fetchDueToday = useCallback(async (companyId: number) => {
+    dispatch({ type: "SET_LOADING", loading: true });
+    try {
+      const res = await tasksService.getDueTodayTasks(companyId);
+      if (res.Good && res.data) {
+        dispatch({ type: "LOAD_SUCCESS", data: res.data });
+      } else {
+        dispatch({ type: "SET_ERROR", error: res.message ?? "Failed to load due today tasks" });
+      }
+    } catch (error) {
+      dispatch({ type: "SET_ERROR", error: extractErrorMessage(error) });
+    }
+  }, []);
+
   const fetchFiltered = useCallback(
     async (companyId: number, filter: TaskFilter) => {
       dispatch({ type: "SET_LOADING", loading: true });
@@ -261,8 +276,8 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
             ...mapped.createdByMe,
             ...mapped.allOtherTasks,
           ]);
+          dispatch({ type: "LOAD_SUCCESS", data: res.data });
           dispatch({ type: "SET_FILTER", filter });
-          dispatch({ type: "SET_LOADING", loading: false });
         } else {
           dispatch({
             type: "SET_ERROR",
@@ -488,6 +503,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       dueTodayCount,
       totalCount,
       fetchAllTasks,
+      fetchDueToday,
       fetchFiltered,
       setActiveFilter,
       createTask,
@@ -516,6 +532,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       dueTodayCount,
       totalCount,
       fetchAllTasks,
+      fetchDueToday,
       fetchFiltered,
       setActiveFilter,
       createTask,

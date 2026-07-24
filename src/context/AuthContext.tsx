@@ -132,7 +132,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    dispatch({ type: "SET_LOADING", loading: true });
     try {
       const res = await authService.loginCheckDefault({ email, password });
 
@@ -153,7 +152,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         company: successRes.user.company,
       });
     } catch (error) {
-      dispatch({ type: "SET_LOADING", loading: false });
       throw error;
     }
   }, []);
@@ -169,7 +167,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setInitialPassword = useCallback(
     async (email: string, password: string, confirmPassword: string) => {
-      dispatch({ type: "SET_LOADING", loading: true });
       try {
         await authService.initialPasswordReset({
           email,
@@ -178,7 +175,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         dispatch({ type: "LOGOUT" });
       } catch (error) {
-        dispatch({ type: "SET_LOADING", loading: false });
         throw error;
       }
     },

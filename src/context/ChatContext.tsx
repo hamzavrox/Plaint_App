@@ -113,7 +113,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         messages: state.messages.map((m) =>
-          m.id.toString() === action.messageId
+          m._id === action.messageId
             ? { ...m, reactions: action.reactions }
             : m
         ),

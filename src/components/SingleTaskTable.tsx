@@ -31,6 +31,7 @@ type Props = {
   onFilterPress?: () => void;
   loading?: boolean;
   emptyText?: string;
+  activeFilterCount?: number;
 };
 
 type SwipeStage = "actions" | "details";
@@ -100,6 +101,7 @@ function SingleTaskTable({
   onFilterPress,
   loading = false,
   emptyText = "No tasks found.",
+  activeFilterCount = 0,
 }: Props) {
   const { width: windowWidth } = useWindowDimensions();
   const metrics = useMemo(() => getTableMetrics(windowWidth), [windowWidth]);
@@ -161,15 +163,23 @@ function SingleTaskTable({
             style={({ pressed }) => [
               styles.filterBtn,
               pressed && styles.filterBtnPressed,
+              activeFilterCount > 0 && styles.filterBtnActive,
             ]}
           >
-            {({ pressed }) =>
-              pressed ? (
-                <FilterIconBlack width={18} height={18} color="#fff" />
-              ) : (
-                <FilterIconBlack width={18} height={18} />
-              )
-            }
+            {({ pressed }) => (
+              <View>
+                <FilterIconBlack
+                  width={18}
+                  height={18}
+                  color={pressed || activeFilterCount > 0 ? "#fff" : undefined}
+                />
+                {activeFilterCount > 0 ? (
+                  <View style={styles.filterBadge}>
+                    <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+                  </View>
+                ) : null}
+              </View>
+            )}
           </Pressable>
         ) : null}
       </View>
@@ -808,6 +818,25 @@ const styles = StyleSheet.create({
   },
   filterBtnPressed: {
     backgroundColor: "#00DEAB",
+  },
+  filterBtnActive: {
+    backgroundColor: "#00DEAB",
+  },
+  filterBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#FF3B30",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterBadgeText: {
+    fontSize: 9,
+    fontFamily: "SF_Pro_Bold",
+    color: "#fff",
   },
   tableHeader: {
     height: 31,
