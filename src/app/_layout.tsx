@@ -41,6 +41,8 @@ function RootNavigator() {
     const inTabGroup = segments[0] === "(tabs)";
     const isFirstRoute = (segments[0] as string) === "" || (segments[0] as string) === "index";
     const isOnboarding = (segments[0] as string) === "splashscreem";
+    // Top-level screens that are valid destinations for authenticated users
+    const inAuthenticatedScreen = ["conversation", "profile", "explore"].includes(segments[0] as string);
 
     if (isFirstRoute || isOnboarding) return;
 
@@ -48,7 +50,7 @@ function RootNavigator() {
       router.replace("/(auth)/login");
     } else if (state.isAuthenticated && state.isDefaultPassword && !inInitialReset) {
       router.replace("/(auth)/initial-reset" as never);
-    } else if (state.isAuthenticated && !state.isDefaultPassword && !inTabGroup) {
+    } else if (state.isAuthenticated && !state.isDefaultPassword && !inTabGroup && !inAuthenticatedScreen) {
       router.replace("/(tabs)/tasks");
     }
   }, [state.isAuthenticated, state.isDefaultPassword, state.loading, segments, fontsLoaded, router]);
