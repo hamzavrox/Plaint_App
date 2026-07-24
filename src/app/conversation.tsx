@@ -6,7 +6,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import CalendarPicker from "@/components/CalendarPicker";
 import { useChat } from "@/hooks/useChat";
 import { useAuth } from "@/hooks/useAuth";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -390,6 +390,92 @@ const ap = StyleSheet.create({
     },
 });
 
+// ─── Date Divider Component ───────────────────────────────────────────────────
+
+function formatDateDivider(dateInput?: Date | string | null, isChannel?: boolean): string {
+    if (!dateInput) {
+        return isChannel ? "Today's Discussion" : "Today's Chat";
+    }
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) {
+        return isChannel ? "Today's Discussion" : "Today's Chat";
+    }
+    const now = new Date();
+    if (
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate()
+    ) {
+        return isChannel ? "Today's Discussion" : "Today's Chat";
+    }
+
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (
+        d.getFullYear() === yesterday.getFullYear() &&
+        d.getMonth() === yesterday.getMonth() &&
+        d.getDate() === yesterday.getDate()
+    ) {
+        return "Yesterday";
+    }
+
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+    const dayName = days[d.getDay()];
+    const dayNum = d.getDate();
+    const monthName = months[d.getMonth()];
+
+    return `${dayName} ${dayNum} ${monthName}`;
+}
+
+function DateDivider({ label }: { label: string }) {
+    return (
+        <View style={ddStyles.container}>
+            <View style={ddStyles.line} />
+            <TouchableOpacity style={ddStyles.pill} activeOpacity={0.8}>
+                <Text style={ddStyles.text}>{label}</Text>
+                <Ionicons name="chevron-down" size={13} color="#6B7280" style={{ marginLeft: 3 }} />
+            </TouchableOpacity>
+        </View>
+    );
+}
+
+const ddStyles = StyleSheet.create({
+    container: {
+        position: "relative",
+        alignItems: "center",
+        justifyContent: "center",
+        marginVertical: 10,
+        width: "100%",
+    },
+    line: {
+        position: "absolute",
+        left: 0,
+        right: 0,
+        height: 1,
+        backgroundColor: "#E5E7EB",
+    },
+    pill: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#FAFAFA",
+        borderWidth: 1,
+        borderColor: "#E5E7EB",
+        borderRadius: 16,
+        paddingHorizontal: 14,
+        paddingVertical: 4.5,
+        zIndex: 1,
+    },
+    text: {
+        fontSize: 12,
+        fontFamily: "SF_Pro_Medium",
+        color: "#4B5563",
+    },
+});
+
 // ─── Message Action Icons ─────────────────────────────────────────────────────
 
 function MessageActions({
@@ -604,7 +690,7 @@ export default function ConversationScreen() {
     const currentUserId = authState?.state?.user?.id ?? 0;
 
     const [message, setMessage] = useState("");
-    const scrollRef = useRef<ScrollView>(null);
+    const scrollRef = useRef<any>(null);
     const [postTypeOpen, setPostTypeOpen] = useState(false);
     const [addPeopleOpen, setAddPeopleOpen] = useState(false);
     const [sending, setSending] = useState(false);
@@ -631,6 +717,7 @@ export default function ConversationScreen() {
     const [recordingInstance, setRecordingInstance] = useState<any>(null);
     const [recordingDuration, setRecordingDuration] = useState(0);
     const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [firstVisibleDate, setFirstVisibleDate] = useState<Date | null>(null);
 
     const startRecording = useCallback(async () => {
         if (!Audio) {
@@ -766,6 +853,10 @@ export default function ConversationScreen() {
             setTimeout(() => {
                 scrollRef.current?.scrollToEnd({ animated: true });
             }, 100);
+            const lastMsg = state.messages[state.messages.length - 1];
+            if (lastMsg?.createdAt) {
+                setFirstVisibleDate(new Date(lastMsg.createdAt));
+            }
         }
     }, [state.messages.length]);
 
@@ -901,11 +992,35 @@ export default function ConversationScreen() {
         [currentUserId, togglePin, deleteMessage]
     );
 
+    // Derive current room from rooms list (setCurrentRoom is never called)
+    const currentRoom = useMemo(
+        () => state.rooms.find((r) => r._id === roomId || r.id.toString() === roomId),
+        [state.rooms, roomId]
+    );
+
     // Group messages by date for display
     const filteredMessages = search.trim()
         ? filterMessagesByText(state.messages, search)
         : state.messages;
-    const messageGroups = groupMessagesByDate(filteredMessages);
+
+
+    const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10 }).current;
+
+    const onViewableItemsChangedRef = useRef(({ viewableItems }: { viewableItems: any[] }) => {
+        for (const v of viewableItems) {
+            if (v.item?.createdAt) {
+                setFirstVisibleDate(new Date(v.item.createdAt));
+                return;
+            }
+        }
+    }).current;
+
+    const dynamicDateLabel = useMemo(() => {
+        if (!firstVisibleDate || isNaN(firstVisibleDate.getTime())) {
+            return isChannel ? "Today's Discussion" : "Today's Chat";
+        }
+        return formatDateDivider(firstVisibleDate, isChannel);
+    }, [firstVisibleDate, isChannel]);
 
     return (
         <View style={styles.root}>
@@ -1079,21 +1194,33 @@ export default function ConversationScreen() {
                 {!searchOpen && activeFilter === "chat_member" && isChannel && (
                     <View style={styles.panelWrapper}>
                         <View style={styles.memberListPanel}>
-                            {state.roomPermissions.map((member) => (
-                                <View key={member.userId} style={styles.memberRow}>
-                                    <View style={styles.memberAvatar}>
-                                        <Text style={styles.memberAvatarText}>
-                                            {String(member.userId).charAt(0)}
+                            {state.roomPermissions.map((perm) => {
+                                const memberInfo = currentRoom?.members?.find(
+                                    (m) => m.id === perm.userId
+                                );
+                                const fullName = memberInfo
+                                    ? `${memberInfo.first_name} ${memberInfo.last_name}`
+                                    : `User #${perm.userId}`;
+                                const initials = memberInfo
+                                    ? (memberInfo.first_name?.charAt(0) ?? "") +
+                                      (memberInfo.last_name?.charAt(0) ?? "")
+                                    : String(perm.userId).charAt(0);
+                                return (
+                                    <View key={perm.userId} style={styles.memberRow}>
+                                        <View style={styles.memberAvatar}>
+                                            <Text style={styles.memberAvatarText}>
+                                                {initials}
+                                            </Text>
+                                        </View>
+                                        <Text style={styles.memberName} numberOfLines={1}>
+                                            {fullName}
+                                        </Text>
+                                        <Text style={{ fontSize: 11, color: "#6B7280", fontFamily: "SF_Pro_Regular" }}>
+                                            {perm.permission}
                                         </Text>
                                     </View>
-                                    <Text style={styles.memberName} numberOfLines={1}>
-                                        User #{member.userId}
-                                    </Text>
-                                    <Text style={{ fontSize: 11, color: "#6B7280", fontFamily: "SF_Pro_Regular" }}>
-                                        {member.permission}
-                                    </Text>
-                                </View>
-                            ))}
+                                );
+                            })}
                             {state.roomPermissions.length === 0 && (
                                 <Text style={{ fontSize: 12, color: "#9CA3AF", fontFamily: "SF_Pro_Regular", padding: 12 }}>
                                     No members loaded
@@ -1103,115 +1230,147 @@ export default function ConversationScreen() {
                     </View>
                 )}
 
+                {/* ── Fixed Date Divider (dynamic, updates on scroll) ── */}
+                {!searchOpen && (
+                    <DateDivider label={dynamicDateLabel} />
+                )}
+
                 {/* ── Scrollable content ── */}
                 <KeyboardAvoidingView
                     style={styles.flex}
                     behavior={Platform.OS === "ios" ? "padding" : undefined}
                     keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
                 >
-                    <ScrollView
+                    <FlatList
                         ref={scrollRef}
                         style={styles.scroll}
-                        contentContainerStyle={styles.scrollContent}
-                        showsVerticalScrollIndicator={false}
-                        keyboardShouldPersistTaps="handled"
-                    >
-                        {/* ── Empty state / Header ── */}
-                        {isChannel ? (
+                        data={filteredMessages}
+                        keyExtractor={(item: ChatMessage) => item._id}
+                        renderItem={({ item, index }: { item: ChatMessage; index: number }) => {
+                            return (
+                                <View
+                                    style={{
+                                        paddingHorizontal: 16,
+                                        paddingTop: index === 0 ? 8 : 20,
+                                    }}
+                                >
+                                    <MessageBubble
+                                        message={item}
+                                        currentUserId={currentUserId}
+                                        members={currentRoom?.members}
+                                        onReact={() => handleReact(item)}
+                                        onEmoji={() => {
+                                            setEmojiPickerMsg(item);
+                                            setEmojiPickerOpen(true);
+                                        }}
+                                        onForward={() => {
+                                            setForwardMsg(item);
+                                            setForwardOpen(true);
+                                        }}
+                                        onEdit={() => {
+                                            setEditingMsg(item);
+                                            setEditText(item.text);
+                                        }}
+                                        onReply={() => setReplyTo(item)}
+                                        onMore={() => handleMore(item)}
+                                        onReactionPress={(emoji: string) => handleReactEmoji(item, emoji)}
+                                    />
+                                </View>
+                            );
+                        }}
+                        ListHeaderComponent={
                             <View style={styles.workspaceContainer}>
                                 <View style={styles.iconStack}>
-                                    <Icons.ChannelTabIcon width={54} height={54} />
+                                    {isChannel ? (
+                                        <Icons.ChannelTabIcon width={54} height={54} />
+                                    ) : (
+                                        <MainChatIcon />
+                                    )}
                                 </View>
-                                <Text style={styles.workspaceTitle}>Team Chat in #{name}</Text>
+                                <Text style={styles.workspaceTitle}>
+                                    {isChannel
+                                        ? `Team Chat in #${name}`
+                                        : "Private workspace"}
+                                </Text>
                                 <Text style={styles.workspaceDescription}>
-                                    Group keep your team's conversations{"\n"}
-                                    organized by topic.
+                                    {isChannel
+                                        ? "Group keep your team's conversations\norganized by topic."
+                                        : "A place just for you to capture ideas, draft messages,\nand keep everything organized for later."}
                                 </Text>
-                                <TouchableOpacity style={styles.addPeopleChannelBtn} activeOpacity={0.8} onPress={() => setAddPeopleOpen(true)}>
-                                    <Text style={styles.addPeopleChannelText}>+ Add people</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                            <View style={styles.workspaceContainer}>
-                                <View style={styles.iconStack}>
-                                    <MainChatIcon />
-                                </View>
-                                <Text style={styles.workspaceTitle}>Private workspace</Text>
-                                <Text style={styles.workspaceDescription}>
-                                    A place just for you to capture ideas, draft messages,{"\n"}
-                                    and keep everything organized for later.
-                                </Text>
-                            </View>
-                        )}
-
-                        {/* ── Messages ── */}
-                        {state.messagesLoading && state.messages.length === 0 ? (
-                            <View style={{ padding: 40, alignItems: "center" }}>
-                                <ActivityIndicator size="large" color="#00DEAB" />
-                            </View>
-                        ) : search.trim() && filteredMessages.length === 0 ? (
-                            <View style={{ padding: 40, alignItems: "center" }}>
-                                <Ionicons name="search-outline" size={32} color="#D1D5DB" />
-                                <Text style={{ fontSize: 13, color: "#9CA3AF", fontFamily: "SF_Pro_Regular", marginTop: 8 }}>
-                                    No messages matching "{search}"
-                                </Text>
-                            </View>
-                        ) : (
-                            <View style={styles.messagesContainer}>
-                                {search.trim() && filteredMessages.length > 0 && (
+                                {isChannel && (
+                                    <TouchableOpacity
+                                        style={styles.addPeopleChannelBtn}
+                                        activeOpacity={0.8}
+                                        onPress={() => setAddPeopleOpen(true)}
+                                    >
+                                        <Text style={styles.addPeopleChannelText}>
+                                            + Add people
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                                {search.trim() && (
                                     <View style={styles.searchResultBadge}>
                                         <Text style={styles.searchResultText}>
-                                            {filteredMessages.length} result{filteredMessages.length !== 1 ? "s" : ""} found
-                                        </Text>
-                                    </View>
-                                )}
-                                {filteredMessages.map((msg) => (
-                                    <MessageBubble
-                                        key={msg._id}
-                                        message={msg}
-                                        currentUserId={currentUserId}
-                                        members={state.currentRoom?.members}
-                                        onReact={() => handleReact(msg)}
-                                        onEmoji={() => { setEmojiPickerMsg(msg); setEmojiPickerOpen(true); }}
-                                        onForward={() => { setForwardMsg(msg); setForwardOpen(true); }}
-                                        onEdit={() => { setEditingMsg(msg); setEditText(msg.text); }}
-                                        onReply={() => setReplyTo(msg)}
-                                        onMore={() => handleMore(msg)}
-                                        onReactionPress={(emoji) => handleReactEmoji(msg, emoji)}
-                                    />
-                                ))}
-                                {filteredMessages.length === 0 && state.messages.length === 0 && (
-                                    <View style={{ padding: 40, alignItems: "center" }}>
-                                        <Text style={{ fontSize: 13, color: "#9CA3AF", fontFamily: "SF_Pro_Regular" }}>
-                                            No messages yet. Start the conversation!
+                                            {filteredMessages.length} result
+                                            {filteredMessages.length !== 1
+                                                ? "s"
+                                                : ""}{" "}
+                                            found
                                         </Text>
                                     </View>
                                 )}
                             </View>
-                        )}
-
-                        {/* Load more */}
-                        {state.hasMore && !state.messagesLoading && (
-                            <TouchableOpacity
-                                style={{ padding: 16, alignItems: "center" }}
-                                onPress={() => {
-                                    if (roomId) {
-                                        const nextPage = state.messagePage + 1;
-                                        fetchMessages(roomId, nextPage);
-                                    }
-                                }}
-                            >
-                                <Text style={{ fontSize: 13, color: "#00DEAB", fontFamily: "SF_Pro_Medium" }}>
-                                    Load older messages
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                        {state.messagesLoading && state.messages.length > 0 && (
-                            <View style={{ padding: 16, alignItems: "center" }}>
-                                <ActivityIndicator size="small" color="#00DEAB" />
-                            </View>
-                        )}
-                    </ScrollView>
+                        }
+                        ListEmptyComponent={
+                            state.messagesLoading && state.messages.length === 0 ? (
+                                <View style={{ padding: 40, alignItems: "center" }}>
+                                    <ActivityIndicator size="large" color="#00DEAB" />
+                                </View>
+                            ) : search.trim() && filteredMessages.length === 0 ? (
+                                <View style={{ padding: 40, alignItems: "center" }}>
+                                    <Ionicons name="search-outline" size={32} color="#D1D5DB" />
+                                    <Text style={{ fontSize: 13, color: "#9CA3AF", fontFamily: "SF_Pro_Regular", marginTop: 8, textAlign: "center" }}>
+                                        No messages matching "{search}"
+                                    </Text>
+                                </View>
+                            ) : filteredMessages.length === 0 ? (
+                                <View style={{ padding: 40, alignItems: "center" }}>
+                                    <Text style={{ fontSize: 13, color: "#9CA3AF", fontFamily: "SF_Pro_Regular", textAlign: "center" }}>
+                                        No messages yet. Start the conversation!
+                                    </Text>
+                                </View>
+                            ) : null
+                        }
+                        ListFooterComponent={
+                            <>
+                                {state.hasMore && !state.messagesLoading && (
+                                    <TouchableOpacity
+                                        style={{ padding: 16, alignItems: "center" }}
+                                        onPress={() => {
+                                            if (roomId) {
+                                                const nextPage = state.messagePage + 1;
+                                                fetchMessages(roomId, nextPage);
+                                            }
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 13, color: "#00DEAB", fontFamily: "SF_Pro_Medium" }}>
+                                            Load older messages
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                                {state.messagesLoading && state.messages.length > 0 && (
+                                    <View style={{ padding: 16, alignItems: "center" }}>
+                                        <ActivityIndicator size="small" color="#00DEAB" />
+                                    </View>
+                                )}
+                            </>
+                        }
+                        onViewableItemsChanged={onViewableItemsChangedRef}
+                        viewabilityConfig={viewabilityConfig}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                        contentContainerStyle={styles.scrollContent}
+                    />
 
                     {/* ── Reply Preview ── */}
                     {replyTo && (
@@ -1400,6 +1559,7 @@ export default function ConversationScreen() {
                 onSearch={(query) => setSearchQuery(query)}
                 onInviteUsers={handleAddPeopleInvite}
             />
+            
 
             {/* ── Emoji Picker (rn-emoji-keyboard) ── */}
             <EmojiPicker

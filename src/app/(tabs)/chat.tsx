@@ -401,15 +401,9 @@ export default function ChatScreen() {
                                     const displayName = getRoomDisplayName(project, currentUserId);
                                     const initials = getRoomInitials(project, currentUserId);
                                     const unread = isRoomUnread(project);
-                                    const lastPreview = project.last_message
-                                        ? (project.last_message.attachments && project.last_message.attachments.length > 0
-                                            ? `📎 ${project.last_message.attachments.length} attachment${project.last_message.attachments.length > 1 ? "s" : ""}`
-                                            : project.last_message.text || `${project.members.length} member${project.members.length > 1 ? "s" : ""}`)
-                                        : (project.members.length > 0
-                                            ? `${project.members.length} member${project.members.length > 1 ? "s" : ""}`
-                                            : "No messages yet");
                                     const isExpanded = expandedProjects.has(project.id);
                                     const childChannels = projectChannelMap.get(project.id) ?? [];
+                                    const lastPreview = `${childChannels.length} ${childChannels.length === 1 ? "channel" : "channels"}`;
                                     const projectTime = project.last_message?.createdAt
                                         ? formatChatListTime(project.last_message.createdAt)
                                         : (project as any).time ?? "";
@@ -423,7 +417,7 @@ export default function ChatScreen() {
                                                     (isExpanded || selectedChatId === project.id.toString()) && { backgroundColor: "#F3F4F6" },
                                                 ]}
                                                 activeOpacity={0.7}
-                                                onPress={() => handleRoomPress(project)}
+                                                onPress={() => toggleProjectExpand(project.id)}
                                                 onLongPress={() => toggleProjectExpand(project.id)}
                                             >
                                                 <View style={styles.avatarContainer}>
@@ -540,7 +534,7 @@ export default function ChatScreen() {
                                                             </TouchableOpacity>
                                                         );
                                                     })}
-                                                    <TouchableOpacity
+                                                    {/* <TouchableOpacity
                                                         style={[styles.channelRow, { paddingLeft: 40 }]}
                                                         activeOpacity={0.7}
                                                         onPress={() => handleProjectAddChannel(project)}
@@ -551,7 +545,7 @@ export default function ChatScreen() {
                                                         <Text style={[styles.chatSnippet, { marginLeft: 14, color: "#00DEAB", fontFamily: "SF_Pro_Semibold" }]}>
                                                             Add Channel
                                                         </Text>
-                                                    </TouchableOpacity>
+                                                    </TouchableOpacity> */}
                                                 </View>
                                             )}
                                         </View>
@@ -673,7 +667,7 @@ export default function ChatScreen() {
                 </ScrollView>
 
                 {/* FAB */}
-                {displayRooms.length > 0 && (
+                {displayRooms.length > 0 && activeChip !== "projects" && (
                     <TouchableOpacity
                         style={styles.fab}
                         activeOpacity={0.8}
