@@ -1,6 +1,17 @@
 import RichTextEditor, { RichTextEditorRef } from "@/components/texteditor";
+import DocumentPickerButton from "@/features/attachments/components/DocumentPickerButton";
+import type { SelectedFile } from "@/features/attachments/types/attachment.types";
+import { useAuth } from "@/hooks/useAuth";
+import { useTasks } from "@/hooks/useTasks";
+import { getSocket, onSocketEvent, type UserUpdatePayload } from "@/services/socket/socketService";
+import type { RecurringPeriod, UiTaskStatus } from "@/types/task.types";
+import { extractErrorMessage } from "@/utils/errorHandler";
+import { uiStatusToApi } from "@/utils/statusMapper";
+import { showError, showInfo, showSuccess } from "@/utils/toast";
 import { Ionicons } from "@expo/vector-icons";
-import { useRef, useState, useEffect } from "react";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+import { useEffect, useRef, useState } from "react";
 import {
   Modal,
   Platform,
@@ -481,7 +492,7 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
     <>
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable onPress={() => {}} style={styles.sheet}>
+        <Pressable onPress={() => { }} style={styles.sheet}>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Ionicons name="close" size={18} color="#fff" />
           </TouchableOpacity>
@@ -1134,7 +1145,7 @@ export default function CreateTaskModal({ visible, onClose }: Props) {
             <Text style={styles.createBtnText}>{loading ? "Creating..." : "+   Create Task"}</Text>
           </TouchableOpacity>
         </Pressable>
-        </Pressable>
+      </Pressable>
       {/* </Pressable> */}
     </Modal>
 

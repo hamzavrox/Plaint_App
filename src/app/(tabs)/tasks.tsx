@@ -642,9 +642,10 @@ const styles = StyleSheet.create({
   statsContent: { paddingHorizontal: 16, paddingBottom: 15, gap: 6 },
   tableShell: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 120,
+    minHeight: 0,
+    // paddingHorizontal: 16,
+    // paddingTop: 8,
+    // paddingBottom: 120,
   },
   fab: {
     position: "absolute",
