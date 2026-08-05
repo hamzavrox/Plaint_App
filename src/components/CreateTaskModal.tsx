@@ -24,20 +24,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useAuth } from "@/hooks/useAuth";
-import { useTasks } from "@/hooks/useTasks";
-import { extractErrorMessage } from "@/utils/errorHandler";
-import { showInfo, showError, showSuccess } from "@/utils/toast";
-import { uiStatusToApi } from "@/utils/statusMapper";
-import type { UiTaskStatus, RecurringPeriod } from "@/types/task.types";
-import { getSocket, onSocketEvent, type UserUpdatePayload } from "@/services/socket/socketService";
-import DocumentPickerButton from "@/features/attachments/components/DocumentPickerButton";
-import type { SelectedFile } from "@/features/attachments/types/attachment.types";
-import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system/legacy";
 import {
   CriticalTaskPopUpModal,
   OrderCriticalTasksModal,
+
   type CriticalTask,
 } from "@/components/CriticalTaskModal";
 
